@@ -1,431 +1,706 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Hoop Land Premium Class Generator</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hoop Land Women's Class Generator V2</title>
 
-  <style>
-    * {
-      box-sizing: border-box;
-    }
+<style>
+:root{
+  --bg:#081120;
+  --panel:#111d31;
+  --panel2:#0b1628;
+  --line:#2b3b55;
+  --text:#f4f7ff;
+  --muted:#9fb0ca;
+  --accent:#7c5cff;
+  --good:#35c48d;
+  --bad:#ff6577;
+}
 
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background: #0b1020;
-      color: #f5f7ff;
-    }
+*{
+  box-sizing:border-box;
+}
 
-    header {
-      padding: 28px 20px;
-      background: linear-gradient(135deg, #172554, #4c1d95);
-    }
+body{
+  margin:0;
+  background:linear-gradient(180deg,#07101f,#0c1830);
+  color:var(--text);
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+}
 
-    header h1 {
-      margin: 0 0 8px;
-      font-size: 28px;
-    }
+header{
+  padding:28px 18px;
+  background:linear-gradient(135deg,#172554,#5b21b6);
+}
 
-    header p {
-      margin: 0;
-      color: #cbd5e1;
-    }
+header>div,
+main{
+  max-width:1180px;
+  margin:auto;
+}
 
-    main {
-      max-width: 1100px;
-      margin: auto;
-      padding: 20px;
-    }
+h1{
+  margin:0 0 7px;
+  font-size:clamp(1.45rem,5vw,2.35rem);
+}
 
-    .card {
-      background: #151c30;
-      border: 1px solid #29324b;
-      border-radius: 14px;
-      padding: 18px;
-      margin-bottom: 18px;
-    }
+h2{
+  font-size:1.15rem;
+  margin:0 0 14px;
+}
 
-    h2 {
-      margin-top: 0;
-      font-size: 20px;
-    }
+.sub,
+.muted{
+  color:var(--muted);
+}
 
-    h3 {
-      margin-bottom: 8px;
-    }
+main{
+  padding:18px;
+}
 
-    label {
-      display: block;
-      margin: 12px 0 5px;
-      font-size: 14px;
-      color: #dbe4ff;
-    }
+.card{
+  background:rgba(17,29,49,.96);
+  border:1px solid var(--line);
+  border-radius:16px;
+  padding:16px;
+  margin-bottom:16px;
+}
 
-    input,
-    select,
-    button {
-      font: inherit;
-    }
+.grid{
+  display:grid;
+  grid-template-columns:
+    repeat(auto-fit,minmax(175px,1fr));
+  gap:12px;
+}
 
-    input,
-    select {
-      width: 100%;
-      padding: 10px;
-      border-radius: 8px;
-      border: 1px solid #475569;
-      background: #0f172a;
-      color: white;
-    }
+.grid.tight{
+  grid-template-columns:
+    repeat(auto-fit,minmax(120px,1fr));
+}
 
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 12px;
-    }
+label{
+  display:block;
+  font-size:.82rem;
+  color:#d9e3f5;
+  margin:0 0 5px;
+}
 
-    .attribute {
-      background: #0f172a;
-      border: 1px solid #334155;
-      border-radius: 10px;
-      padding: 12px;
-    }
+input,
+select,
+button{
+  font:inherit;
+}
 
-    .attribute-name {
-      font-weight: bold;
-      margin-bottom: 8px;
-      color: #a5b4fc;
-    }
+input,
+select{
+  width:100%;
+  padding:10px;
+  border-radius:9px;
+  border:1px solid #40516d;
+  background:#081426;
+  color:var(--text);
+}
 
-    .attribute-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-    }
+input[type=checkbox]{
+  width:auto;
+  accent-color:var(--accent);
+}
 
-    button {
-      border: 0;
-      border-radius: 10px;
-      padding: 12px 18px;
-      cursor: pointer;
-      font-weight: bold;
-    }
+button{
+  border:0;
+  border-radius:10px;
+  padding:12px 16px;
+  font-weight:750;
+  cursor:pointer;
+}
 
-    .primary {
-      background: #6366f1;
-      color: white;
-    }
+.primary{
+  background:var(--accent);
+  color:white;
+}
 
-    .secondary {
-      background: #334155;
-      color: white;
-    }
+.secondary{
+  background:#30415e;
+  color:white;
+}
 
-    .danger {
-      background: #9f1239;
-      color: white;
-    }
+.actions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+}
 
-    .actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 16px;
-    }
+.notice{
+  margin-top:12px;
+  padding:11px;
+  border-radius:10px;
+  background:#13294c;
+  color:#cde2ff;
+}
 
-    .player {
-      border-bottom: 1px solid #334155;
-      padding: 12px 0;
-    }
+.error{
+  background:#4a1721;
+  color:#ffd6db;
+}
 
-    .player:last-child {
-      border-bottom: 0;
-    }
+.ok{
+  background:#133a31;
+  color:#d4fff0;
+}
 
-    .player-name {
-      font-weight: bold;
-      font-size: 17px;
-    }
+.attr{
+  background:var(--panel2);
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:12px;
+}
 
-    .muted {
-      color: #94a3b8;
-      font-size: 13px;
-    }
+.attr b{
+  color:#b9c4ff;
+}
 
-    .notice {
-      padding: 12px;
-      background: #172554;
-      border-radius: 8px;
-      color: #bfdbfe;
-      margin-top: 12px;
-    }
+.checkrow{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:6px 0;
+}
 
-    .checkbox-row {
-      display: flex;
-      align-items: center;
-      gap: 7px;
-      margin: 8px 0;
-    }
+.checkrow label{
+  margin:0;
+}
 
-    .checkbox-row input {
-      width: auto;
-    }
+.tablewrap{
+  overflow:auto;
+}
 
-    @media (max-width: 600px) {
-      header h1 {
-        font-size: 23px;
-      }
+table{
+  border-collapse:collapse;
+  width:100%;
+  min-width:820px;
+}
 
-      main {
-        padding: 12px;
-      }
-    }
-  </style>
+th,
+td{
+  border-bottom:1px solid var(--line);
+  padding:10px 8px;
+  text-align:left;
+  font-size:.86rem;
+}
+
+th{
+  color:#b9c4ff;
+  background:var(--panel);
+}
+
+.pill{
+  display:inline-block;
+  padding:3px 8px;
+  border-radius:999px;
+  background:#273954;
+  color:#dbe8ff;
+  font-size:.76rem;
+}
+
+.summary{
+  display:grid;
+  grid-template-columns:
+    repeat(auto-fit,minmax(140px,1fr));
+  gap:9px;
+  margin:12px 0;
+}
+
+.metric{
+  background:var(--panel2);
+  border:1px solid var(--line);
+  border-radius:10px;
+  padding:10px;
+}
+
+.metric strong{
+  display:block;
+  font-size:1.15rem;
+}
+
+.small{
+  font-size:.78rem;
+}
+
+.section-note{
+  font-size:.82rem;
+  color:var(--muted);
+  margin:-6px 0 12px;
+}
+
+.hidden{
+  display:none;
+}
+
+@media(max-width:540px){
+  main{
+    padding:10px;
+  }
+
+  .card{
+    padding:13px;
+  }
+
+  header{
+    padding:22px 14px;
+  }
+}
+</style>
 </head>
 
 <body>
 
 <header>
-  <h1>Hoop Land Premium Class Generator</h1>
-  <p>Women's basketball draft and freshman class generator</p>
+  <div>
+    <h1>
+      Hoop Land Women's Class Generator
+      <span class="pill">V2</span>
+    </h1>
+
+    <div class="sub">
+      WNBA-focused class framework with point budgets,
+      physical balance, traits, and realistic rarity.
+    </div>
+  </div>
 </header>
 
 <main>
 
-  <section class="card">
-    <h2>Class Setup</h2>
+<section class="card">
+  <h2>Class Setup</h2>
 
-    <div class="grid">
+  <div class="grid">
 
-      <div>
-        <label for="classType">Class Type</label>
-        <select id="classType">
-          <option value="draft">Draft Class</option>
-          <option value="freshman">Freshman Class</option>
-        </select>
-      </div>
-
-      <div>
-        <label for="generationMode">Generation Mode</label>
-        <select id="generationMode">
-          <option value="fictional">Fictional</option>
-          <option value="real" disabled>Real NCAAW - Coming Later</option>
-          <option value="hybrid" disabled>Hybrid - Coming Later</option>
-        </select>
-      </div>
-
-      <div>
-        <label for="classSize">Class Size</label>
-        <input
-          id="classSize"
-          type="number"
-          min="1"
-          max="500"
-          value="40"
-        >
-      </div>
-
-      <div>
-        <label for="seed">Random Seed (optional)</label>
-        <input
-          id="seed"
-          type="text"
-          placeholder="Leave blank for random"
-        >
-      </div>
-
+    <div>
+      <label for="classType">Class Type</label>
+      <select id="classType">
+        <option value="draft">Draft Class</option>
+        <option value="freshman">Freshman Class</option>
+      </select>
     </div>
 
-    <div class="notice">
-      Draft classes default to 40 prospects. Freshman classes default to 300 prospects.
-    </div>
-  </section>
-
-
-  <section class="card">
-    <h2>Age Rules</h2>
-
-    <div class="grid">
-
-      <div>
-        <label>USA Minimum Age</label>
-        <input id="usMinAge" type="number" value="20">
-      </div>
-
-      <div>
-        <label>USA Maximum Age</label>
-        <input id="usMaxAge" type="number" value="21">
-      </div>
-
-      <div>
-        <label>International Minimum Age</label>
-        <input id="intlMinAge" type="number" value="19">
-      </div>
-
-      <div>
-        <label>International Maximum Age</label>
-        <input id="intlMaxAge" type="number" value="21">
-      </div>
-
-    </div>
-  </section>
-
-
-  <section class="card">
-    <h2>Attribute Limits</h2>
-
-    <p class="muted">
-      Hoop Land attributes range from 2 to 20.
-      Each generated rating will contain a current rating and a potential maximum.
-    </p>
-
-    <div id="attributeControls" class="grid"></div>
-  </section>
-
-
-  <section class="card">
-    <h2>Rare Attribute Outliers</h2>
-
-    <div class="grid">
-
-      <div>
-        <label for="dunkOutlierChance">Rare Dunker Chance (%)</label>
-        <input
-          id="dunkOutlierChance"
-          type="number"
-          min="0"
-          max="100"
-          step="0.1"
-          value="2"
-        >
-      </div>
-
-      <div>
-        <label for="dunkOutlierMax">Rare Dunker Maximum</label>
-        <input
-          id="dunkOutlierMax"
-          type="number"
-          min="2"
-          max="20"
-          value="18"
-        >
-      </div>
-
+    <div>
+      <label for="classStrength">Class Strength</label>
+      <select id="classStrength">
+        <option>Generational</option>
+        <option>Strong</option>
+        <option selected>Average</option>
+        <option>Weak</option>
+      </select>
     </div>
 
-    <div class="notice">
-      Rare outliers can exceed the normal DNK ceiling. This allows most generated players to have limited dunking while occasionally producing an exceptional dunker.
+    <div>
+      <label for="mode">Player Mode</label>
+      <select id="mode">
+        <option>Fictional</option>
+        <option disabled>Real NCAAW - Later</option>
+        <option disabled>Hybrid - Later</option>
+      </select>
     </div>
-  </section>
 
-
-  <section class="card">
-    <h2>Physical Limits</h2>
-
-    <div class="grid">
-
-      <div>
-        <label>Minimum Height (inches)</label>
-        <input id="minHeight" type="number" value="63">
-      </div>
-
-      <div>
-        <label>Maximum Height (inches)</label>
-        <input id="maxHeight" type="number" value="79">
-      </div>
-
-      <div>
-        <label>Minimum Weight (lbs)</label>
-        <input id="minWeight" type="number" value="120">
-      </div>
-
-      <div>
-        <label>Maximum Weight (lbs)</label>
-        <input id="maxWeight" type="number" value="230">
-      </div>
-
+    <div>
+      <label for="classSize">Class Size</label>
+      <input
+        id="classSize"
+        type="number"
+        min="1"
+        max="500"
+        value="40"
+      >
     </div>
-  </section>
+
+    <div>
+      <label for="seed">Seed (optional)</label>
+      <input
+        id="seed"
+        placeholder="Same seed = same class"
+      >
+    </div>
+
+    <div>
+      <label for="className">Class Name</label>
+      <input
+        id="className"
+        value="Women's Draft Class"
+      >
+    </div>
+
+  </div>
+</section>
 
 
-  <section class="card">
-    <h2>Positions</h2>
+<section class="card">
+  <h2>Overall Quality & Point Budgets</h2>
 
-    <p class="muted">
-      Choose which Hoop Land positions are allowed in generated classes.
-    </p>
+  <p class="section-note">
+    The 144-point budget applies only to the 12 core
+    basketball attributes. SPD, STR, STA, and traits
+    are separate.
+  </p>
 
-    <div id="positions"></div>
-  </section>
+  <div class="grid">
 
+    <div>
+      <label>Current Overall Minimum (stars)</label>
+      <input
+        id="curStarMin"
+        type="number"
+        min="1"
+        max="5"
+        step="0.1"
+        value="2.0"
+      >
+    </div>
+
+    <div>
+      <label>Current Overall Maximum (stars)</label>
+      <input
+        id="curStarMax"
+        type="number"
+        min="1"
+        max="5"
+        step="0.1"
+        value="4.5"
+      >
+    </div>
+
+    <div>
+      <label>Potential Minimum (2-10)</label>
+      <input
+        id="potMin"
+        type="number"
+        min="2"
+        max="10"
+        value="5"
+      >
+    </div>
+
+    <div>
+      <label>Potential Maximum (2-10)</label>
+      <input
+        id="potMax"
+        type="number"
+        min="2"
+        max="10"
+        value="10"
+      >
+    </div>
+
+    <div>
+      <label>Generational Outlier Chance (%)</label>
+      <input
+        id="genChance"
+        type="number"
+        min="0"
+        max="100"
+        step="0.1"
+        value="1"
+      >
+    </div>
+
+    <div>
+      <label>Maximum Extra Core Points</label>
+      <input
+        id="genExtra"
+        type="number"
+        min="0"
+        max="40"
+        value="8"
+      >
+    </div>
+
+  </div>
+
+  <div class="notice">
+    A normal 5-star player uses 144 core attribute
+    points and has 0 remaining. Rare generational
+    outliers can exceed 144.
+  </div>
+</section>
+
+
+<section class="card">
+  <h2>Core Attribute Limits</h2>
+
+  <p class="section-note">
+    Ratings use Hoop Land's 2-20 scale. Each skill
+    ultimately uses [current, maximum potential].
+  </p>
+
+  <div id="attrGrid" class="grid"></div>
+</section>
 
   <section class="card">
-    <h2>Appearance</h2>
+  <h2>Physical Profile</h2>
 
-    <div class="checkbox-row">
-      <input id="femaleNames" type="checkbox" checked>
-      <label for="femaleNames">Use women's name pools</label>
+  <p class="section-note">
+    Height and weight are generated with position in mind.
+    Speed, strength, and stamina use the 8-20 scale and
+    do not count against the 144 core attribute points.
+  </p>
+
+  <div class="grid">
+
+    <div>
+      <label>Minimum Height (inches)</label>
+      <input
+        id="minHt"
+        type="number"
+        min="55"
+        max="90"
+        value="63"
+      >
     </div>
 
-    <div class="checkbox-row">
-      <input id="regionalNames" type="checkbox" checked>
-      <label for="regionalNames">Match names to country / hometown</label>
+    <div>
+      <label>Maximum Height (inches)</label>
+      <input
+        id="maxHt"
+        type="number"
+        min="55"
+        max="90"
+        value="80"
+      >
     </div>
 
-    <div class="checkbox-row">
-      <input id="compatibleColors" type="checkbox" checked>
-      <label for="compatibleColors">Use compatible skin, hair, eye and eyebrow color combinations</label>
+    <div>
+      <label>Minimum Weight (lbs)</label>
+      <input
+        id="minWt"
+        type="number"
+        min="90"
+        max="300"
+        value="120"
+      >
     </div>
 
-    <div class="checkbox-row">
-      <input id="randomShoes" type="checkbox" checked>
-      <label for="randomShoes">Randomize shoe colors</label>
+    <div>
+      <label>Maximum Weight (lbs)</label>
+      <input
+        id="maxWt"
+        type="number"
+        min="90"
+        max="300"
+        value="230"
+      >
     </div>
 
-    <div class="checkbox-row">
-      <input id="disableFacialHair" type="checkbox" checked>
-      <label for="disableFacialHair">Disable facial hair</label>
+  </div>
+
+  <div class="notice">
+    SPD, STR, and STA will be generated automatically
+    from position, height, weight, and randomness.
+    Maximum speed will be intentionally rare.
+  </div>
+</section>
+
+
+<section class="card">
+  <h2>Positions</h2>
+
+  <p class="section-note">
+    Select the Hoop Land positions that may appear
+    in the generated class.
+  </p>
+
+  <div
+    id="positions"
+    class="grid tight">
+  </div>
+</section>
+
+
+<section class="card">
+  <h2>Appearance Framework</h2>
+
+  <div class="grid">
+
+    <div class="checkrow">
+      <input
+        id="regional"
+        type="checkbox"
+        checked
+      >
+      <label for="regional">
+        Country-appropriate names and hometowns
+      </label>
     </div>
 
-    <p class="muted">
-      Hairstyle selection, accessories and tattoo-style appearance options will be expanded later.
-    </p>
-  </section>
-
-
-  <section class="card">
-    <h2>Generate Class</h2>
-
-    <div class="actions">
-      <button class="primary" id="generateButton">
-        Generate Class
-      </button>
-
-      <button class="secondary" id="clearButton">
-        Clear
-      </button>
+    <div class="checkrow">
+      <input
+        id="colorPairs"
+        type="checkbox"
+        checked
+      >
+      <label for="colorPairs">
+        Compatible skin, eye, hair, and eyebrow colors
+      </label>
     </div>
 
-    <div id="status" class="notice">
-      Ready to generate.
+    <div class="checkrow">
+      <input
+        id="shoes"
+        type="checkbox"
+        checked
+      >
+      <label for="shoes">
+        Random shoe colors
+      </label>
     </div>
-  </section>
 
-
-  <section class="card">
-    <h2>Generated Prospects</h2>
-
-    <div id="playerList">
-      <p class="muted">No class generated yet.</p>
+    <div class="checkrow">
+      <input
+        id="femaleLooks"
+        type="checkbox"
+        checked
+      >
+      <label for="femaleLooks">
+        Female-focused appearance pool
+      </label>
     </div>
-  </section>
+
+  </div>
+
+  <p class="section-note">
+    Hairstyle filtering, accessories, and occasional
+    tattoo-style accessories will be expanded later.
+  </p>
+</section>
+
+
+<section class="card">
+  <h2>Automatic Player Data</h2>
+
+  <p class="section-note">
+    These values are generated automatically and do
+    not require user controls.
+  </p>
+
+  <div class="grid">
+
+    <div class="attr">
+      <b>Regression Age</b>
+      <p class="muted small">
+        Randomly generated from 18 through 34.
+      </p>
+    </div>
+
+    <div class="attr">
+      <b>Physical Ratings</b>
+      <p class="muted small">
+        SPD, STR, and STA use ratings from 8 through 20.
+      </p>
+    </div>
+
+    <div class="attr">
+      <b>Player Traits</b>
+      <p class="muted small">
+        Eight traits are automatically generated
+        from 2 through 20.
+      </p>
+    </div>
+
+    <div class="attr">
+      <b>Tendencies</b>
+      <p class="muted small">
+        Generated automatically from attributes,
+        position, and player style.
+      </p>
+    </div>
+
+  </div>
+</section>
+
+
+<section class="card">
+  <h2>Generate</h2>
+
+  <div class="actions">
+
+    <button
+      id="generate"
+      class="primary">
+      Generate V2 Class
+    </button>
+
+    <button
+      id="clear"
+      class="secondary">
+      Clear
+    </button>
+
+    <button
+      id="downloadPreview"
+      class="secondary">
+      Download V2 Preview JSON
+    </button>
+
+  </div>
+
+  <div
+    id="status"
+    class="notice">
+    Ready.
+  </div>
+</section>
+
+
+<section class="card">
+  <h2>Class Preview</h2>
+
+  <div
+    id="summary"
+    class="summary hidden">
+  </div>
+
+  <div class="tablewrap">
+
+    <table>
+
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Player</th>
+          <th>Pos</th>
+          <th>Age</th>
+          <th>Ht/Wt</th>
+          <th>Current</th>
+          <th>Potential</th>
+          <th>Points</th>
+          <th>SPD/STR/STA</th>
+          <th>DNK</th>
+          <th>Country</th>
+        </tr>
+      </thead>
+
+      <tbody id="players">
+
+        <tr>
+          <td
+            colspan="11"
+            class="muted">
+            No class generated yet.
+          </td>
+        </tr>
+
+      </tbody>
+
+    </table>
+
+  </div>
+</section>
 
 </main>
 
 
 <script>
 
-const ATTRIBUTES = [
+const ATTRS = [
   ["LAY", "Layup"],
   ["DNK", "Dunk"],
   ["INS", "Inside"],
@@ -440,7 +715,8 @@ const ATTRIBUTES = [
   ["BLK", "Block"]
 ];
 
-const POSITIONS = [
+
+const POS = [
   ["0", "PG"],
   ["1", "G"],
   ["2", "SG"],
@@ -452,442 +728,2320 @@ const POSITIONS = [
   ["8", "C"]
 ];
 
-const firstNames = [
-  "Aaliyah",
-  "Amaya",
-  "Arianna",
-  "Camille",
-  "Danielle",
-  "Gabrielle",
-  "Jada",
-  "Jasmine",
-  "Jordan",
-  "Kayla",
-  "Kennedy",
-  "Lauren",
-  "Maya",
-  "Naomi",
-  "Nia",
-  "Olivia",
-  "Simone",
-  "Sydney",
-  "Tiana",
-  "Zoe"
-];
 
-const lastNames = [
-  "Adams",
-  "Bennett",
-  "Brooks",
-  "Carter",
-  "Coleman",
-  "Davis",
-  "Edwards",
-  "Foster",
-  "Green",
-  "Harris",
-  "Jackson",
-  "Johnson",
-  "Lewis",
-  "Mitchell",
-  "Moore",
-  "Parker",
-  "Robinson",
-  "Taylor",
-  "Thomas",
-  "Williams"
+const POS_PROFILE = {
+
+  0: [64, 70, 125, 175, 16, 9],
+  1: [65, 72, 130, 185, 15, 10],
+  2: [66, 73, 135, 190, 15, 10],
+  3: [67, 74, 140, 200, 14, 11],
+  4: [68, 75, 145, 205, 14, 11],
+  5: [69, 77, 150, 215, 13, 12],
+  6: [70, 78, 155, 225, 12, 13],
+  7: [71, 79, 160, 230, 11, 14],
+  8: [72, 80, 165, 235, 10, 15]
+
+};
+
+
+const COUNTRIES = [
+  ["US", 78],
+  ["CA", 6],
+  ["AU", 5],
+  ["FR", 4],
+  ["GB", 2],
+  ["DE", 2],
+  ["ES", 1],
+  ["RS", 1],
+  ["BE", 1]
 ];
 
 
-function buildAttributeControls() {
+const NAMES = {
 
-  const container = document.getElementById("attributeControls");
+  US: [
+    [
+      "Aaliyah",
+      "Amaya",
+      "Arianna",
+      "Camille",
+      "Jada",
+      "Jasmine",
+      "Jordan",
+      "Kayla",
+      "Kennedy",
+      "Maya",
+      "Naomi",
+      "Nia",
+      "Olivia",
+      "Simone",
+      "Sydney",
+      "Tiana",
+      "Zoe"
+    ],
 
-  ATTRIBUTES.forEach(([code, name]) => {
+    [
+      "Adams",
+      "Bennett",
+      "Brooks",
+      "Carter",
+      "Coleman",
+      "Davis",
+      "Edwards",
+      "Foster",
+      "Green",
+      "Harris",
+      "Jackson",
+      "Johnson",
+      "Lewis",
+      "Mitchell",
+      "Moore",
+      "Parker",
+      "Robinson",
+      "Taylor",
+      "Thomas",
+      "Williams"
+    ],
 
-    const box = document.createElement("div");
-    box.className = "attribute";
+    [
+      "Atlanta, GA",
+      "Chicago, IL",
+      "Dallas, TX",
+      "Detroit, MI",
+      "Houston, TX",
+      "Los Angeles, CA",
+      "New York, NY",
+      "Norfolk, VA",
+      "Phoenix, AZ",
+      "Seattle, WA"
+    ]
+  ],
+
+
+  CA: [
+    [
+      "Avery",
+      "Brielle",
+      "Camille",
+      "Jordyn",
+      "Maya",
+      "Noelle",
+      "Sienna"
+    ],
+
+    [
+      "Bouchard",
+      "Campbell",
+      "Clarke",
+      "Martin",
+      "McLean",
+      "Roy",
+      "Singh"
+    ],
+
+    [
+      "Toronto, ON",
+      "Montreal, QC",
+      "Vancouver, BC",
+      "Calgary, AB"
+    ]
+  ],
+
+
+  AU: [
+    [
+      "Abbey",
+      "Charlotte",
+      "Evie",
+      "Isla",
+      "Matilda",
+      "Ruby",
+      "Sophie"
+    ],
+
+    [
+      "Brown",
+      "Campbell",
+      "Harris",
+      "Kelly",
+      "Smith",
+      "Taylor",
+      "Wilson"
+    ],
+
+    [
+      "Sydney, Australia",
+      "Melbourne, Australia",
+      "Perth, Australia",
+      "Adelaide, Australia"
+    ]
+  ],
+
+
+  FR: [
+    [
+      "Amelie",
+      "Camille",
+      "Chloe",
+      "Ines",
+      "Lea",
+      "Manon",
+      "Sarah"
+    ],
+
+    [
+      "Bernard",
+      "Dubois",
+      "Fournier",
+      "Laurent",
+      "Martin",
+      "Moreau",
+      "Roux"
+    ],
+
+    [
+      "Paris, France",
+      "Lyon, France",
+      "Marseille, France",
+      "Toulouse, France"
+    ]
+  ],
+
+    GB: [
+    [
+      "Amelia",
+      "Freya",
+      "Grace",
+      "Imogen",
+      "Isla",
+      "Mia"
+    ],
+
+    [
+      "Brown",
+      "Clarke",
+      "Evans",
+      "Jones",
+      "Taylor",
+      "Williams"
+    ],
+
+    [
+      "London, England",
+      "Manchester, England",
+      "Birmingham, England"
+    ]
+  ],
+
+
+  DE: [
+    [
+      "Anna",
+      "Emilia",
+      "Hannah",
+      "Leonie",
+      "Lina",
+      "Mia"
+    ],
+
+    [
+      "Bauer",
+      "Fischer",
+      "Hoffmann",
+      "Klein",
+      "Schmidt",
+      "Weber"
+    ],
+
+    [
+      "Berlin, Germany",
+      "Munich, Germany",
+      "Hamburg, Germany"
+    ]
+  ],
+
+
+  ES: [
+    [
+      "Alba",
+      "Claudia",
+      "Irene",
+      "Lucia",
+      "Marta",
+      "Paula"
+    ],
+
+    [
+      "Garcia",
+      "Lopez",
+      "Martin",
+      "Navarro",
+      "Sanchez"
+    ],
+
+    [
+      "Madrid, Spain",
+      "Barcelona, Spain",
+      "Valencia, Spain"
+    ]
+  ],
+
+
+  RS: [
+    [
+      "Ana",
+      "Jovana",
+      "Milica",
+      "Sara",
+      "Teodora"
+    ],
+
+    [
+      "Ilic",
+      "Jovanovic",
+      "Markovic",
+      "Nikolic",
+      "Petrovic"
+    ],
+
+    [
+      "Belgrade, Serbia",
+      "Novi Sad, Serbia"
+    ]
+  ],
+
+
+  BE: [
+    [
+      "Amber",
+      "Elise",
+      "Emma",
+      "Laura",
+      "Lotte"
+    ],
+
+    [
+      "Claes",
+      "Jacobs",
+      "Peeters",
+      "Willems"
+    ],
+
+    [
+      "Brussels, Belgium",
+      "Antwerp, Belgium"
+    ]
+  ]
+
+};
+
+
+const SKINS = [
+  [
+    "F4CCA1",
+    ["6A4C41", "3F2E00", "B56A3B"],
+    ["472D3C", "3F2E00", "2E5A78"]
+  ],
+
+  [
+    "D7A379",
+    ["3F2E00", "261F00"],
+    ["472D3C", "2E2100"]
+  ],
+
+  [
+    "C58158",
+    ["261F00", "141020"],
+    ["262539", "2E2100"]
+  ],
+
+  [
+    "A05B53",
+    ["141020", "261F00"],
+    ["262539", "141020"]
+  ],
+
+  [
+    "7A444A",
+    ["141020"],
+    ["262539", "141020"]
+  ],
+
+  [
+    "5E372E",
+    ["141020"],
+    ["262539", "141020"]
+  ]
+];
+
+
+const HAIRS = [
+  "0003",
+  "0007",
+  "0008",
+  "0012",
+  "0015",
+  "0021",
+  "0022",
+  "0023",
+  "0024",
+  "0054",
+  "0067",
+  "0072",
+  "0073",
+  "0074",
+  "0075",
+  "0076"
+];
+
+
+const SHOE_COLORS = [
+  "FFFFFF",
+  "000000",
+  "DBE0E7",
+  "7F3B86",
+  "ED5259",
+  "2E5A78",
+  "D4AF37",
+  "E94B35"
+];
+
+
+let rng = Math.random;
+let generated = [];
+
+
+function hashSeed(text) {
+
+  let hash = 2166136261;
+
+  for (const character of text) {
+    hash ^= character.charCodeAt(0);
+    hash = Math.imul(hash, 16777619);
+  }
+
+  return hash >>> 0;
+}
+
+
+function seededRandom(seed) {
+
+  let value = hashSeed(seed);
+
+  return function () {
+
+    value |= 0;
+
+    value =
+      value + 0x6D2B79F5 | 0;
+
+    let result =
+      Math.imul(
+        value ^ value >>> 15,
+        1 | value
+      );
+
+    result =
+      result +
+      Math.imul(
+        result ^ result >>> 7,
+        61 | result
+      ) ^
+      result;
+
+    return (
+      (result ^ result >>> 14) >>> 0
+    ) / 4294967296;
+  };
+}
+
+
+function randomInteger(minimum, maximum) {
+
+  minimum = Math.ceil(minimum);
+  maximum = Math.floor(maximum);
+
+  return Math.floor(
+    rng() * (maximum - minimum + 1)
+  ) + minimum;
+}
+
+
+function pick(items) {
+
+  return items[
+    randomInteger(0, items.length - 1)
+  ];
+}
+
+
+function clamp(value, minimum, maximum) {
+
+  return Math.min(
+    maximum,
+    Math.max(minimum, value)
+  );
+}
+
+
+function numberValue(id, fallback = 0) {
+
+  const value =
+    Number(
+      document.getElementById(id).value
+    );
+
+  if (!Number.isFinite(value)) {
+    return fallback;
+  }
+
+  return value;
+}
+
+
+function normalRandom() {
+
+  return (
+    rng() +
+    rng() +
+    rng() +
+    rng() +
+    rng() +
+    rng() -
+    3
+  ) / 1.225;
+}
+
+
+function weightedChoice(items) {
+
+  const total =
+    items.reduce(
+      (sum, item) => sum + item[1],
+      0
+    );
+
+  let value = rng() * total;
+
+  for (const item of items) {
+
+    value -= item[1];
+
+    if (value <= 0) {
+      return item[0];
+    }
+  }
+
+  return items[0][0];
+}
+
+
+function budgetForStars(stars) {
+
+  return clamp(
+    Math.round(28 * stars + 4),
+    32,
+    144
+  );
+}
+
+
+function starsForBudget(points) {
+
+  return clamp(
+    (points - 4) / 28,
+    1,
+    5
+  );
+}
+
+
+function starText(value) {
+
+  return Number(value).toFixed(1) + "★";
+}
+
+
+function buildInputs() {
+
+  const attributeGrid =
+    document.getElementById("attrGrid");
+
+  ATTRS.forEach(([code, name]) => {
+
+    const box =
+      document.createElement("div");
+
+    box.className = "attr";
+
+    const currentMaximum =
+      code === "DNK" ? 6 : 16;
+
+    const potentialMaximum =
+      code === "DNK" ? 8 : 20;
 
     box.innerHTML = `
-      <div class="attribute-name">${name} (${code})</div>
+      <b>${name} (${code})</b>
 
-      <div class="attribute-grid">
+      <div
+        class="grid tight"
+        style="margin-top:9px">
 
         <div>
           <label>Current Min</label>
           <input
-            id="${code}_currentMin"
+            id="${code}cmin"
             type="number"
             min="2"
             max="20"
-            value="4"
-          >
+            value="2">
         </div>
 
         <div>
           <label>Current Max</label>
           <input
-            id="${code}_currentMax"
+            id="${code}cmax"
             type="number"
             min="2"
             max="20"
-            value="${code === "DNK" ? 6 : 15}"
-          >
+            value="${currentMaximum}">
         </div>
 
         <div>
           <label>Potential Min</label>
           <input
-            id="${code}_potentialMin"
+            id="${code}pmin"
             type="number"
             min="2"
             max="20"
-            value="6"
-          >
+            value="2">
         </div>
 
         <div>
           <label>Potential Max</label>
           <input
-            id="${code}_potentialMax"
+            id="${code}pmax"
             type="number"
             min="2"
             max="20"
-            value="${code === "DNK" ? 7 : 18}"
-          >
+            value="${potentialMaximum}">
         </div>
 
       </div>
     `;
 
-    container.appendChild(box);
+    attributeGrid.appendChild(box);
   });
-}
 
 
-function buildPositionControls() {
+  const positionGrid =
+    document.getElementById("positions");
 
-  const container = document.getElementById("positions");
+  POS.forEach(([value, name]) => {
 
-  POSITIONS.forEach(([value, name]) => {
+    const row =
+      document.createElement("div");
 
-    const row = document.createElement("div");
-    row.className = "checkbox-row";
+    row.className = "checkrow";
 
     row.innerHTML = `
       <input
-        type="checkbox"
-        class="positionCheck"
-        value="${value}"
+        class="poscheck"
         id="position${value}"
-        checked
-      >
+        type="checkbox"
+        value="${value}"
+        checked>
 
       <label for="position${value}">
         ${name} (${value})
       </label>
     `;
 
-    container.appendChild(row);
+    positionGrid.appendChild(row);
   });
 }
 
 
-function clamp(value, min, max) {
-  return Math.min(Math.max(value, min), max);
+function attributeBounds(code, type) {
+
+  let minimum =
+    clamp(
+      Math.round(
+        numberValue(
+          code + type + "min",
+          2
+        )
+      ),
+      2,
+      20
+    );
+
+  let maximum =
+    clamp(
+      Math.round(
+        numberValue(
+          code + type + "max",
+          20
+        )
+      ),
+      2,
+      20
+    );
+
+  if (minimum > maximum) {
+    [minimum, maximum] =
+      [maximum, minimum];
+  }
+
+  return [minimum, maximum];
 }
 
 
-function randomInt(min, max) {
+function allocatePoints(
+  target,
+  minimums,
+  maximums,
+  weights
+) {
 
-  min = Math.ceil(min);
-  max = Math.floor(max);
+  const values = [...minimums];
 
-  return Math.floor(
-    Math.random() * (max - min + 1)
-  ) + min;
+  let pointsLeft =
+    target -
+    values.reduce(
+      (sum, value) => sum + value,
+      0
+    );
+
+  const capacity =
+    maximums.reduce(
+      (sum, maximum, index) =>
+        sum + (maximum - values[index]),
+      0
+    );
+
+  if (
+    pointsLeft < 0 ||
+    pointsLeft > capacity
+  ) {
+    return null;
+  }
+
+  let guard = 5000;
+
+  while (
+    pointsLeft > 0 &&
+    guard > 0
+  ) {
+
+    guard--;
+
+    const options =
+      values.map(
+        (value, index) =>
+          value < maximums[index]
+            ? Math.max(
+                0.05,
+                weights[index]
+              )
+            : 0
+      );
+
+    const total =
+      options.reduce(
+        (sum, value) => sum + value,
+        0
+      );
+
+    if (total <= 0) {
+      break;
+    }
+
+    let choice = rng() * total;
+    let selectedIndex = 0;
+
+    for (
+      selectedIndex = 0;
+      selectedIndex < options.length;
+      selectedIndex++
+    ) {
+
+      choice -= options[selectedIndex];
+
+      if (choice <= 0) {
+        break;
+      }
+    }
+
+    selectedIndex =
+      Math.min(
+        selectedIndex,
+        values.length - 1
+      );
+
+    values[selectedIndex]++;
+    pointsLeft--;
+  }
+
+  if (pointsLeft !== 0) {
+    return null;
+  }
+
+  return values;
 }
 
+  function archetypeWeights(position) {
 
-function ratingValue(id) {
+  const weights =
+    ATTRS.map(() => 1);
 
-  const element = document.getElementById(id);
+  function boost(codes, amount) {
 
-  let value = Number(element.value);
+    codes.forEach(code => {
 
-  if (!Number.isFinite(value)) value = 2;
+      const index =
+        ATTRS.findIndex(
+          attribute =>
+            attribute[0] === code
+        );
 
-  return clamp(Math.round(value), 2, 20);
-}
+      if (index >= 0) {
+        weights[index] += amount;
+      }
+    });
+  }
 
 
-function randomName() {
+  if (position <= 1) {
 
-  const first =
-    firstNames[randomInt(0, firstNames.length - 1)];
+    boost(
+      ["DRB", "PAS", "LAY", "TPT"],
+      2.2
+    );
 
-  const last =
-    lastNames[randomInt(0, lastNames.length - 1)];
+  }
+  else if (position <= 3) {
+
+    boost(
+      ["LAY", "MID", "TPT", "STL"],
+      1.8
+    );
+
+  }
+  else if (position <= 5) {
+
+    boost(
+      ["LAY", "INS", "MID", "DRE"],
+      1.5
+    );
+
+  }
+  else {
+
+    boost(
+      ["INS", "ORE", "DRE", "BLK"],
+      2.2
+    );
+  }
+
+
+  const styles = [
+
+    [
+      "Shooter",
+      ["TPT", "MID", "FTS"]
+    ],
+
+    [
+      "Slasher",
+      ["LAY", "DRB", "INS"]
+    ],
+
+    [
+      "Playmaker",
+      ["PAS", "DRB", "LAY"]
+    ],
+
+    [
+      "Defender",
+      ["STL", "BLK", "DRE"]
+    ],
+
+    [
+      "Interior",
+      ["INS", "ORE", "DRE", "BLK"]
+    ]
+
+  ];
+
+
+  const style = pick(styles);
+
+  boost(
+    style[1],
+    2.5
+  );
+
 
   return {
-    first,
-    last
+    weights: weights,
+    arc: style[0]
   };
 }
 
 
-function generateAttribute(code) {
+function qualityStars(
+  strength,
+  minimum,
+  maximum
+) {
 
-  let currentMin =
-    ratingValue(`${code}_currentMin`);
+  const centers = {
+    Generational: 0.82,
+    Strong: 0.68,
+    Average: 0.50,
+    Weak: 0.32
+  };
 
-  let currentMax =
-    ratingValue(`${code}_currentMax`);
 
-  let potentialMin =
-    ratingValue(`${code}_potentialMin`);
+  const center =
+    centers[strength] ?? 0.50;
 
-  let potentialMax =
-    ratingValue(`${code}_potentialMax`);
 
-  if (currentMin > currentMax) {
-    [currentMin, currentMax] =
-      [currentMax, currentMin];
-  }
+  let value =
+    center +
+    normalRandom() * 0.16;
 
-  if (potentialMin > potentialMax) {
-    [potentialMin, potentialMax] =
-      [potentialMax, potentialMin];
-  }
 
-  let current =
-    randomInt(currentMin, currentMax);
-
-  let potential =
-    randomInt(
-      Math.max(current, potentialMin),
-      Math.max(current, potentialMax)
+  value =
+    clamp(
+      value,
+      0,
+      1
     );
 
-  if (code === "DNK") {
 
-    const chance =
-      clamp(
-        Number(
-          document.getElementById("dunkOutlierChance").value
-        ) || 0,
-        0,
-        100
-      );
+  const stars =
+    minimum +
+    (maximum - minimum) * value;
 
-    if (Math.random() * 100 < chance) {
 
-      const outlierMax =
-        ratingValue("dunkOutlierMax");
-
-      const outlierMin =
-        Math.max(currentMax + 1, current);
-
-      if (outlierMin <= outlierMax) {
-        current =
-          randomInt(outlierMin, outlierMax);
-
-        potential =
-          randomInt(current, outlierMax);
-      }
-    }
-  }
-
-  potential = Math.max(current, potential);
-
-  return [current, potential];
+  return (
+    Math.round(stars * 10) / 10
+  );
 }
 
 
-function generatePlayer(number) {
+function generateTraits() {
 
-  const name = randomName();
+  return {
 
-  const selectedPositions =
-    [...document.querySelectorAll(
-      ".positionCheck:checked"
-    )];
+    durability:
+      randomInteger(2, 20),
 
-  if (selectedPositions.length === 0) {
+    winning:
+      randomInteger(2, 20),
+
+    money:
+      randomInteger(2, 20),
+
+    loyalty:
+      randomInteger(2, 20),
+
+    motor:
+      randomInteger(2, 20),
+
+    lockerRoom:
+      randomInteger(2, 20),
+
+    playoffRiser:
+      randomInteger(2, 20),
+
+    roadWarrior:
+      randomInteger(2, 20)
+
+  };
+}
+
+
+function generatePhysicalRatings(
+  position,
+  height,
+  weight
+) {
+
+  const profile =
+    POS_PROFILE[position];
+
+
+  const heightMiddle =
+    (
+      profile[0] +
+      profile[1]
+    ) / 2;
+
+
+  const weightMiddle =
+    (
+      profile[2] +
+      profile[3]
+    ) / 2;
+
+
+  let speed =
+    Math.round(
+
+      profile[4]
+
+      -
+
+      Math.max(
+        0,
+        height - heightMiddle
+      ) * 0.55
+
+      -
+
+      Math.max(
+        0,
+        weight - weightMiddle
+      ) / 28
+
+      +
+
+      normalRandom() * 1.4
+    );
+
+
+  let strength =
+    Math.round(
+
+      profile[5]
+
+      +
+
+      (
+        weight -
+        weightMiddle
+      ) / 18
+
+      +
+
+      (
+        height -
+        heightMiddle
+      ) * 0.18
+
+      +
+
+      normalRandom() * 1.25
+    );
+
+
+  let stamina =
+    Math.round(
+
+      14
+
+      -
+
+      (
+        weight -
+        weightMiddle
+      ) / 55
+
+      +
+
+      normalRandom() * 1.6
+    );
+
+
+  speed =
+    clamp(
+      speed,
+      8,
+      18
+    );
+
+
+  strength =
+    clamp(
+      strength,
+      8,
+      20
+    );
+
+
+  stamina =
+    clamp(
+      stamina,
+      8,
+      20
+    );
+
+
+  /*
+    Elite speed should be special.
+
+    Most players are capped at 18 through the
+    regular distribution.
+
+    19 and 20 are introduced only through
+    rare checks.
+  */
+
+  if (rng() < 0.015) {
+    speed = 19;
+  }
+
+
+  if (rng() < 0.003) {
+    speed = 20;
+  }
+
+
+  return {
+
+    SPD: speed,
+
+    STR: strength,
+
+    STA: stamina
+
+  };
+}
+
+
+function generateAppearance() {
+
+  const skinProfile =
+    pick(SKINS);
+
+
+  const skinColor =
+    skinProfile[0];
+
+
+  const allowedHairColors =
+    skinProfile[1];
+
+
+  const allowedEyeColors =
+    skinProfile[2];
+
+
+  const hairColor =
+    pick(
+      allowedHairColors
+    );
+
+
+  return {
+
+    skinC:
+      skinColor,
+
+    eyeC:
+      pick(
+        allowedEyeColors
+      ),
+
+    browC:
+      hairColor,
+
+    hair:
+      pick(HAIRS),
+
+    hairC:
+      hairColor,
+
+    fHair:
+      "0000",
+
+    fHairC:
+      hairColor,
+
+    shoeC:
+      pick(SHOE_COLORS)
+
+  };
+}
+
+
+function generateAutomaticTendencies(
+  attributes
+) {
+
+  function fromRating(value) {
+
+    if (value <= 4) return -5;
+    if (value <= 6) return -4;
+    if (value <= 8) return -3;
+    if (value <= 10) return -1;
+    if (value <= 12) return 0;
+    if (value <= 14) return 2;
+    if (value <= 16) return 3;
+    if (value <= 18) return 4;
+
+    return 5;
+  }
+
+
+  return {
+
+    dunk:
+      fromRating(
+        attributes.DNK[0]
+      ),
+
+    floater:
+      fromRating(
+        attributes.LAY[0]
+      ),
+
+    hook:
+      fromRating(
+        attributes.INS[0]
+      ),
+
+    post:
+      fromRating(
+        attributes.INS[0]
+      ),
+
+    twoPoint:
+      fromRating(
+        Math.round(
+          (
+            attributes.INS[0] +
+            attributes.MID[0]
+          ) / 2
+        )
+      ),
+
+    threePoint:
+      fromRating(
+        attributes.TPT[0]
+      ),
+
+    pumpFake:
+      0,
+
+    pass:
+      fromRating(
+        attributes.PAS[0]
+      ),
+
+    lob:
+      fromRating(
+        attributes.PAS[0]
+      ),
+
+    cross:
+      fromRating(
+        attributes.DRB[0]
+      ),
+
+    spin:
+      fromRating(
+        attributes.DRB[0]
+      ),
+
+    step:
+      fromRating(
+        attributes.MID[0]
+      ),
+
+    offReb:
+      fromRating(
+        attributes.ORE[0]
+      ),
+
+    runPlay:
+      fromRating(
+        attributes.PAS[0]
+      ),
+
+    defReb:
+      fromRating(
+        attributes.DRE[0]
+      ),
+
+    takeCharge:
+      0,
+
+    stealOnBall:
+      fromRating(
+        attributes.STL[0]
+      ),
+
+    stealOffBall:
+      fromRating(
+        attributes.STL[0]
+      ),
+
+    block:
+      fromRating(
+        attributes.BLK[0]
+      )
+
+  };
+}
+
+
+function makePlayer(id) {
+
+  const allowedPositions = [
+    ...document.querySelectorAll(
+      ".poscheck:checked"
+    )
+  ].map(
+    item =>
+      Number(item.value)
+  );
+
+
+  if (
+    allowedPositions.length === 0
+  ) {
+
     throw new Error(
       "Select at least one position."
     );
   }
 
+
   const position =
-    selectedPositions[
-      randomInt(
-        0,
-        selectedPositions.length - 1
-      )
-    ].value;
-
-  let minHeight =
-    Number(
-      document.getElementById("minHeight").value
+    pick(
+      allowedPositions
     );
 
-  let maxHeight =
-    Number(
-      document.getElementById("maxHeight").value
+
+  const profile =
+    POS_PROFILE[position];
+
+
+  const minimumHeight =
+    Math.max(
+      numberValue(
+        "minHt",
+        63
+      ),
+      profile[0]
     );
 
-  let minWeight =
-    Number(
-      document.getElementById("minWeight").value
+
+  const maximumHeight =
+    Math.min(
+      numberValue(
+        "maxHt",
+        80
+      ),
+      profile[1]
     );
 
-  let maxWeight =
-    Number(
-      document.getElementById("maxWeight").value
+
+  const minimumWeight =
+    Math.max(
+      numberValue(
+        "minWt",
+        120
+      ),
+      profile[2]
     );
 
-  if (minHeight > maxHeight)
-    [minHeight, maxHeight] =
-      [maxHeight, minHeight];
 
-  if (minWeight > maxWeight)
-    [minWeight, maxWeight] =
-      [maxWeight, minWeight];
+  const maximumWeight =
+    Math.min(
+      numberValue(
+        "maxWt",
+        230
+      ),
+      profile[3]
+    );
+
+
+  if (
+    minimumHeight >
+      maximumHeight
+    ||
+    minimumWeight >
+      maximumWeight
+  ) {
+
+    throw new Error(
+      "Height or weight limits conflict with an allowed position."
+    );
+  }
+
+
+  const height =
+    randomInteger(
+      minimumHeight,
+      maximumHeight
+    );
+
+
+  const weight =
+    randomInteger(
+      minimumWeight,
+      maximumWeight
+    );
+
+
+  const country =
+    weightedChoice(
+      COUNTRIES
+    );
+
+
+  const namePool =
+    NAMES[country] ||
+    NAMES.US;
+
+
+  const firstName =
+    pick(
+      namePool[0]
+    );
+
+
+  const lastName =
+    pick(
+      namePool[1]
+    );
+
+
+  const hometown =
+    pick(
+      namePool[2]
+    );
+
+
+  let minimumStars =
+    clamp(
+      numberValue(
+        "curStarMin",
+        2
+      ),
+      1,
+      5
+    );
+
+
+  let maximumStars =
+    clamp(
+      numberValue(
+        "curStarMax",
+        4.5
+      ),
+      1,
+      5
+    );
+
+
+  if (
+    minimumStars >
+    maximumStars
+  ) {
+
+    [
+      minimumStars,
+      maximumStars
+    ] = [
+      maximumStars,
+      minimumStars
+    ];
+  }
+
+
+  const currentStars =
+    qualityStars(
+      document.getElementById(
+        "classStrength"
+      ).value,
+
+      minimumStars,
+
+      maximumStars
+    );
+
+
+  const outlierChance =
+    clamp(
+      numberValue(
+        "genChance",
+        1
+      ),
+      0,
+      100
+    ) / 100;
+
+
+  const isOutlier =
+    rng() <
+    outlierChance;
+
+
+  let currentBudget =
+    budgetForStars(
+      currentStars
+    );
+
+
+  if (isOutlier) {
+
+    const maximumExtra =
+      Math.max(
+        1,
+        Math.round(
+          numberValue(
+            "genExtra",
+            8
+          )
+        )
+      );
+
+
+    currentBudget +=
+      randomInteger(
+        1,
+        maximumExtra
+      );
+  }
+
+
+  let minimumPotential =
+    clamp(
+      Math.round(
+        numberValue(
+          "potMin",
+          5
+        )
+      ),
+      2,
+      10
+    );
+
+
+  let maximumPotential =
+    clamp(
+      Math.round(
+        numberValue(
+          "potMax",
+          10
+        )
+      ),
+      2,
+      10
+    );
+
+
+  if (
+    minimumPotential >
+    maximumPotential
+  ) {
+
+    [
+      minimumPotential,
+      maximumPotential
+    ] = [
+      maximumPotential,
+      minimumPotential
+    ];
+  }
+
+
+  const minimumPotentialFromCurrent =
+    clamp(
+      Math.ceil(
+        currentStars * 2
+      ),
+      2,
+      10
+    );
+
+
+  minimumPotential =
+    Math.max(
+      minimumPotential,
+      minimumPotentialFromCurrent
+    );
+
+
+  maximumPotential =
+    Math.max(
+      maximumPotential,
+      minimumPotential
+    );
+
+
+  const potentialRaw =
+    randomInteger(
+      minimumPotential,
+      maximumPotential
+    );
+
+
+  const potentialStars =
+    potentialRaw / 2;
+
+
+  let potentialBudget =
+    budgetForStars(
+      potentialStars
+    );
+
+
+  if (isOutlier) {
+
+    const maximumExtra =
+      Math.max(
+        1,
+        Math.round(
+          numberValue(
+            "genExtra",
+            8
+          )
+        )
+      );
+
+
+    potentialBudget +=
+      randomInteger(
+        1,
+        maximumExtra
+      );
+  }
+
+
+  potentialBudget =
+    Math.max(
+      potentialBudget,
+      currentBudget
+    );
+
+
+  const currentMinimums = [];
+  const currentMaximums = [];
+
+  const potentialMinimums = [];
+  const potentialMaximums = [];
+
+
+  ATTRS.forEach(
+    ([code]) => {
+
+      const current =
+        attributeBounds(
+          code,
+          "c"
+        );
+
+
+      currentMinimums.push(
+        current[0]
+      );
+
+
+      currentMaximums.push(
+        current[1]
+      );
+
+
+      const potential =
+        attributeBounds(
+          code,
+          "p"
+        );
+
+
+      potentialMinimums.push(
+        potential[0]
+      );
+
+
+      potentialMaximums.push(
+        potential[1]
+      );
+    }
+  );
+
+
+  const archetype =
+    archetypeWeights(
+      position
+    );
+
+
+  const currentRatings =
+    allocatePoints(
+      currentBudget,
+      currentMinimums,
+      currentMaximums,
+      archetype.weights
+    );
+
+
+  if (!currentRatings) {
+
+    throw new Error(
+      "Current-rating limits cannot fit the selected point budget. Increase one or more current maximums or change the current overall range."
+    );
+  }
+
+
+  const effectivePotentialMinimums =
+    potentialMinimums.map(
+      (
+        value,
+        index
+      ) =>
+        Math.max(
+          value,
+          currentRatings[index]
+        )
+    );
+
+
+  const potentialRatings =
+    allocatePoints(
+      potentialBudget,
+      effectivePotentialMinimums,
+      potentialMaximums,
+      archetype.weights
+    );
+
+
+  if (!potentialRatings) {
+
+    throw new Error(
+      "Potential limits cannot fit the selected potential budget. Increase one or more potential maximums or lower the potential range."
+    );
+  }
+
 
   const attributes = {};
 
-  ATTRIBUTES.forEach(([code]) => {
-    attributes[code] =
-      generateAttribute(code);
-  });
 
-  const age =
-    randomInt(
-      Number(
-        document.getElementById("usMinAge").value
-      ),
-      Number(
-        document.getElementById("usMaxAge").value
-      )
+  ATTRS.forEach(
+    (
+      [code],
+      index
+    ) => {
+
+      attributes[code] = [
+
+        currentRatings[index],
+
+        potentialRatings[index]
+
+      ];
+    }
+  );
+
+
+  const classType =
+    document.getElementById(
+      "classType"
+    ).value;
+
+
+  const international =
+    country !== "US";
+
+
+  let age;
+
+
+  if (
+    classType === "freshman"
+  ) {
+
+    age = 18;
+
+  }
+  else if (
+    international
+  ) {
+
+    age =
+      randomInteger(
+        19,
+        21
+      );
+
+  }
+  else {
+
+    age =
+      randomInteger(
+        20,
+        21
+      );
+  }
+
+
+  const physical =
+    generatePhysicalRatings(
+      position,
+      height,
+      weight
     );
 
-  return {
-    id: number,
-    fn: name.first,
-    ln: name.last,
-    ctry: "US",
-    age: age,
-    ht: randomInt(minHeight, maxHeight),
-    wt: randomInt(minWeight, maxWeight),
-    pos: Number(position),
-    attributes: attributes
+
+  const player = {
+
+    id:
+      id,
+
+    fn:
+      firstName,
+
+    ln:
+      lastName,
+
+    home:
+      hometown,
+
+    ctry:
+      country,
+
+    age:
+      age,
+
+    ht:
+      height,
+
+    wt:
+      weight,
+
+    pos:
+      position,
+
+    arc:
+      archetype.arc,
+
+    currentStars:
+      starsForBudget(
+        currentBudget
+      ),
+
+    pot:
+      potentialRaw,
+
+    currentPoints:
+      currentBudget,
+
+    potentialPoints:
+      potentialBudget,
+
+    pointsRemaining:
+      144 -
+      currentBudget,
+
+    outlier:
+      isOutlier,
+
+    attributes:
+      attributes,
+
+    physical:
+      physical,
+
+    regressionAge:
+      randomInteger(
+        18,
+        34
+      ),
+
+    traits:
+      generateTraits(),
+
+    tendencies:
+      generateAutomaticTendencies(
+        attributes
+      ),
+
+    appearance:
+      generateAppearance()
+
   };
+
+
+  return player;
 }
 
 
 function generateClass() {
 
-  const status =
-    document.getElementById("status");
-
-  const list =
-    document.getElementById("playerList");
-
   try {
 
-    let classSize =
-      Number(
-        document.getElementById("classSize").value
-      );
+    const seed =
+      document
+        .getElementById(
+          "seed"
+        )
+        .value
+        .trim();
 
-    classSize =
+
+    rng =
+      seed
+        ? seededRandom(seed)
+        : Math.random;
+
+
+    let classSize =
       clamp(
-        Math.round(classSize || 40),
+        Math.round(
+          numberValue(
+            "classSize",
+            40
+          )
+        ),
         1,
         500
       );
 
-    const players = [];
 
-    for (let i = 1; i <= classSize; i++) {
-      players.push(generatePlayer(i));
+    generated = [];
+
+
+    for (
+      let index = 1;
+      index <= classSize;
+      index++
+    ) {
+
+      generated.push(
+        makePlayer(index)
+      );
     }
 
-    window.generatedPlayers = players;
 
-    list.innerHTML = "";
+    renderClass();
 
-    players.forEach((player, index) => {
 
-      const positionName =
-        POSITIONS.find(
-          p => Number(p[0]) === player.pos
-        )?.[1] || "?";
-
-      const item =
-        document.createElement("div");
-
-      item.className = "player";
-
-      item.innerHTML = `
-        <div class="player-name">
-          #${index + 1}
-          ${player.fn}
-          ${player.ln}
-        </div>
-
-        <div class="muted">
-          ${positionName}
-          • ${player.ht}" 
-          • ${player.wt} lbs
-          • Age ${player.age}
-        </div>
-
-        <div class="muted">
-          DNK:
-          ${player.attributes.DNK[0]}
-          current /
-          ${player.attributes.DNK[1]}
-          potential
-        </div>
-      `;
-
-      list.appendChild(item);
-    });
-
-    status.textContent =
-      `Generated ${players.length} prospects successfully.`;
+    setStatus(
+      `Generated ${classSize} players successfully.`,
+      "ok"
+    );
 
   }
-
   catch (error) {
 
-    status.textContent =
-      error.message || "Unable to generate class.";
+    generated = [];
+
+
+    setStatus(
+      error.message ||
+      "Unable to generate class.",
+      "error"
+    );
   }
 }
 
 
-document
-  .getElementById("classType")
-  .addEventListener("change", function () {
+function renderClass() {
 
-    const size =
-      document.getElementById("classSize");
+  const body =
+    document.getElementById(
+      "players"
+    );
 
-    if (this.value === "freshman") {
-      size.value = 300;
+
+  body.innerHTML = "";
+
+
+  generated.forEach(
+    (
+      player,
+      index
+    ) => {
+
+      const row =
+        document.createElement(
+          "tr"
+        );
+
+
+      const positionName =
+        POS.find(
+          position =>
+            Number(
+              position[0]
+            ) ===
+            player.pos
+        )?.[1] || "?";
+
+
+      const feet =
+        Math.floor(
+          player.ht / 12
+        );
+
+
+      const inches =
+        player.ht % 12;
+
+
+      const outlierText =
+        player.outlier
+          ? " • Generational Outlier"
+          : "";
+
+
+      row.innerHTML = `
+        <td>
+          ${index + 1}
+        </td>
+
+        <td>
+          <b>
+            ${player.fn}
+            ${player.ln}
+          </b>
+
+          <br>
+
+          <span class="muted small">
+            ${player.arc}
+            ${outlierText}
+          </span>
+        </td>
+
+        <td>
+          ${positionName}
+        </td>
+
+        <td>
+          ${player.age}
+        </td>
+
+        <td>
+          ${feet}'${inches}"
+          /
+          ${player.wt}
+        </td>
+
+        <td>
+          ${starText(
+            player.currentStars
+          )}
+        </td>
+
+        <td>
+          ${(player.pot / 2).toFixed(1)}★
+        </td>
+
+        <td>
+          ${player.currentPoints}
+          /
+          ${player.pointsRemaining}
+          left
+        </td>
+
+        <td>
+          ${player.physical.SPD}
+          /
+          ${player.physical.STR}
+          /
+          ${player.physical.STA}
+        </td>
+
+        <td>
+          ${player.attributes.DNK[0]}
+          →
+          ${player.attributes.DNK[1]}
+        </td>
+
+        <td>
+          ${player.ctry}
+        </td>
+      `;
+
+
+      body.appendChild(
+        row
+      );
     }
-    else {
-      size.value = 40;
-    }
+  );
 
-  });
+
+  const averageCurrent =
+    generated.reduce(
+      (
+        sum,
+        player
+      ) =>
+        sum +
+        player.currentStars,
+      0
+    ) /
+    generated.length;
+
+
+  const eliteSpeedCount =
+    generated.filter(
+      player =>
+        player.physical.SPD >= 19
+    ).length;
+
+
+  const outlierCount =
+    generated.filter(
+      player =>
+        player.outlier
+    ).length;
+
+
+  const summary =
+    document.getElementById(
+      "summary"
+    );
+
+
+  summary.classList.remove(
+    "hidden"
+  );
+
+
+  summary.innerHTML = `
+    <div class="metric">
+      <span class="muted small">
+        Players
+      </span>
+
+      <strong>
+        ${generated.length}
+      </strong>
+    </div>
+
+    <div class="metric">
+      <span class="muted small">
+        Average Current
+      </span>
+
+      <strong>
+        ${averageCurrent.toFixed(2)}★
+      </strong>
+    </div>
+
+    <div class="metric">
+      <span class="muted small">
+        19-20 Speed
+      </span>
+
+      <strong>
+        ${eliteSpeedCount}
+      </strong>
+    </div>
+
+    <div class="metric">
+      <span class="muted small">
+        Budget Outliers
+      </span>
+
+      <strong>
+        ${outlierCount}
+      </strong>
+    </div>
+  `;
+}
+
+
+function setStatus(
+  text,
+  className = ""
+) {
+
+  const status =
+    document.getElementById(
+      "status"
+    );
+
+
+  status.textContent =
+    text;
+
+
+  status.className =
+    "notice " +
+    className;
+}
+
+
+function clearClass() {
+
+  generated = [];
+
+
+  document.getElementById(
+    "players"
+  ).innerHTML = `
+    <tr>
+      <td
+        colspan="11"
+        class="muted">
+        No class generated yet.
+      </td>
+    </tr>
+  `;
+
+
+  document.getElementById(
+    "summary"
+  ).classList.add(
+    "hidden"
+  );
+
+
+  setStatus(
+    "Ready."
+  );
+}
+
+
+function downloadPreview() {
+
+  if (
+    generated.length === 0
+  ) {
+
+    setStatus(
+      "Generate a class before downloading.",
+      "error"
+    );
+
+    return;
+  }
+
+
+  const payload = {
+
+    version:
+      "V2-preview",
+
+    className:
+      document.getElementById(
+        "className"
+      ).value,
+
+    classType:
+      document.getElementById(
+        "classType"
+      ).value,
+
+    classStrength:
+      document.getElementById(
+        "classStrength"
+      ).value,
+
+    players:
+      generated
+
+  };
+
+
+  const blob =
+    new Blob(
+      [
+        JSON.stringify(
+          payload,
+          null,
+          2
+        )
+      ],
+      {
+        type:
+          "application/json"
+      }
+    );
+
+
+  const url =
+    URL.createObjectURL(
+      blob
+    );
+
+
+  const link =
+    document.createElement(
+      "a"
+    );
+
+
+  link.href =
+    url;
+
+
+  link.download =
+    "hoop-land-v2-preview.json";
+
+
+  document.body.appendChild(
+    link
+  );
+
+
+  link.click();
+
+
+  link.remove();
+
+
+  setTimeout(
+    () =>
+      URL.revokeObjectURL(
+        url
+      ),
+    1000
+  );
+
+
+  setStatus(
+    "Downloaded V2 preview JSON. This is not yet the final Hoop Land import file.",
+    "ok"
+  );
+}
 
 
 document
-  .getElementById("generateButton")
+  .getElementById(
+    "classType"
+  )
+  .addEventListener(
+    "change",
+    function () {
+
+      const freshman =
+        this.value ===
+        "freshman";
+
+
+      document.getElementById(
+        "classSize"
+      ).value =
+        freshman
+          ? 300
+          : 40;
+
+
+      document.getElementById(
+        "className"
+      ).value =
+        freshman
+          ? "Women's Freshman Class"
+          : "Women's Draft Class";
+    }
+  );
+
+
+document
+  .getElementById(
+    "generate"
+  )
   .addEventListener(
     "click",
     generateClass
@@ -895,30 +3049,26 @@ document
 
 
 document
-  .getElementById("clearButton")
+  .getElementById(
+    "clear"
+  )
   .addEventListener(
     "click",
-    function () {
-
-      window.generatedPlayers = [];
-
-      document.getElementById(
-        "playerList"
-      ).innerHTML =
-        `<p class="muted">
-          No class generated yet.
-        </p>`;
-
-      document.getElementById(
-        "status"
-      ).textContent =
-        "Ready to generate.";
-    }
+    clearClass
   );
 
 
-buildAttributeControls();
-buildPositionControls();
+document
+  .getElementById(
+    "downloadPreview"
+  )
+  .addEventListener(
+    "click",
+    downloadPreview
+  );
+
+
+buildInputs();
 
 </script>
 
