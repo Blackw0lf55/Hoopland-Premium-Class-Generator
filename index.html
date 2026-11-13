@@ -3017,7 +3017,7 @@ function clearClass() {
 }
 
 
-function downloadPreview() {
+function downloadHoopLand() {
 
   if (
     generated.length === 0
@@ -3032,44 +3032,151 @@ function downloadPreview() {
   }
 
 
-  const payload = {
+  const classType =
+    document.getElementById(
+      "classType"
+    ).value;
 
-    version:
-      "V2-preview",
 
-    className:
-      document.getElementById(
-        "className"
-      ).value,
+  const className =
+    document.getElementById(
+      "className"
+    ).value.trim()
+    ||
+    (
+      classType === "freshman"
+        ? "Women's Freshman Class"
+        : "Women's Draft Class"
+    );
 
-    classType:
-      document.getElementById(
-        "classType"
-      ).value,
 
-    classStrength:
-      document.getElementById(
-        "classStrength"
-      ).value,
+  const hoopLandPlayers =
+    generated.map(
+      (
+        player,
+        index
+      ) =>
+        makeHoopLandPlayer(
+          player,
+          index
+        )
+    );
 
-    players:
-      generated
+
+  const exportFile = {
+
+    leagueName:
+      "",
+
+    shortName:
+      "",
+
+    logoURL:
+      "",
+
+    leagueType:
+      1,
+
+
+    meta: {
+
+      saveName:
+        className,
+
+      buildVersion:
+        "1.06.2.1",
+
+      uPID:
+        hoopLandPlayers.length + 1,
+
+      uTID:
+        0,
+
+      uGID:
+        0,
+
+      dataType:
+        2,
+
+      countryGeneration:
+        0,
+
+      generatedCountries: [
+        {
+          country: "US",
+          value: 78
+        },
+        {
+          country: "CA",
+          value: 6
+        },
+        {
+          country: "AU",
+          value: 5
+        },
+        {
+          country: "FR",
+          value: 4
+        },
+        {
+          country: "GB",
+          value: 2
+        },
+        {
+          country: "DE",
+          value: 2
+        },
+        {
+          country: "ES",
+          value: 1
+        },
+        {
+          country: "RS",
+          value: 1
+        },
+        {
+          country: "BE",
+          value: 1
+        }
+      ],
+
+      gender:
+        0
+
+    },
+
+
+    conferences:
+      [],
+
+    divisions:
+      [],
+
+    teams:
+      [],
+
+    starTeams:
+      [],
+
+
+    draftClass:
+      hoopLandPlayers
 
   };
 
 
+  const fileText =
+    JSON.stringify(
+      exportFile
+    );
+
+
   const blob =
     new Blob(
-      [
-        JSON.stringify(
-          payload,
-          null,
-          2
-        )
-      ],
+      [fileText],
       {
         type:
-          "application/json"
+          "text/plain;charset=utf-8"
       }
     );
 
@@ -3090,8 +3197,22 @@ function downloadPreview() {
     url;
 
 
+  const safeName =
+    className
+      .replace(
+        /[^a-z0-9]+/gi,
+        "-"
+      )
+      .replace(
+        /^-+|-+$/g,
+        ""
+      )
+      ||
+      "Hoop-Land-Class";
+
+
   link.download =
-    "hoop-land-v2-preview.json";
+    safeName + ".txt";
 
 
   document.body.appendChild(
@@ -3115,11 +3236,10 @@ function downloadPreview() {
 
 
   setStatus(
-    "Downloaded V2 preview JSON. This is not yet the final Hoop Land import file.",
+    `Downloaded ${hoopLandPlayers.length} players as ${safeName}.txt`,
     "ok"
   );
 }
-
 
 document
   .getElementById(
