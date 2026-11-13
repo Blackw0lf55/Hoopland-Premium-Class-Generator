@@ -1803,6 +1803,64 @@ function qualityForTier(
   };
 }
 
+  function generateRegressionAge() {
+
+  /*
+    Average regression age should be around 32.
+
+    Most players land from 30-34.
+    Early regression becomes progressively rarer.
+    Ages 18-22 represent exceptionally rare
+    draft-bust outcomes.
+  */
+
+  const roll =
+    rng() * 100;
+
+
+  if (roll < 0.5) {
+    return randomInteger(18, 22);
+  }
+
+
+  if (roll < 2) {
+    return randomInteger(23, 26);
+  }
+
+
+  if (roll < 6) {
+    return randomInteger(27, 28);
+  }
+
+
+  if (roll < 16) {
+    return 29;
+  }
+
+
+  if (roll < 32) {
+    return 30;
+  }
+
+
+  if (roll < 50) {
+    return 31;
+  }
+
+
+  if (roll < 70) {
+    return 32;
+  }
+
+
+  if (roll < 87) {
+    return 33;
+  }
+
+
+  return 34;
+}
+
 function generateTraits() {
 
   return {
@@ -2591,10 +2649,7 @@ function makePlayer(id, tierName) {
       physical,
 
     regressionAge:
-      randomInteger(
-        18,
-        34
-      ),
+      generateRegressionAge(),
 
     traits:
       generateTraits(),
