@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Hoop Land Women's Class Generator V2</title>
+<title>Hoopland Class Generator</title>
 
 <style>
 :root{
@@ -333,96 +333,7 @@ th{
   </div>
 </section>
 
-
-<section class="card">
-  <h2>Overall Quality & Point Budgets</h2>
-
-  <p class="section-note">
-    The 144-point budget applies only to the 12 core
-    basketball attributes. SPD, STR, STA, and traits
-    are separate.
-  </p>
-
-  <div class="grid">
-
-    <div>
-      <label>Current Overall Minimum (stars)</label>
-      <input
-        id="curStarMin"
-        type="number"
-        min="1"
-        max="5"
-        step="0.1"
-        value="2.0"
-      >
-    </div>
-
-    <div>
-      <label>Current Overall Maximum (stars)</label>
-      <input
-        id="curStarMax"
-        type="number"
-        min="1"
-        max="5"
-        step="0.1"
-        value="4.5"
-      >
-    </div>
-
-    <div>
-      <label>Potential Minimum (2-10)</label>
-      <input
-        id="potMin"
-        type="number"
-        min="2"
-        max="10"
-        value="5"
-      >
-    </div>
-
-    <div>
-      <label>Potential Maximum (2-10)</label>
-      <input
-        id="potMax"
-        type="number"
-        min="2"
-        max="10"
-        value="10"
-      >
-    </div>
-
-    <div>
-      <label>Generational Outlier Chance (%)</label>
-      <input
-        id="genChance"
-        type="number"
-        min="0"
-        max="100"
-        step="0.1"
-        value="1"
-      >
-    </div>
-
-    <div>
-      <label>Maximum Extra Core Points</label>
-      <input
-        id="genExtra"
-        type="number"
-        min="0"
-        max="40"
-        value="8"
-      >
-    </div>
-
   </div>
-
-  <div class="notice">
-    A normal 5-star player uses 144 core attribute
-    points and has 0 remaining. Rare generational
-    outliers can exceed 144.
-  </div>
-</section>
-
 
 <section class="card">
   <h2>Core Attribute Limits</h2>
@@ -571,51 +482,6 @@ th{
     tattoo-style accessories will be expanded later.
   </p>
 </section>
-
-
-<section class="card">
-  <h2>Automatic Player Data</h2>
-
-  <p class="section-note">
-    These values are generated automatically and do
-    not require user controls.
-  </p>
-
-  <div class="grid">
-
-    <div class="attr">
-      <b>Regression Age</b>
-      <p class="muted small">
-        Randomly generated from 18 through 34.
-      </p>
-    </div>
-
-    <div class="attr">
-      <b>Physical Ratings</b>
-      <p class="muted small">
-        SPD, STR, and STA use ratings from 8 through 20.
-      </p>
-    </div>
-
-    <div class="attr">
-      <b>Player Traits</b>
-      <p class="muted small">
-        Eight traits are automatically generated
-        from 2 through 20.
-      </p>
-    </div>
-
-    <div class="attr">
-      <b>Tendencies</b>
-      <p class="muted small">
-        Generated automatically from attributes,
-        position, and player style.
-      </p>
-    </div>
-
-  </div>
-</section>
-
 
 <section class="card">
   <h2>Generate</h2>
@@ -1590,47 +1456,352 @@ function allocatePoints(
 }
 
 
-function qualityStars(
+const TIER_TARGETS = {
+
+  Generational: {
+    hof: 4,
+    allStar: 8,
+    starter: 10,
+    role: 9,
+    bad: 9
+  },
+
+  Strong: {
+    hof: 2,
+    allStar: 6,
+    starter: 11,
+    role: 12,
+    bad: 9
+  },
+
+  Average: {
+    hof: 1,
+    allStar: 4,
+    starter: 10,
+    role: 15,
+    bad: 10
+  },
+
+  Weak: {
+    hof: 0,
+    allStar: 2,
+    starter: 7,
+    role: 17,
+    bad: 14
+  }
+
+};
+
+
+const TIER_RULES = {
+
+  hof: {
+    name: "Hall of Fame",
+    currentMin: 4.0,
+    currentMax: 5.0,
+    potentialMin: 5.0,
+    potentialMax: 5.0
+  },
+
+  allStar: {
+    name: "All-Star / Fringe HOF",
+    currentMin: 3.0,
+    currentMax: 4.5,
+    potentialMin: 4.5,
+    potentialMax: 4.5
+  },
+
+  starter: {
+    name: "Starter",
+    currentMin: 2.5,
+    currentMax: 4.0,
+    potentialMin: 3.5,
+    potentialMax: 4.0
+  },
+
+  role: {
+    name: "Role Player",
+    currentMin: 2.0,
+    currentMax: 3.0,
+    potentialMin: 3.0,
+    potentialMax: 3.0
+  },
+
+  bad: {
+    name: "Replacement Level",
+    currentMin: 1.0,
+    currentMax: 2.5,
+    potentialMin: 1.0,
+    potentialMax: 2.5
+  }
+
+};
+
+
+function shuffle(items) {
+
+  for (
+    let index = items.length - 1;
+    index > 0;
+    index--
+  ) {
+
+    const otherIndex =
+      randomInteger(
+        0,
+        index
+      );
+
+
+    [
+      items[index],
+      items[otherIndex]
+    ] = [
+      items[otherIndex],
+      items[index]
+    ];
+  }
+
+  return items;
+}
+
+
+function buildTierPlan(
   strength,
+  classSize
+) {
+
+  const targets =
+    TIER_TARGETS[strength] ||
+    TIER_TARGETS.Average;
+
+
+  const tierNames = [
+    "hof",
+    "allStar",
+    "starter",
+    "role",
+    "bad"
+  ];
+
+
+  const exactCounts = {};
+
+
+  let assigned = 0;
+
+
+  tierNames.forEach(
+    tierName => {
+
+      const scaledCount =
+        targets[tierName] *
+        classSize /
+        40;
+
+
+      exactCounts[tierName] = {
+        count:
+          Math.floor(
+            scaledCount
+          ),
+
+        remainder:
+          scaledCount -
+          Math.floor(
+            scaledCount
+          )
+      };
+
+
+      assigned +=
+        exactCounts[tierName].count;
+    }
+  );
+
+
+  const remaining =
+    classSize -
+    assigned;
+
+
+  const remainderOrder =
+    [...tierNames].sort(
+      (
+        first,
+        second
+      ) =>
+        exactCounts[second].remainder -
+        exactCounts[first].remainder
+    );
+
+
+  for (
+    let index = 0;
+    index < remaining;
+    index++
+  ) {
+
+    const tierName =
+      remainderOrder[
+        index %
+        remainderOrder.length
+      ];
+
+
+    exactCounts[tierName].count++;
+  }
+
+
+  /*
+    Add a small amount of variation by occasionally
+    moving one player between neighboring tiers.
+
+    This keeps class strengths recognizable without
+    making every class use identical counts.
+  */
+
+  const neighboringTiers = [
+    ["hof", "allStar"],
+    ["allStar", "starter"],
+    ["starter", "role"],
+    ["role", "bad"]
+  ];
+
+
+  neighboringTiers.forEach(
+    pair => {
+
+      if (rng() < 0.35) {
+
+        const direction =
+          rng() < 0.5
+            ? 0
+            : 1;
+
+
+        const source =
+          pair[direction];
+
+
+        const destination =
+          pair[1 - direction];
+
+
+        if (
+          exactCounts[source].count > 0
+        ) {
+
+          exactCounts[source].count--;
+
+          exactCounts[destination].count++;
+        }
+      }
+    }
+  );
+
+
+  const plan = [];
+
+
+  tierNames.forEach(
+    tierName => {
+
+      for (
+        let index = 0;
+        index <
+          exactCounts[tierName].count;
+        index++
+      ) {
+
+        plan.push(
+          tierName
+        );
+      }
+    }
+  );
+
+
+  return shuffle(plan);
+}
+
+
+function randomHalfStar(
   minimum,
   maximum
 ) {
 
-  const centers = {
-    Generational: 0.82,
-    Strong: 0.68,
-    Average: 0.50,
-    Weak: 0.32
-  };
-
-
-  const center =
-    centers[strength] ?? 0.50;
-
-
-  let value =
-    center +
-    normalRandom() * 0.16;
-
-
-  value =
-    clamp(
-      value,
-      0,
-      1
+  const minimumRaw =
+    Math.round(
+      minimum * 2
     );
 
 
-  const stars =
-    minimum +
-    (maximum - minimum) * value;
+  const maximumRaw =
+    Math.round(
+      maximum * 2
+    );
 
 
   return (
-    Math.round(stars * 10) / 10
+    randomInteger(
+      minimumRaw,
+      maximumRaw
+    ) / 2
   );
 }
 
+
+function qualityForTier(
+  tierName
+) {
+
+  const rule =
+    TIER_RULES[tierName];
+
+
+  let potentialStars =
+    randomHalfStar(
+      rule.potentialMin,
+      rule.potentialMax
+    );
+
+
+  let currentMaximum =
+    Math.min(
+      rule.currentMax,
+      potentialStars
+    );
+
+
+  let currentStars =
+    randomHalfStar(
+      rule.currentMin,
+      currentMaximum
+    );
+
+
+  return {
+
+    tier:
+      tierName,
+
+    tierName:
+      rule.name,
+
+    currentStars:
+      currentStars,
+
+    potentialStars:
+      potentialStars,
+
+    potentialRaw:
+      Math.round(
+        potentialStars * 2
+      )
+
+  };
+}
 
 function generateTraits() {
 
