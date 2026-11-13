@@ -2160,7 +2160,7 @@ function generateAutomaticTendencies(
 }
 
 
-function makePlayer(id) {
+function makePlayer(id, tierName) {
 
   const allowedPositions = [
     ...document.querySelectorAll(
@@ -2288,70 +2288,22 @@ function makePlayer(id) {
       namePool[2]
     );
 
-
-  let minimumStars =
-    clamp(
-      numberValue(
-        "curStarMin",
-        2
-      ),
-      1,
-      5
+  const quality =
+    qualityForTier(
+      tierName
     );
-
-
-  let maximumStars =
-    clamp(
-      numberValue(
-        "curStarMax",
-        4.5
-      ),
-      1,
-      5
-    );
-
-
-  if (
-    minimumStars >
-    maximumStars
-  ) {
-
-    [
-      minimumStars,
-      maximumStars
-    ] = [
-      maximumStars,
-      minimumStars
-    ];
-  }
 
 
   const currentStars =
-    qualityStars(
-      document.getElementById(
-        "classStrength"
-      ).value,
-
-      minimumStars,
-
-      maximumStars
-    );
+    quality.currentStars;
 
 
-  const outlierChance =
-    clamp(
-      numberValue(
-        "genChance",
-        1
-      ),
-      0,
-      100
-    ) / 100;
+  const potentialStars =
+    quality.potentialStars;
 
 
-  const isOutlier =
-    rng() <
-    outlierChance;
+  const potentialRaw =
+    quality.potentialRaw;
 
 
   let currentBudget =
@@ -2360,129 +2312,41 @@ function makePlayer(id) {
     );
 
 
-  if (isOutlier) {
-
-    const maximumExtra =
-      Math.max(
-        1,
-        Math.round(
-          numberValue(
-            "genExtra",
-            8
-          )
-        )
-      );
-
-
-    currentBudget +=
-      randomInteger(
-        1,
-        maximumExtra
-      );
-  }
-
-
-  let minimumPotential =
-    clamp(
-      Math.round(
-        numberValue(
-          "potMin",
-          5
-        )
-      ),
-      2,
-      10
-    );
-
-
-  let maximumPotential =
-    clamp(
-      Math.round(
-        numberValue(
-          "potMax",
-          10
-        )
-      ),
-      2,
-      10
-    );
-
-
-  if (
-    minimumPotential >
-    maximumPotential
-  ) {
-
-    [
-      minimumPotential,
-      maximumPotential
-    ] = [
-      maximumPotential,
-      minimumPotential
-    ];
-  }
-
-
-  const minimumPotentialFromCurrent =
-    clamp(
-      Math.ceil(
-        currentStars * 2
-      ),
-      2,
-      10
-    );
-
-
-  minimumPotential =
-    Math.max(
-      minimumPotential,
-      minimumPotentialFromCurrent
-    );
-
-
-  maximumPotential =
-    Math.max(
-      maximumPotential,
-      minimumPotential
-    );
-
-
-  const potentialRaw =
-    randomInteger(
-      minimumPotential,
-      maximumPotential
-    );
-
-
-  const potentialStars =
-    potentialRaw / 2;
-
-
   let potentialBudget =
     budgetForStars(
       potentialStars
     );
 
 
-  if (isOutlier) {
+  /*
+    An exceptionally rare HOF-tier prospect
+    can exceed the normal 144-point ceiling.
+  */
 
-    const maximumExtra =
-      Math.max(
+  let isOutlier = false;
+
+
+  if (
+    tierName === "hof" &&
+    rng() < 0.08
+  ) {
+
+    isOutlier = true;
+
+
+    const extraPoints =
+      randomInteger(
         1,
-        Math.round(
-          numberValue(
-            "genExtra",
-            8
-          )
-        )
+        8
       );
+
+
+    currentBudget +=
+      extraPoints;
 
 
     potentialBudget +=
-      randomInteger(
-        1,
-        maximumExtra
-      );
+      extraPoints;
   }
 
 
@@ -2491,8 +2355,7 @@ function makePlayer(id) {
       potentialBudget,
       currentBudget
     );
-
-
+  
   const currentMinimums = [];
   const currentMaximums = [];
 
@@ -2690,13 +2553,20 @@ function makePlayer(id) {
     pos:
       position,
 
-    arc:
+        arc:
       archetype.arc,
 
+    tier:
+      quality.tier,
+
+    tierName:
+      quality.tierName,
+
     currentStars:
-      starsForBudget(
-        currentBudget
-      ),
+      currentStars,
+
+    potentialStars:
+      potentialStars,
 
     pot:
       potentialRaw,
@@ -2776,6 +2646,19 @@ function generateClass() {
       );
 
 
+        const strength =
+      document.getElementById(
+        "classStrength"
+      ).value;
+
+
+    const tierPlan =
+      buildTierPlan(
+        strength,
+        classSize
+      );
+
+
     generated = [];
 
 
@@ -2786,11 +2669,14 @@ function generateClass() {
     ) {
 
       generated.push(
-        makePlayer(index)
+        makePlayer(
+          index,
+          tierPlan[index - 1]
+        )
       );
     }
 
-
+    
     renderClass();
 
 
@@ -2877,9 +2763,11 @@ function renderClass() {
           <br>
 
           <span class="muted small">
-            ${player.arc}
-            ${outlierText}
-          </span>
+  ${player.tierName}
+  •
+  ${player.arc}
+  ${outlierText}
+</span>
         </td>
 
         <td>
