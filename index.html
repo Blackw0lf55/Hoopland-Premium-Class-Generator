@@ -258,12 +258,12 @@ th{
 <header>
   <div>
     <h1>
-      Hoop Land Women's Class Generator
+      Hoop Land Class Generator
       <span class="pill">V2</span>
     </h1>
 
     <div class="sub">
-      WNBA-focused class framework with point budgets,
+      Focused class framework with point budgets,
       physical balance, traits, and realistic rarity.
     </div>
   </div>
@@ -501,10 +501,10 @@ th{
     </button>
 
     <button
-      id="downloadPreview"
-      class="secondary">
-      Download V2 Preview JSON
-    </button>
+  id="downloadHoopLand"
+  class="secondary">
+  Download Class
+</button>
 
   </div>
 
@@ -3016,7 +3016,496 @@ function clearClass() {
   );
 }
 
+  function makeEmptyStatLine() {
 
+  return {
+    tid: 0,
+    num: -1,
+    GP: 0,
+    GS: 0,
+    W: 0,
+    L: 0,
+    MIN: [0, 0, 0, 0, 0, 0],
+    PM: 0,
+    POS: 0,
+    PTS: 0,
+    FGM: 0,
+    FGA: 0,
+    TPM: 0,
+    TPA: 0,
+    FTM: 0,
+    FTA: 0,
+    REB: 0,
+    ORB: 0,
+    AST: 0,
+    STL: 0,
+    BLK: 0,
+    TO: 0,
+    PF: 0,
+    GW: 0,
+    DD: 0,
+    TD: 0,
+    POTG: 0
+  };
+}
+
+  function makeAccessorySet(player) {
+
+  const skin =
+    player.appearance.skinC;
+
+
+  const shoe =
+    player.appearance.shoeC;
+
+
+  return {
+
+    headAcc:
+      "none",
+
+    headAccC:
+      "FFFFFF",
+
+    L_Shoulder:
+      skin,
+
+    R_Shoulder:
+      skin,
+
+    L_Elbow:
+      skin,
+
+    R_Elbow:
+      skin,
+
+    L_Wrist:
+      skin,
+
+    R_Wrist:
+      skin,
+
+    L_Knee:
+      skin,
+
+    R_Knee:
+      skin,
+
+    L_Shin:
+      skin,
+
+    R_Shin:
+      skin,
+
+    sockC:
+      "FFFFFF",
+
+    shoeC:
+      shoe,
+
+    laceC:
+      "FFFFFF",
+
+    soleC:
+      "FFFFFF"
+
+  };
+}
+
+  function makeHoopLandPlayer(
+  player,
+  index
+) {
+
+  const accessory =
+    makeAccessorySet(
+      player
+    );
+
+
+  return {
+
+    id:
+      index + 1,
+
+    tid:
+      0,
+
+    league:
+      0,
+
+    fn:
+      player.fn,
+
+    ln:
+      player.ln,
+
+    home:
+      player.home,
+
+    ctry:
+      player.ctry,
+
+    loc: {
+      x: 0,
+      y: 0
+    },
+
+    age:
+      player.age,
+
+    ht:
+      player.ht,
+
+    wt:
+      player.wt,
+
+    yrs:
+      0,
+
+    num:
+      randomInteger(
+        0,
+        99
+      ),
+
+    pos:
+      player.pos,
+
+    teamPos:
+      0,
+
+    posRnk:
+      0,
+
+    linePos:
+      -1,
+
+    minutes:
+      [0, 0, 0, 0, 0, 0],
+
+    pri:
+      11,
+
+    sec:
+      0,
+
+    arc:
+      player.arc,
+
+    pot:
+      player.pot,
+
+    regressionAge:
+      player.regressionAge,
+
+
+    appearance: {
+
+      skinC:
+        player.appearance.skinC,
+
+      eyeC:
+        player.appearance.eyeC,
+
+      unibrow:
+        false,
+
+      browC:
+        player.appearance.browC,
+
+      hair:
+        player.appearance.hair,
+
+      hairC:
+        player.appearance.hairC,
+
+      fHair:
+        "0000",
+
+      fHairC:
+        player.appearance.hairC
+
+    },
+
+
+    accessories: [
+
+      {...accessory},
+
+      {...accessory},
+
+      {...accessory},
+
+      {...accessory}
+
+    ],
+
+
+    suits: [
+
+      {
+        headAcc:
+          "none",
+
+        headAccC:
+          "",
+
+        jacketC:
+          "",
+
+        shirtC:
+          "",
+
+        tieC:
+          "",
+
+        pantC:
+          "",
+
+        shoeC:
+          "",
+
+        laceC:
+          "",
+
+        soleC:
+          ""
+      }
+
+    ],
+
+
+    attributes: {
+
+      ...player.attributes,
+
+      STR: [
+        player.physical.STR,
+        player.physical.STR
+      ],
+
+      SPD: [
+        player.physical.SPD,
+        player.physical.SPD
+      ],
+
+      STM: [
+        player.physical.STA,
+        player.physical.STA
+      ]
+
+    },
+
+
+    skills:
+      [],
+
+
+    tendencies:
+      player.tendencies,
+
+        gameStatus: {
+
+      startPos: 0,
+      stamina: 0,
+      streak: 0,
+      matchup: 0,
+      pressure: 0,
+      doubleTeam: 0,
+      xpEarned: 0,
+      injured: false
+
+    },
+
+
+    gameStats:
+      makeEmptyStatLine(),
+
+
+    season: {
+
+      xp:
+        [0, 0, 0, 0, 0],
+
+      ap:
+        [0, 0, 0, 0, 0],
+
+      condition:
+        100,
+
+      restDay:
+        false,
+
+      injury: {
+
+        yr: 0,
+        core: 0,
+        upperBody: 0,
+        lowerBody: 0,
+        minorSeverity: 0,
+        majorSeverity: 0,
+        gamesOut: 0
+
+      },
+
+      watch:
+        false,
+
+      scout:
+        false,
+
+      progress:
+        0,
+
+      protect:
+        false,
+
+      retiring:
+        false
+
+    },
+
+
+    stats:
+      [],
+
+
+    careerStats: {
+
+      season:
+        makeEmptyStatLine(),
+
+      seasonHighs:
+        makeEmptyStatLine(),
+
+      playoffs:
+        makeEmptyStatLine(),
+
+      playoffHighs:
+        makeEmptyStatLine(),
+
+      finals:
+        makeEmptyStatLine(),
+
+      finalsHighs:
+        makeEmptyStatLine()
+
+    },
+
+
+    awards:
+      [],
+
+
+    history: {
+
+      coll:
+        0,
+
+      id:
+        0,
+
+      tid:
+        0,
+
+      draft: {
+
+        pk: 0,
+        rd: 0,
+        tid: 0,
+        otid: 0,
+        yr: 0
+
+      },
+
+      fantasyDrafts:
+        [],
+
+      expansionDrafts:
+        [],
+
+      injuries:
+        [],
+
+      yearRetired:
+        0,
+
+      yearInducted:
+        0,
+
+      causeOfDeath:
+        0
+
+    },
+
+
+    contract: {
+
+      tid:
+        0,
+
+      pid:
+        index + 1,
+
+      type:
+        0,
+
+      yrs:
+        0,
+
+      sal:
+        0,
+
+      opt:
+        0,
+
+      noTrd:
+        false
+
+    },
+
+
+    status:
+      0,
+
+
+    records:
+      0,
+
+
+    traits: {
+
+      durability:
+        player.traits.durability,
+
+      winning:
+        player.traits.winning,
+
+      money:
+        player.traits.money,
+
+      loyalty:
+        player.traits.loyalty,
+
+      motor:
+        player.traits.motor,
+
+      lockerRoom:
+        player.traits.lockerRoom,
+
+      playoffRiser:
+        player.traits.playoffRiser,
+
+      roadWarrior:
+        player.traits.roadWarrior
+
+    }
+
+  };
+}
+
+  
 function downloadHoopLand() {
 
   if (
@@ -3038,15 +3527,18 @@ function downloadHoopLand() {
     ).value;
 
 
-  const className =
+  const enteredName =
     document.getElementById(
       "className"
-    ).value.trim()
-    ||
+    ).value.trim();
+
+
+  const className =
+    enteredName ||
     (
       classType === "freshman"
-        ? "Women's Freshman Class"
-        : "Women's Draft Class"
+        ? "Freshman Class"
+        : "Draft Class"
     );
 
 
@@ -3056,6 +3548,7 @@ function downloadHoopLand() {
         player,
         index
       ) =>
+
         makeHoopLandPlayer(
           player,
           index
@@ -3102,42 +3595,52 @@ function downloadHoopLand() {
         0,
 
       generatedCountries: [
+
         {
           country: "US",
           value: 78
         },
+
         {
           country: "CA",
           value: 6
         },
+
         {
           country: "AU",
           value: 5
         },
+
         {
           country: "FR",
           value: 4
         },
+
         {
           country: "GB",
           value: 2
         },
+
         {
           country: "DE",
           value: 2
         },
+
         {
           country: "ES",
           value: 1
         },
+
         {
           country: "RS",
           value: 1
         },
+
         {
           country: "BE",
           value: 1
         }
+
       ],
 
       gender:
@@ -3171,7 +3674,7 @@ function downloadHoopLand() {
     );
 
 
-  const blob =
+  const fileBlob =
     new Blob(
       [fileText],
       {
@@ -3181,9 +3684,9 @@ function downloadHoopLand() {
     );
 
 
-  const url =
+  const fileURL =
     URL.createObjectURL(
-      blob
+      fileBlob
     );
 
 
@@ -3191,10 +3694,6 @@ function downloadHoopLand() {
     document.createElement(
       "a"
     );
-
-
-  link.href =
-    url;
 
 
   const safeName =
@@ -3209,6 +3708,10 @@ function downloadHoopLand() {
       )
       ||
       "Hoop-Land-Class";
+
+
+  link.href =
+    fileURL;
 
 
   link.download =
@@ -3227,10 +3730,11 @@ function downloadHoopLand() {
 
 
   setTimeout(
-    () =>
+    () => {
       URL.revokeObjectURL(
-        url
-      ),
+        fileURL
+      );
+    },
     1000
   );
 
@@ -3241,8 +3745,9 @@ function downloadHoopLand() {
   );
 }
 
-document
-  .getElementById(
+
+    document  
+    .getElementById(
     "classType"
   )
   .addEventListener(
@@ -3294,11 +3799,11 @@ document
 
 document
   .getElementById(
-    "downloadPreview"
+    "downloadHoopLand"
   )
   .addEventListener(
     "click",
-    downloadPreview
+    downloadHoopLand
   );
 
 
