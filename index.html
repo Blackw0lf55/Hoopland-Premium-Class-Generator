@@ -849,6 +849,213 @@ small,
   }
 
 }
+  /* =========================================
+   CLASS SETUP - HOOP LAND LAYOUT
+   ========================================= */
+
+.setup-panel {
+  position: relative;
+  padding: 26px 22px 24px !important;
+}
+
+.setup-panel > h2 {
+  display: none;
+}
+
+.hl-screen-title {
+  background: #100d1c;
+  border: 3px solid var(--hl-border);
+  box-shadow:
+    inset 0 -3px 0 #08295d,
+    0 5px 0 var(--hl-shadow);
+
+  color: #ffffff;
+
+  font-size: clamp(1.25rem, 5vw, 1.8rem);
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-align: center;
+  text-transform: uppercase;
+
+  padding: 14px 12px;
+  margin:
+    -12px -8px
+    24px;
+}
+
+
+.setup-grid {
+  display: grid;
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+
+  gap: 18px;
+}
+
+
+.setup-control {
+  min-width: 0;
+}
+
+
+.setup-control label {
+  display: block;
+
+  margin-bottom: 7px;
+
+  color: #ffffff !important;
+
+  font-size: 0.9rem;
+  font-weight: 900;
+
+  text-align: center;
+  text-transform: uppercase;
+}
+
+
+.setup-control select,
+.setup-control input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+
+.setup-wide {
+  grid-column: 1 / -1;
+}
+
+
+.label-muted {
+  color: var(--hl-text-muted);
+  font-size: 0.72em;
+  font-weight: 700;
+}
+
+
+.number-control {
+  display: grid;
+
+  grid-template-columns:
+    52px
+    minmax(70px, 1fr)
+    52px;
+
+  gap: 8px;
+
+  align-items: stretch;
+}
+
+
+.number-control input {
+  text-align: center;
+
+  font-size: 1.2rem;
+  font-weight: 900;
+
+  padding-left: 4px;
+  padding-right: 4px;
+
+  appearance: textfield;
+}
+
+
+.number-control input::-webkit-inner-spin-button,
+.number-control input::-webkit-outer-spin-button {
+  appearance: none;
+  margin: 0;
+}
+
+
+.number-step {
+  min-width: 0 !important;
+  width: 52px;
+
+  padding: 0 !important;
+
+  font-size: 1.7rem !important;
+  line-height: 1;
+
+  background: #185db1 !important;
+  border-color: var(--hl-border-bright) !important;
+}
+
+
+/* Phone layout */
+
+@media (max-width: 699px) {
+
+  .setup-panel {
+    padding:
+      20px 14px
+      18px !important;
+  }
+
+  .setup-grid {
+    grid-template-columns:
+      1fr 1fr;
+
+    gap:
+      14px 10px;
+  }
+
+  .setup-control label {
+    font-size:
+      0.77rem;
+  }
+
+  .setup-control select,
+  .setup-control input {
+    min-height:
+      48px;
+
+    font-size:
+      0.95rem;
+
+    padding:
+      9px 10px;
+  }
+
+  .number-control {
+    grid-template-columns:
+      44px
+      minmax(48px, 1fr)
+      44px;
+
+    gap:
+      5px;
+  }
+
+  .number-step {
+    width:
+      44px;
+
+    min-height:
+      48px !important;
+  }
+
+  .hl-screen-title {
+    margin-bottom:
+      18px;
+  }
+
+}
+
+
+/* Very narrow phones */
+
+@media (max-width: 390px) {
+
+  .setup-grid {
+    grid-template-columns:
+      1fr;
+  }
+
+  .setup-wide {
+    grid-column:
+      auto;
+  }
+
+}
 </style>
 </head>
 
@@ -870,42 +1077,31 @@ small,
 
 <main>
 
-<section class="card">
-  <h2>Class Setup</h2>
+<section class="card setup-panel">
 
-  <div class="grid">
+  <div class="hl-screen-title">
+    CREATE NEW CLASS
+  </div>
 
-    <div>
-  <label for="classType">Class Type</label>
+  <div class="setup-grid">
 
-  <select id="classType">
-    <option value="draft" selected>
-      Draft Class
-    </option>
+    <div class="setup-control">
+      <label for="className">
+        Class Name
+      </label>
 
-    <option value="freshman">
-      Freshman Class
-    </option>
-  </select>
-</div>
+      <input
+        id="className"
+        value="Custom Class"
+      >
+    </div>
 
 
-<div>
-  <label for="gender">Class Gender</label>
+    <div class="setup-control">
+      <label for="classStrength">
+        Class Strength
+      </label>
 
-  <select id="gender">
-    <option value="0" selected>
-      Men's
-    </option>
-
-    <option value="1">
-      Women's
-    </option>
-  </select>
-</div>
-
-    <div>
-      <label for="classStrength">Class Strength</label>
       <select id="classStrength">
         <option>Generational</option>
         <option>Strong</option>
@@ -914,43 +1110,121 @@ small,
       </select>
     </div>
 
-    <div>
-      <label for="mode">Player Mode</label>
-      <select id="mode">
-        <option>Fictional</option>
-        <option disabled>Real NCAAW - Later</option>
-        <option disabled>Hybrid - Later</option>
+
+    <div class="setup-control">
+      <label for="classType">
+        Class Type
+      </label>
+
+      <select id="classType">
+        <option
+          value="draft"
+          selected
+        >
+          Draft Class
+        </option>
+
+        <option value="freshman">
+          Freshman Class
+        </option>
       </select>
     </div>
 
-    <div>
-      <label for="classSize">Class Size</label>
-      <input
-        id="classSize"
-        type="number"
-        min="1"
-        max="500"
-        value="40"
-      >
+
+    <div class="setup-control">
+      <label for="mode">
+        Player Mode
+      </label>
+
+      <select id="mode">
+        <option>
+          Fictional
+        </option>
+
+        <option disabled>
+          Real NCAAW - Later
+        </option>
+
+        <option disabled>
+          Hybrid - Later
+        </option>
+      </select>
     </div>
 
-    <div>
-      <label for="seed">Seed (optional)</label>
+
+    <div class="setup-control">
+      <label for="classSize">
+        Total Prospects
+      </label>
+
+      <div class="number-control">
+
+        <button
+          type="button"
+          class="number-step"
+          id="classSizeMinus"
+          aria-label="Decrease class size"
+        >
+          −
+        </button>
+
+        <input
+          id="classSize"
+          type="number"
+          min="1"
+          max="500"
+          value="40"
+        >
+
+        <button
+          type="button"
+          class="number-step"
+          id="classSizePlus"
+          aria-label="Increase class size"
+        >
+          +
+        </button>
+
+      </div>
+    </div>
+
+
+    <div class="setup-control">
+      <label for="gender">
+        Class Gender
+      </label>
+
+      <select id="gender">
+        <option
+          value="0"
+          selected
+        >
+          Men's
+        </option>
+
+        <option value="1">
+          Women's
+        </option>
+      </select>
+    </div>
+
+
+    <div class="setup-control setup-wide">
+      <label for="seed">
+        Seed
+        <span class="label-muted">
+          Optional
+        </span>
+      </label>
+
       <input
         id="seed"
         placeholder="Same seed = same class"
       >
     </div>
 
-    <div>
-      <label for="className">Class Name</label>
-      <input
-        id="className"
-        value="Custom Class"
-      >
-    </div>
-
   </div>
+
 </section>
 
   </div>
