@@ -5030,6 +5030,302 @@ function makeHoopLandPlayer(
 
     league:
       1,
+
+          fn:
+      player.fn,
+
+    ln:
+      player.ln,
+
+    tag:
+      "",
+
+    home:
+      player.home,
+
+    ctry:
+      player.ctry,
+
+    loc: {
+      x: 0,
+      y: 0
+    },
+
+    age:
+      player.age,
+
+    ht:
+      player.ht,
+
+    wt:
+      player.wt,
+
+    yrs:
+      0,
+
+    num:
+      randomInteger(
+        0,
+        99
+      ),
+
+    gender:
+      Number(
+        document.getElementById(
+          "gender"
+        ).value
+      ),
+
+    pos:
+      player.pos,
+
+    teamPos:
+      0,
+
+    posRnk:
+      0,
+
+    linePos:
+      -1,
+
+    rating:
+      0.0,
+
+    minutes:
+      [0, 0, 0, 0, 0, 0],
+
+    usage:
+      0,
+
+    pri:
+      11,
+
+    sec:
+      0,
+
+    arc:
+      player.arc,
+
+    pot:
+      player.pot,
+
+    regressionAge:
+      player.regressionAge,
+
+
+    appearance: {
+
+      skinC:
+        player.appearance.skinC,
+
+      eyeC:
+        player.appearance.eyeC,
+
+      unibrow:
+        false,
+
+      browC:
+        player.appearance.browC,
+
+      hair:
+        player.appearance.hair,
+
+      hairC:
+        player.appearance.hairC,
+
+      fHair:
+        player.appearance.fHair,
+
+      fHairC:
+        player.appearance.fHairC
+
+    },
+
+
+    accessories:
+      player.appearance.accessories.map(
+        set => ({...set})
+      ),
+
+
+    suits: [
+
+      {
+        headAcc:
+          "0000",
+
+        headAccC:
+          "000000",
+
+        jacketC:
+          "262539",
+
+        shirtC:
+          "FFFFFF",
+
+        tieC:
+          "FFFFFF",
+
+        pantC:
+          "262539",
+
+        shoeC:
+          "000000",
+
+        laceC:
+          "",
+
+        soleC:
+          "000000"
+      }
+
+    ],
+
+
+    attributes: {
+
+      ...player.attributes,
+
+      STR: [
+        player.physical.STR,
+        player.physical.STR
+      ],
+
+      SPD: [
+        player.physical.SPD,
+        player.physical.SPD
+      ],
+
+      STM: [
+        player.physical.STA,
+        player.physical.STA
+      ]
+
+    },
+
+
+    skills:
+      [],
+
+
+    tendencies:
+      player.tendencies,
+
+
+    gameStatus: {
+
+      startPos:
+        0,
+
+      stamina:
+        0,
+
+      gradePoints:
+        -1,
+
+      grade:
+        5,
+
+      streak:
+        0,
+
+      matchup:
+        0,
+
+      pressure:
+        0,
+
+      doubleTeam:
+        0,
+
+      xpEarned:
+        0,
+
+      relationship:
+        0,
+
+      onBench:
+        false,
+
+      injured:
+        false,
+
+      isPlayer:
+        false
+
+    },
+
+    gameStats:
+      makeEmptyStatLine(),
+
+
+    season: {
+
+      xp:
+        [0, 0, 0, 0, 0],
+
+      ap:
+        [0, 0, 0, 0, 0],
+
+      condition:
+        100,
+
+      morale:
+        100,
+
+      restDay:
+        false,
+
+      injury: {
+
+        yr:
+          0,
+
+        core:
+          0,
+
+        upperBody:
+          0,
+
+        lowerBody:
+          0,
+
+        minorSeverity:
+          0,
+
+        majorSeverity:
+          0,
+
+        gamesOut:
+          0,
+
+        ageRegression:
+          0,
+
+        age:
+          0
+
+      },
+
+      onTradeBlock:
+        0,
+
+      regimen:
+        0,
+
+      focus:
+        0,
+
+      watch:
+        false,
+
+      scout:
+        false,
+
+      progress:
+        0,
+
+      protect:
         false,
 
       retiring:
