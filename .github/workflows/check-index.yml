@@ -1,0 +1,41 @@
+name: Check index.html
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  check-javascript:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Extract JavaScript from index.html
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          html = Path("index.html").read_text(encoding="utf-8")
+
+          if "<script>" not in html or "</script>" not in html:
+              raise SystemExit(
+                  "index.html is missing a script tag"
+              )
+
+          script = html.split("<script>", 1)[1]
+          script = script.split("</script>", 1)[0]
+
+          Path("index-check.js").write_text(
+              script,
+              encoding="utf-8"
+          )
+
+          print("JavaScript extracted successfully")
+          PY
+
+      - name: Check JavaScript syntax
+        run: node --check index-check.js
