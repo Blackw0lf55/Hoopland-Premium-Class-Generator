@@ -2733,45 +2733,6 @@ function buildInputs() {
     }
   );
 
-
-  const positionGrid =
-    document.getElementById(
-      "positions"
-    );
-
-
-  POS.forEach(
-    ([value, name]) => {
-
-      const row =
-        document.createElement(
-          "div"
-        );
-
-      row.className =
-        "checkrow";
-
-      row.innerHTML = `
-        <input
-          class="poscheck"
-          id="position${value}"
-          type="checkbox"
-          value="${value}"
-          checked
-        >
-        <label for="position${value}">
-          ${name} (${value})
-        </label>
-      `;
-
-      positionGrid.appendChild(
-        row
-      );
-    }
-  );
-}
-
-
 function attributeBounds(code, type) {
 
   let minimum =
