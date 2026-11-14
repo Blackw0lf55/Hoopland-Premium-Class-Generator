@@ -2311,19 +2311,21 @@ function randomInteger(minimum, maximum) {
   ) + minimum;
 }
 
-
 function pick(items) {
 
   if (!Array.isArray(items)) {
     throw new Error(
-      "pick() received an invalid list. Value: " +
-      String(items)
+      "pick() invalid list: " +
+      String(items) +
+      "\n" +
+      new Error().stack
     );
   }
 
   if (items.length === 0) {
     throw new Error(
-      "pick() received an empty list."
+      "pick() received an empty list.\n" +
+      new Error().stack
     );
   }
 
@@ -2334,27 +2336,6 @@ function pick(items) {
     )
   ];
 }
-
-  function pick(items) {
-
-  if (!Array.isArray(items)) {
-    throw new Error(
-      "pick() received an invalid list. Value: " +
-      String(items)
-    );
-  }
-
-  if (items.length === 0) {
-    throw new Error(
-      "pick() received an empty list."
-    );
-  }
-
-  return items[
-    randomInteger(0, items.length - 1)
-  ];
-}
-
 
 function clamp(value, minimum, maximum) {
 
