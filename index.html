@@ -3512,198 +3512,8 @@ headAcc2C:
       "FFFFFF"
 
   };
-
-const LOCATION_COORDINATES = {
-
-  // United States
-  "Seattle, WA": {
-    x: 4761,
-    y: -12233
-  },
-
-  "Houston, TX": {
-    x: 2976,
-    y: -9537
-  },
-
-  "Dallas, TX": {
-    x: 3278,
-    y: -9680
-  },
-
-  "Norfolk, VA": {
-    x: 3685,
-    y: -7629
-  },
-
-  // Canada
-  "Toronto, ON": {
-    x: 4365,
-    y: -7938
-  },
-
-  // Australia
-  "Sydney, Australia": {
-    x: -3387,
-    y: 15121
-  },
-
-  "Perth, Australia": {
-    x: -3195,
-    y: 11586
-  },
-
-  // France
-  "Lyon, France": {
-    x: 4576,
-    y: 484
-  },
-
-  "Paris, France": {
-    x: 4886,
-    y: 235
-  },
-
-  // United Kingdom
-  "London, England": {
-    x: 5151,
-    y: -13
-  },
-
-  "Manchester, England": {
-    x: 5348,
-    y: -224
-  },
-
-  // Germany
-  "Berlin, Germany": {
-    x: 5252,
-    y: 1341
-  },
-
-  // Spain
-  "Madrid, Spain": {
-    x: 4042,
-    y: -370
-  },
-
-  // Serbia
-  "Belgrade, Serbia": {
-    x: 4480,
-    y: 2047
-  },
-
-  // Belgium
-  "Brussels, Belgium": {
-    x: 5085,
-    y: 435
-  }
-
-};
-
-
-const COUNTRY_FALLBACK_COORDINATES = {
-
-  US: {
-    x: 3900,
-    y: -9800
-  },
-
-  CA: {
-    x: 5600,
-    y: -10600
-  },
-
-  AU: {
-    x: -2500,
-    y: 13300
-  },
-
-  FR: {
-    x: 4650,
-    y: 220
-  },
-
-  UK: {
-    x: 5400,
-    y: -200
-  },
-
-  DE: {
-    x: 5100,
-    y: 1000
-  },
-
-  ES: {
-    x: 4000,
-    y: -400
-  },
-
-  RS: {
-    x: 4400,
-    y: 2100
-  },
-
-  BE: {
-    x: 5085,
-    y: 435
-  }
-
-};
-
-
-function getLocationCoordinates(
-  home,
-  country
-) {
-
-  const exactLocation =
-    LOCATION_COORDINATES[
-      home
-    ];
-
-  if (
-    exactLocation
-  ) {
-
-    return {
-      x:
-        exactLocation.x,
-
-      y:
-        exactLocation.y
-    };
-
-  }
-
-
-  const countryFallback =
-    COUNTRY_FALLBACK_COORDINATES[
-      country
-    ];
-
-  if (
-    countryFallback
-  ) {
-
-    return {
-      x:
-        countryFallback.x,
-
-      y:
-        countryFallback.y
-    };
-
-  }
-
-
-  return {
-    x: 3900,
-    y: -9800
-  };
 }
 
-    
   function makeHoopLandPlayer(
   player,
   index
@@ -3714,12 +3524,7 @@ function getLocationCoordinates(
       player
     );
 
-  const location =
-    getLocationCoordinates(
-      player.home,
-      player.ctry
-    );
-    
+
   return {
 
     id:
@@ -3746,14 +3551,9 @@ home:
     ctry:
       player.ctry,
 
-        loc: {
-
-      x:
-        location.x,
-
-      y:
-        location.y
-
+    loc: {
+      x: 0,
+      y: 0
     },
 
     age:
@@ -4314,7 +4114,7 @@ function downloadHoopLand() {
 
   const safeClassName =
   String(
-    enteredName ||
+    className ||
     "Custom Class"
   )
     .replace(
@@ -4327,6 +4127,7 @@ function downloadHoopLand() {
     )
     .trim() ||
   "Custom Class";
+
 
   const className =
     enteredName ||
@@ -4401,7 +4202,7 @@ const exportFile = {
   meta: {
 
       saveName:
-        safeClassName,
+        className,
 
         buildVersion:
   "1.12.1",
@@ -5666,7 +5467,7 @@ commissioner:
 
 
   link.download =
-    safeClassName + ".txt";
+    safeName + ".txt";
 
 
   document.body.appendChild(
@@ -5691,7 +5492,7 @@ commissioner:
 
 
   setStatus(
-    `Downloaded ${hoopLandPlayers.length} players as ${safeClassName}.txt`,
+    `Downloaded ${hoopLandPlayers.length} players as ${safeName}.txt`,
     "ok"
   );
 }
