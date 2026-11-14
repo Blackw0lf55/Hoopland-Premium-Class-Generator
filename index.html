@@ -277,12 +277,33 @@ th{
   <div class="grid">
 
     <div>
-      <label for="classType">Class Type</label>
-      <select id="classType">
-        <option value="draft">Draft Class</option>
-        <option value="freshman">Freshman Class</option>
-      </select>
-    </div>
+  <label for="classType">Class Type</label>
+
+  <select id="classType">
+    <option value="draft" selected>
+      Draft Class
+    </option>
+
+    <option value="freshman">
+      Freshman Class
+    </option>
+  </select>
+</div>
+
+
+<div>
+  <label for="gender">Class Gender</label>
+
+  <select id="gender">
+    <option value="0" selected>
+      Men's
+    </option>
+
+    <option value="1">
+      Women's
+    </option>
+  </select>
+</div>
 
     <div>
       <label for="classStrength">Class Strength</label>
@@ -326,7 +347,7 @@ th{
       <label for="className">Class Name</label>
       <input
         id="className"
-        value="Women's Draft Class"
+        value="Draft/freshmen Class"
       >
     </div>
 
@@ -3644,7 +3665,12 @@ function downloadHoopLand() {
       ],
 
       gender:
-        0
+  Number(
+    document.getElementById(
+      "gender"
+    ).value
+  )
+
 
     },
 
@@ -3771,8 +3797,8 @@ function downloadHoopLand() {
         "className"
       ).value =
         freshman
-          ? "Women's Freshman Class"
-          : "Women's Draft Class";
+          ? "Freshman Class"
+          : "Draft Class";
     }
   );
 
