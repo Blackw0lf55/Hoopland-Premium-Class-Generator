@@ -1056,6 +1056,315 @@ small,
   }
 
 }
+  /* =========================================
+   HOOP LAND ATTRIBUTE LIMITS
+   ========================================= */
+
+#attrGrid {
+  display: grid !important;
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+
+  gap: 12px !important;
+}
+
+
+.hl-attribute-card {
+  display: grid;
+
+  grid-template-columns:
+    1fr 1fr;
+
+  gap: 8px;
+
+  position: relative;
+
+  background:
+    #1855a5;
+
+  border:
+    3px solid
+    #1597ec;
+
+  box-shadow:
+    inset 0 0 0 3px
+    #0b3979;
+
+  padding:
+    34px 8px 10px;
+}
+
+
+.hl-attribute-name {
+  position: absolute;
+
+  top: -2px;
+  left: 50%;
+
+  transform:
+    translateX(-50%);
+
+  width:
+    max-content;
+
+  max-width:
+    90%;
+
+  padding:
+    3px 10px;
+
+  background:
+    #1855a5;
+
+  color:
+    #ffffff;
+
+  font-size:
+    0.88rem;
+
+  font-weight:
+    900;
+
+  text-align:
+    center;
+
+  text-transform:
+    uppercase;
+}
+
+
+.hl-attribute-name span {
+  color:
+    #8bdcff;
+
+  margin-left:
+    4px;
+}
+
+
+.hl-rating-column {
+  min-width:
+    0;
+}
+
+
+.hl-rating-heading {
+  color:
+    #ffffff;
+
+  font-size:
+    0.70rem;
+
+  font-weight:
+    900;
+
+  text-align:
+    center;
+
+  margin-bottom:
+    8px;
+}
+
+
+.hl-range-label {
+  color:
+    #8bdcff;
+
+  font-size:
+    0.58rem;
+
+  font-weight:
+    900;
+
+  text-align:
+    center;
+
+  margin:
+    6px 0 3px;
+}
+
+
+.hl-stepper {
+  display: grid;
+
+  grid-template-columns:
+    30px
+    minmax(34px, 1fr)
+    30px;
+
+  gap:
+    3px;
+
+  align-items:
+    center;
+}
+
+
+.hl-step-btn {
+  width:
+    30px !important;
+
+  min-width:
+    0 !important;
+
+  height:
+    34px !important;
+
+  min-height:
+    34px !important;
+
+  padding:
+    0 !important;
+
+  background:
+    #1457aa !important;
+
+  border:
+    2px solid
+    #23b5ff !important;
+
+  box-shadow:
+    0 3px 0
+    #062759 !important;
+
+  color:
+    #ffffff !important;
+
+  font-size:
+    1.2rem !important;
+
+  font-weight:
+    900;
+
+  line-height:
+    1;
+}
+
+
+.hl-rating-value {
+  display:
+    flex;
+
+  align-items:
+    center;
+
+  justify-content:
+    center;
+
+  min-width:
+    0;
+
+  height:
+    32px;
+
+  background:
+    #092b62;
+
+  border:
+    2px solid
+    #0e4389;
+
+  color:
+    #ffffff;
+
+  font-size:
+    0.9rem;
+
+  font-weight:
+    900;
+}
+
+
+.hl-hidden-rating {
+  display:
+    none !important;
+}
+
+
+/* Portrait phones */
+
+@media (max-width: 699px) {
+
+  #attrGrid {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+
+    gap:
+      10px 8px !important;
+  }
+
+
+  .hl-attribute-card {
+    padding:
+      31px 5px 8px;
+
+    gap:
+      5px;
+  }
+
+
+  .hl-attribute-name {
+    font-size:
+      0.72rem;
+
+    padding:
+      3px 6px;
+  }
+
+
+  .hl-rating-heading {
+    font-size:
+      0.58rem;
+  }
+
+
+  .hl-stepper {
+    grid-template-columns:
+      27px
+      minmax(29px, 1fr)
+      27px;
+
+    gap:
+      2px;
+  }
+
+
+  .hl-step-btn {
+    width:
+      27px !important;
+
+    height:
+      32px !important;
+
+    min-height:
+      32px !important;
+
+    font-size:
+      1.05rem !important;
+  }
+
+
+  .hl-rating-value {
+    height:
+      30px;
+
+    font-size:
+      0.78rem;
+  }
+
+}
+
+
+/* Extremely narrow phones */
+
+@media (max-width: 350px) {
+
+  #attrGrid {
+    grid-template-columns:
+      1fr;
+  }
+
+}
 </style>
 </head>
 
@@ -2027,73 +2336,379 @@ function buildInputs() {
   const attributeGrid =
     document.getElementById("attrGrid");
 
-  ATTRS.forEach(([code, name]) => {
+    const editableAttrs =
+    ATTRS.filter(
+      ([code]) =>
+        ![
+          "SPD",
+          "STR",
+          "STM"
+        ].includes(code)
+    );
 
-    const box =
-      document.createElement("div");
 
-    box.className = "attr";
+  function displayRating(
+    rawValue
+  ) {
 
-    const currentMaximum =
-      code === "DNK" ? 6 : 16;
+    return (
+      Number(rawValue) / 2
+    ).toFixed(1);
 
-    const potentialMaximum =
-      code === "DNK" ? 8 : 20;
+  }
 
-    box.innerHTML = `
-      <b>${name} (${code})</b>
 
-      <div
-        class="grid tight"
-        style="margin-top:9px">
+  editableAttrs.forEach(
+    ([code, name]) => {
 
-        <div>
-          <label>Current Min</label>
-          <input
-            id="${code}cmin"
-            type="number"
-            min="2"
-            max="20"
-            value="2">
+      const box =
+        document.createElement(
+          "div"
+        );
+
+      box.className =
+        "hl-attribute-card";
+
+
+      const currentMaximum =
+        code === "DNK"
+          ? 6
+          : 16;
+
+      const potentialMaximum =
+        code === "DNK"
+          ? 8
+          : 20;
+
+
+      box.innerHTML = `
+
+        <div class="hl-attribute-name">
+          ${name}
+          <span>${code}</span>
         </div>
 
-        <div>
-          <label>Current Max</label>
-          <input
-            id="${code}cmax"
-            type="number"
-            min="2"
-            max="20"
-            value="${currentMaximum}">
+
+        <div class="hl-rating-column">
+
+          <div class="hl-rating-heading">
+            ACTUAL
+          </div>
+
+          <div class="hl-range-label">
+            MIN
+          </div>
+
+          <div class="hl-stepper">
+
+            <button
+              type="button"
+              class="hl-step-btn"
+              data-target="${code}cmin"
+              data-change="-1"
+            >
+              −
+            </button>
+
+            <span
+              class="hl-rating-value"
+              id="${code}cminDisplay"
+            >
+              1.0
+            </span>
+
+            <button
+              type="button"
+              class="hl-step-btn"
+              data-target="${code}cmin"
+              data-change="1"
+            >
+              +
+            </button>
+
+          </div>
+
+
+          <div class="hl-range-label">
+            MAX
+          </div>
+
+          <div class="hl-stepper">
+
+            <button
+              type="button"
+              class="hl-step-btn"
+              data-target="${code}cmax"
+              data-change="-1"
+            >
+              −
+            </button>
+
+            <span
+              class="hl-rating-value"
+              id="${code}cmaxDisplay"
+            >
+              ${displayRating(currentMaximum)}
+            </span>
+
+            <button
+              type="button"
+              class="hl-step-btn"
+              data-target="${code}cmax"
+              data-change="1"
+            >
+              +
+            </button>
+
+          </div>
+
         </div>
 
-        <div>
-          <label>Potential Min</label>
-          <input
-            id="${code}pmin"
-            type="number"
-            min="2"
-            max="20"
-            value="2">
+
+        <div class="hl-rating-column">
+
+          <div class="hl-rating-heading">
+            POTENTIAL
+          </div>
+
+          <div class="hl-range-label">
+            MIN
+          </div>
+
+          <div class="hl-stepper">
+
+            <button
+              type="button"
+              class="hl-step-btn"
+              data-target="${code}pmin"
+              data-change="-1"
+            >
+              −
+            </button>
+
+            <span
+              class="hl-rating-value"
+              id="${code}pminDisplay"
+            >
+              1.0
+            </span>
+
+            <button
+              type="button"
+              class="hl-step-btn"
+              data-target="${code}pmin"
+              data-change="1"
+            >
+              +
+            </button>
+
+          </div>
+
+
+          <div class="hl-range-label">
+            MAX
+          </div>
+
+          <div class="hl-stepper">
+
+            <button
+              type="button"
+              class="hl-step-btn"
+              data-target="${code}pmax"
+              data-change="-1"
+            >
+              −
+            </button>
+
+            <span
+              class="hl-rating-value"
+              id="${code}pmaxDisplay"
+            >
+              ${displayRating(potentialMaximum)}
+            </span>
+
+            <button
+              type="button"
+              class="hl-step-btn"
+              data-target="${code}pmax"
+              data-change="1"
+            >
+              +
+            </button>
+
+          </div>
+
         </div>
 
-        <div>
-          <label>Potential Max</label>
-          <input
-            id="${code}pmax"
-            type="number"
-            min="2"
-            max="20"
-            value="${potentialMaximum}">
-        </div>
 
-      </div>
-    `;
+        <input
+          id="${code}cmin"
+          class="hl-hidden-rating"
+          type="number"
+          min="2"
+          max="20"
+          value="2"
+        >
 
-    attributeGrid.appendChild(box);
-  });
+        <input
+          id="${code}cmax"
+          class="hl-hidden-rating"
+          type="number"
+          min="2"
+          max="20"
+          value="${currentMaximum}"
+        >
+
+        <input
+          id="${code}pmin"
+          class="hl-hidden-rating"
+          type="number"
+          min="2"
+          max="20"
+          value="2"
+        >
+
+        <input
+          id="${code}pmax"
+          class="hl-hidden-rating"
+          type="number"
+          min="2"
+          max="20"
+          value="${potentialMaximum}"
+        >
+
+      `;
 
 
+      attributeGrid.appendChild(
+        box
+      );
+
+    }
+  );
+
+
+  attributeGrid.addEventListener(
+    "click",
+    event => {
+
+      const button =
+        event.target.closest(
+          ".hl-step-btn"
+        );
+
+      if (!button) {
+        return;
+      }
+
+
+      const targetId =
+        button.dataset.target;
+
+      const change =
+        Number(
+          button.dataset.change
+        );
+
+      const input =
+        document.getElementById(
+          targetId
+        );
+
+      if (!input) {
+        return;
+      }
+
+
+      const code =
+        targetId.substring(
+          0,
+          3
+        );
+
+      const type =
+        targetId.substring(
+          3
+        );
+
+
+      let value =
+        Number(
+          input.value
+        ) || 2;
+
+
+      value += change;
+
+
+      let minimum =
+        2;
+
+      let maximum =
+        20;
+
+
+      if (
+        code === "DNK" &&
+        type === "cmax"
+      ) {
+        maximum =
+          6;
+      }
+
+
+      if (
+        code === "DNK" &&
+        type === "pmax"
+      ) {
+        maximum =
+          8;
+      }
+
+
+      value =
+        Math.max(
+          minimum,
+          Math.min(
+            maximum,
+            value
+          )
+        );
+
+
+      input.value =
+        value;
+
+
+      const display =
+        document.getElementById(
+          targetId +
+          "Display"
+        );
+
+
+      if (display) {
+
+        display.textContent =
+          displayRating(
+            value
+          );
+
+      }
+
+
+      input.dispatchEvent(
+        new Event(
+          "change",
+          {
+            bubbles: true
+          }
+        )
+      );
+
+    }
+  );
+            
   const positionGrid =
     document.getElementById("positions");
 
