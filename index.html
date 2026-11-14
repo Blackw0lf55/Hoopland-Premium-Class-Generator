@@ -3341,3 +3341,1960 @@ function qualityForTier(
       currentStars,
 
     potentialStars:
+      potentialStars,
+
+    potentialRaw:
+      Math.round(
+        potentialStars * 2
+      )
+
+  };
+}
+
+
+function generateRegressionAge() {
+
+  /*
+    Average regression age should be around 32.
+
+    Most players land from 30-34.
+    Early regression becomes progressively rarer.
+    Ages 18-22 represent exceptionally rare
+    draft-bust outcomes.
+  */
+
+  const roll =
+    rng() * 100;
+
+
+  if (roll < 0.5) {
+    return randomInteger(18, 22);
+  }
+
+
+  if (roll < 2) {
+    return randomInteger(23, 26);
+  }
+
+
+  if (roll < 6) {
+    return randomInteger(27, 28);
+  }
+
+
+  if (roll < 16) {
+    return 29;
+  }
+
+
+  if (roll < 32) {
+    return 30;
+  }
+
+
+  if (roll < 50) {
+    return 31;
+  }
+
+
+  if (roll < 70) {
+    return 32;
+  }
+
+
+  if (roll < 87) {
+    return 33;
+  }
+
+
+  return 34;
+}
+
+
+function generateTraits() {
+
+  return {
+
+    durability:
+      randomInteger(2, 20),
+
+    winning:
+      randomInteger(2, 20),
+
+    money:
+      randomInteger(2, 20),
+
+    loyalty:
+      randomInteger(2, 20),
+
+    motor:
+      randomInteger(2, 20),
+
+    lockerRoom:
+      randomInteger(2, 20),
+
+    playoffRiser:
+      randomInteger(2, 20),
+
+    roadWarrior:
+      randomInteger(2, 20)
+
+  };
+}
+
+
+function generatePhysicalRatings(
+  position,
+  height,
+  weight
+) {
+
+  const profile =
+    POS_PROFILE[position];
+
+
+  const heightMiddle =
+    (
+      profile[0] +
+      profile[1]
+    ) / 2;
+
+
+  const weightMiddle =
+    (
+      profile[2] +
+      profile[3]
+    ) / 2;
+
+
+  let speed =
+    Math.round(
+
+      profile[4]
+
+      -
+
+      Math.max(
+        0,
+        height - heightMiddle
+      ) * 0.55
+
+      -
+
+      Math.max(
+        0,
+        weight - weightMiddle
+      ) / 28
+
+      +
+
+      normalRandom() * 1.4
+    );
+
+
+  let strength =
+    Math.round(
+
+      profile[5]
+
+      +
+
+      (
+        weight -
+        weightMiddle
+      ) / 18
+
+      +
+
+      (
+        height -
+        heightMiddle
+      ) * 0.18
+
+      +
+
+      normalRandom() * 1.25
+    );
+
+
+  let stamina =
+    Math.round(
+
+      14
+
+      -
+
+      (
+        weight -
+        weightMiddle
+      ) / 55
+
+      +
+
+      normalRandom() * 1.6
+    );
+
+
+  speed =
+    clamp(
+      speed,
+      8,
+      18
+    );
+
+
+  strength =
+    clamp(
+      strength,
+      8,
+      20
+    );
+
+
+  stamina =
+    clamp(
+      stamina,
+      8,
+      20
+    );
+
+
+  /*
+    Elite speed should be special.
+
+    Most players are capped at 18 through the
+    regular distribution.
+
+    19 and 20 are introduced only through
+    rare checks.
+  */
+
+  if (rng() < 0.015) {
+    speed = 19;
+  }
+
+
+  if (rng() < 0.003) {
+    speed = 20;
+  }
+
+
+  return {
+
+    SPD: speed,
+
+    STR: strength,
+
+    STA: stamina
+
+  };
+}
+
+
+function generateAppearance(gender) {
+
+  const palette =
+    pick(APPEARANCE_PALETTES);
+
+  const skinC =
+    pick(palette.skins);
+
+  const hairChoice =
+    chooseHairColor(palette);
+
+  const hairC =
+    hairChoice.color;
+
+  const hair =
+    padStyle(
+      chooseHairStyle(
+        gender,
+        palette,
+        hairChoice.group
+      )
+    );
+
+  const shoeC =
+    pick(SHOE_COLORS);
+
+  let facialHair = 0;
+  if(gender==="0"&&rng()<.55)facialHair=pick(MEN_FACIAL_HAIR.filter(id=>id!==0));
+
+  return {
+    skinC,
+    eyeC:pick(palette.eyes),
+    unibrow:false,
+    browC:hairC,
+    hair,
+    hairC,
+    fHair:padStyle(facialHair),
+    fHairC:hairC,
+    shoeC,
+    accessories:buildAccessories(
+      skinC,
+      pick(palette.tattoos),
+      gender,
+      shoeC
+    )
+  };
+}
+
+
+function generateAutomaticTendencies(
+  attributes
+) {
+
+  function fromRating(value) {
+
+    if (value <= 4) return -5;
+    if (value <= 6) return -4;
+    if (value <= 8) return -3;
+    if (value <= 10) return -1;
+    if (value <= 12) return 0;
+    if (value <= 14) return 2;
+    if (value <= 16) return 3;
+    if (value <= 18) return 4;
+
+    return 5;
+  }
+
+
+  return {
+
+    dunk:
+      fromRating(
+        attributes.DNK[0]
+      ),
+
+    floater:
+      fromRating(
+        attributes.LAY[0]
+      ),
+
+    hook:
+      fromRating(
+        attributes.INS[0]
+      ),
+
+    post:
+      fromRating(
+        attributes.INS[0]
+      ),
+
+    twoPoint:
+      fromRating(
+        Math.round(
+          (
+            attributes.INS[0] +
+            attributes.MID[0]
+          ) / 2
+        )
+      ),
+
+    threePoint:
+      fromRating(
+        attributes.TPT[0]
+      ),
+
+    pumpFake:
+      0,
+
+    fades:
+      fromRating(
+        attributes.MID[0]
+      ),
+
+    pass:
+      fromRating(
+        attributes.PAS[0]
+      ),
+
+    lob:
+      fromRating(
+        attributes.PAS[0]
+      ),
+
+    cross:
+      fromRating(
+        attributes.DRB[0]
+      ),
+
+    spin:
+      fromRating(
+        attributes.DRB[0]
+      ),
+
+    step:
+      fromRating(
+        attributes.MID[0]
+      ),
+
+    offReb:
+      fromRating(
+        attributes.ORE[0]
+      ),
+
+    runPlay:
+      fromRating(
+        attributes.PAS[0]
+      ),
+
+    defReb:
+      fromRating(
+        attributes.DRE[0]
+      ),
+
+    takeCharge:
+      0,
+
+    stealOnBall:
+      fromRating(
+        attributes.STL[0]
+      ),
+
+    stealOffBall:
+      fromRating(
+        attributes.STL[0]
+      ),
+
+    block:
+      fromRating(
+        attributes.BLK[0]
+      )
+
+  };
+}
+
+
+function makePlayer(id, tierName) {
+
+  const allowedPositions = [
+    ...document.querySelectorAll(
+      ".poscheck:checked"
+    )
+  ].map(
+    item =>
+      Number(item.value)
+  );
+
+
+  if (
+    allowedPositions.length === 0
+  ) {
+
+    throw new Error(
+      "Select at least one position."
+    );
+  }
+
+
+  const position =
+    pick(
+      allowedPositions
+    );
+
+
+  const profile =
+    POS_PROFILE[position];
+
+
+  const minimumHeight =
+    Math.max(
+      numberValue(
+        "minHt",
+        63
+      ),
+      profile[0]
+    );
+
+
+  const maximumHeight =
+    Math.min(
+      numberValue(
+        "maxHt",
+        80
+      ),
+      profile[1]
+    );
+
+
+  const minimumWeight =
+    Math.max(
+      numberValue(
+        "minWt",
+        120
+      ),
+      profile[2]
+    );
+
+
+  const maximumWeight =
+    Math.min(
+      numberValue(
+        "maxWt",
+        230
+      ),
+      profile[3]
+    );
+
+
+  if (
+    minimumHeight >
+      maximumHeight
+    ||
+    minimumWeight >
+      maximumWeight
+  ) {
+    throw new Error(
+      "Height or weight limits conflict with an allowed position."
+    );
+  }
+
+
+  const height =
+    randomInteger(
+      minimumHeight,
+      maximumHeight
+    );
+
+
+  const weight =
+    randomInteger(
+      minimumWeight,
+      maximumWeight
+    );
+
+
+  const country =
+    weightedChoice(
+      COUNTRIES
+    );
+
+
+  const namePool =
+    NAMES[country] ||
+    NAMES.US;
+
+
+  const firstName =
+    pick(
+      namePool[0]
+    );
+
+
+  const lastName =
+    pick(
+      namePool[1]
+    );
+
+
+  const hometown =
+    pick(
+      namePool[2]
+    );
+
+
+  const quality =
+    qualityForTier(
+      tierName
+    );
+
+
+  const currentStars =
+    quality.currentStars;
+
+
+  const potentialStars =
+    quality.potentialStars;
+
+
+  const potentialRaw =
+    quality.potentialRaw;
+
+
+  let currentBudget =
+    budgetForStars(
+      currentStars
+    );
+
+
+  let potentialBudget =
+    budgetForStars(
+      potentialStars
+    );
+
+
+  /*
+    An exceptionally rare HOF-tier prospect
+    can exceed the normal 144-point ceiling.
+  */
+
+  let isOutlier = false;
+
+
+  if (
+    tierName === "hof" &&
+    rng() < 0.08
+  ) {
+
+    isOutlier = true;
+
+
+    const extraPoints =
+      randomInteger(
+        1,
+        8
+      );
+
+
+    currentBudget +=
+      extraPoints;
+
+
+    potentialBudget +=
+      extraPoints;
+  }
+
+
+  potentialBudget =
+    Math.max(
+      potentialBudget,
+      currentBudget
+    );
+  
+  const currentMinimums = [];
+  const currentMaximums = [];
+
+  const potentialMinimums = [];
+  const potentialMaximums = [];
+
+
+  ATTRS.forEach(
+    ([code]) => {
+
+      const current =
+        attributeBounds(
+          code,
+          "c"
+        );
+
+
+      currentMinimums.push(
+        current[0]
+      );
+
+
+      currentMaximums.push(
+        current[1]
+      );
+
+
+      const potential =
+        attributeBounds(
+          code,
+          "p"
+        );
+
+
+      potentialMinimums.push(
+        potential[0]
+      );
+
+
+      potentialMaximums.push(
+        potential[1]
+      );
+    }
+  );
+
+
+  const archetype =
+    archetypeWeights(
+      position
+    );
+
+
+  const currentRatings =
+    allocatePoints(
+      currentBudget,
+      currentMinimums,
+      currentMaximums,
+      archetype.weights
+    );
+
+
+  if (!currentRatings) {
+
+    throw new Error(
+      "Current-rating limits cannot fit the selected point budget. Increase one or more current maximums or change the current overall range."
+    );
+  }
+
+
+  const effectivePotentialMinimums =
+    potentialMinimums.map(
+      (
+        value,
+        index
+      ) =>
+        Math.max(
+          value,
+          currentRatings[index]
+        )
+    );
+
+
+  const potentialRatings =
+    allocatePoints(
+      potentialBudget,
+      effectivePotentialMinimums,
+      potentialMaximums,
+      archetype.weights
+    );
+
+
+  if (!potentialRatings) {
+
+    throw new Error(
+      "Potential limits cannot fit the selected potential budget. Increase one or more potential maximums or lower the potential range."
+    );
+  }
+
+
+  const attributes = {};
+
+
+  ATTRS.forEach(
+    (
+      [code],
+      index
+    ) => {
+
+      attributes[code] = [
+
+        currentRatings[index],
+
+        potentialRatings[index]
+
+      ];
+    }
+  );
+
+
+  const classType=document.getElementById("classType").value;
+  const gender=document.getElementById("gender").value;
+  const international=country!=="US";
+  const year=classType==="freshman"?"Fr.":(gender==="1"?"Sr.":pick(["Fr.","So.","Jr.","Sr."]));
+  const age=classType==="freshman"?randomInteger(17,19):(gender==="0"?randomInteger(18,22):(international?randomInteger(19,21):randomInteger(20,21)));
+
+
+  const physical =
+    generatePhysicalRatings(
+      position,
+      height,
+      weight
+    );
+
+
+  const player = {
+
+    id:
+      id,
+
+    gender:
+      gender,
+
+    year:
+      year,
+
+    fn:
+      firstName,
+
+    ln:
+      lastName,
+
+    home:
+      hometown,
+
+    ctry:
+      country,
+
+    age:
+      age,
+
+    ht:
+      height,
+
+    wt:
+      weight,
+
+    pos:
+      position,
+
+    arc:
+      archetype.arc,
+
+    tier:
+      quality.tier,
+
+    tierName:
+      quality.tierName,
+
+    currentStars:
+      currentStars,
+
+    potentialStars:
+      potentialStars,
+
+    pot:
+      potentialRaw,
+
+    currentPoints:
+      currentBudget,
+
+    potentialPoints:
+      potentialBudget,
+
+    pointsRemaining:
+      144 -
+      currentBudget,
+
+    outlier:
+      isOutlier,
+
+    attributes:
+      attributes,
+
+    physical:
+      physical,
+
+    regressionAge:
+      generateRegressionAge(),
+
+    traits:
+      generateTraits(),
+
+    tendencies:
+      generateAutomaticTendencies(
+        attributes
+      ),
+
+    appearance:
+      generateAppearance(gender)
+
+  };
+
+
+  return player;
+}
+
+
+function generateClass() {
+
+  try {
+
+    const seed =
+      document
+        .getElementById(
+          "seed"
+        )
+        .value
+        .trim();
+
+
+    rng =
+      seed
+        ? seededRandom(seed)
+        : Math.random;
+
+
+    let classSize =
+      clamp(
+        Math.round(
+          numberValue(
+            "classSize",
+            40
+          )
+        ),
+        1,
+        500
+      );
+
+
+    const strength =
+      document.getElementById(
+        "classStrength"
+      ).value;
+
+
+    const tierPlan =
+      buildTierPlan(
+        strength,
+        classSize
+      );
+
+
+    generated = [];
+
+
+    for (
+      let index = 1;
+      index <= classSize;
+      index++
+    ) {
+
+      generated.push(
+        makePlayer(
+          index,
+          tierPlan[index - 1]
+        )
+      );
+    }
+
+
+    renderClass();
+
+
+    setStatus(
+      `Generated ${classSize} players successfully.`,
+      "ok"
+    );
+
+  }
+  catch (error) {
+
+    generated = [];
+
+
+    setStatus(
+      error.message ||
+      "Unable to generate class.",
+      "error"
+    );
+  }
+}
+
+
+function renderClass() {
+
+  const body =
+    document.getElementById(
+      "players"
+    );
+
+
+  body.innerHTML = "";
+
+
+  generated.forEach(
+    (
+      player,
+      index
+    ) => {
+
+      const row =
+        document.createElement(
+          "tr"
+        );
+      const positionName =
+        POS.find(
+          position =>
+            Number(
+              position[0]
+            ) ===
+            player.pos
+        )?.[1] || "?";
+
+
+      const feet =
+        Math.floor(
+          player.ht / 12
+        );
+
+
+      const inches =
+        player.ht % 12;
+
+
+      const outlierText =
+        player.outlier
+          ? " • Generational Outlier"
+          : "";
+
+
+      row.innerHTML = `
+        <td>
+          ${index + 1}
+        </td>
+
+        <td>
+          <b>
+            ${player.fn}
+            ${player.ln}
+          </b>
+
+          <br>
+
+          <span class="muted small">
+            ${player.tierName}
+            •
+            ${player.arc}
+            ${outlierText}
+          </span>
+        </td>
+
+        <td>
+          ${positionName}
+        </td>
+
+        <td>
+          ${player.age}
+        </td>
+
+        <td>
+          ${feet}'${inches}"
+          /
+          ${player.wt}
+        </td>
+
+        <td>
+          ${starText(
+            player.currentStars
+          )}
+        </td>
+
+        <td>
+          ${(player.pot / 2).toFixed(1)}★
+        </td>
+
+        <td>
+          ${player.currentPoints}
+          /
+          ${player.pointsRemaining}
+          left
+        </td>
+
+        <td>
+          ${player.physical.SPD}
+          /
+          ${player.physical.STR}
+          /
+          ${player.physical.STA}
+        </td>
+
+        <td>
+          ${player.attributes.DNK[0]}
+          →
+          ${player.attributes.DNK[1]}
+        </td>
+
+        <td>
+          ${player.ctry}
+        </td>
+      `;
+
+
+      body.appendChild(
+        row
+      );
+    }
+  );
+
+
+  const averageCurrent =
+    generated.reduce(
+      (
+        sum,
+        player
+      ) =>
+        sum +
+        player.currentStars,
+      0
+    ) /
+    generated.length;
+
+
+  const eliteSpeedCount =
+    generated.filter(
+      player =>
+        player.physical.SPD >= 19
+    ).length;
+
+
+  const outlierCount =
+    generated.filter(
+      player =>
+        player.outlier
+    ).length;
+
+
+  const summary =
+    document.getElementById(
+      "summary"
+    );
+
+
+  summary.classList.remove(
+    "hidden"
+  );
+
+
+  summary.innerHTML = `
+    <div class="metric">
+      <span class="muted small">
+        Players
+      </span>
+
+      <strong>
+        ${generated.length}
+      </strong>
+    </div>
+
+    <div class="metric">
+      <span class="muted small">
+        Average Current
+      </span>
+
+      <strong>
+        ${averageCurrent.toFixed(2)}★
+      </strong>
+    </div>
+
+    <div class="metric">
+      <span class="muted small">
+        19-20 Speed
+      </span>
+
+      <strong>
+        ${eliteSpeedCount}
+      </strong>
+    </div>
+
+    <div class="metric">
+      <span class="muted small">
+        Budget Outliers
+      </span>
+
+      <strong>
+        ${outlierCount}
+      </strong>
+    </div>
+  `;
+}
+
+
+function setStatus(
+  text,
+  className = ""
+) {
+
+  const status =
+    document.getElementById(
+      "status"
+    );
+
+
+  status.textContent =
+    text;
+
+
+  status.className =
+    "notice " +
+    className;
+}
+
+
+function clearClass() {
+
+  generated = [];
+
+
+  document.getElementById(
+    "players"
+  ).innerHTML = `
+    <tr>
+      <td
+        colspan="11"
+        class="muted">
+        No class generated yet.
+      </td>
+    </tr>
+  `;
+
+
+  document.getElementById(
+    "summary"
+  ).classList.add(
+    "hidden"
+  );
+
+
+  setStatus(
+    "Ready."
+  );
+}
+
+
+function makeEmptyStatLine() {
+
+  return {
+    tid: 0,
+    num: -1,
+    GP: 0,
+    GS: 0,
+    DNP: 0,
+    INJ: 0,
+    W: 0,
+    L: 0,
+    MIN: [0, 0, 0, 0, 0, 0],
+    PM: 0,
+    POS: 0,
+    PTS: 0,
+    FGM: 0,
+    FGA: 0,
+    TPM: 0,
+    TPA: 0,
+    FTM: 0,
+    FTA: 0,
+    REB: 0,
+    ORB: 0,
+    AST: 0,
+    STL: 0,
+    BLK: 0,
+    TO: 0,
+    PF: 0,
+    GW: 0,
+    DD: 0,
+    TD: 0,
+    POTG: 0
+  };
+}
+
+
+function makeEmptyCommissioner() {
+
+  const emptyAttributes = {
+
+    LAY: [0, 0],
+    DNK: [0, 0],
+    INS: [0, 0],
+    MID: [0, 0],
+    TPT: [0, 0],
+    FTS: [0, 0],
+    DRB: [0, 0],
+    PAS: [0, 0],
+    ORE: [0, 0],
+    DRE: [0, 0],
+    STL: [0, 0],
+    BLK: [0, 0],
+    STR: [0, 0],
+    SPD: [0, 0],
+    STM: [0, 0]
+
+  };
+
+
+  const emptyCareerStats = {
+
+    season:
+      makeEmptyStatLine(),
+
+    seasonHighs:
+      makeEmptyStatLine(),
+
+    playoffs:
+      makeEmptyStatLine(),
+
+    playoffHighs:
+      makeEmptyStatLine(),
+
+    finals:
+      makeEmptyStatLine(),
+
+    finalsHighs:
+      makeEmptyStatLine()
+
+  };
+
+
+  return {
+
+    id: 0,
+    tid: 0,
+    league: 0,
+
+    fn: "",
+    ln: "",
+    tag: "",
+    home: "",
+    ctry: "",
+
+    loc: {
+      x: 0,
+      y: 0
+    },
+
+    age: 0,
+    ht: 0,
+    wt: 0,
+    yrs: 0,
+    num: 0,
+    gender: 0,
+    pos: 0,
+    teamPos: 0,
+    posRnk: 0,
+    linePos: 0,
+    rating: 0.0,
+
+    minutes:
+      [0, 0, 0, 0, 0, 0],
+
+    usage: 0,
+    pri: 0,
+    sec: 0,
+    arc: "",
+    pot: 0,
+
+    regressionAge:
+      32,
+
+
+    appearance: {
+
+      skinC: "",
+      eyeC: "",
+      unibrow: false,
+      browC: "",
+      hair: "",
+      hairC: "",
+      fHair: "",
+      fHairC: ""
+
+    },
+
+
+    accessories:
+      [],
+
+    suits:
+      [],
+
+
+    attributes:
+      emptyAttributes,
+
+
+    skills:
+      [],
+
+
+    tendencies: {
+
+      dunk: 0,
+      floater: 0,
+      hook: 0,
+      post: 0,
+      twoPoint: 0,
+      threePoint: 0,
+      pumpFake: 0,
+      fades: 0,
+      pass: 0,
+      lob: 0,
+      cross: 0,
+      spin: 0,
+      step: 0,
+      offReb: 0,
+      runPlay: 0,
+      defReb: 0,
+      takeCharge: 0,
+      stealOnBall: 0,
+      stealOffBall: 0,
+      block: 0
+
+    },
+
+
+    gameStatus: {
+
+      startPos: 0,
+      stamina: 0,
+      gradePoints: -1,
+      grade: 5,
+      streak: 0,
+      matchup: 0,
+      pressure: 0,
+      doubleTeam: 0,
+      xpEarned: 0,
+      relationship: 0,
+      onBench: false,
+      injured: false,
+      isPlayer: false
+
+    },
+
+
+    gameStats:
+      makeEmptyStatLine(),
+
+
+    season: {
+
+      xp:
+        [0, 0, 0, 0, 0],
+
+      ap:
+        [0, 0, 0, 0, 0],
+
+      condition: 100,
+      morale: 100,
+      restDay: false,
+
+      injury: {
+        yr: 0,
+        core: 0,
+        upperBody: 0,
+        lowerBody: 0,
+        minorSeverity: 0,
+        majorSeverity: 0,
+        gamesOut: 0,
+        ageRegression: 0,
+        age: 0
+
+      },
+
+      onTradeBlock: 0,
+      regimen: 0,
+      focus: 0,
+      watch: false,
+      scout: false,
+      progress: 0,
+      protect: false,
+      retiring: false,
+      gpa: 0,
+      relationship: 0,
+      legacyPoints: 0,
+      following: false,
+      legacy: 0,
+
+      gameHistory: {
+        GP: 0,
+        W: 0,
+        L: 0
+      }
+
+    },
+
+
+    stats:
+      [],
+
+
+    careerStats:
+      emptyCareerStats,
+
+
+    awards:
+      [],
+
+
+    history: {
+
+      coll:
+        0,
+
+      yrs:
+        0,
+
+      collegeStats: {
+
+        season:
+          makeEmptyStatLine(),
+
+        seasonHighs:
+          makeEmptyStatLine(),
+
+        playoffs:
+          makeEmptyStatLine(),
+
+        playoffHighs:
+          makeEmptyStatLine(),
+
+        finals:
+          makeEmptyStatLine(),
+
+        finalsHighs:
+          makeEmptyStatLine()
+
+      },
+
+      id: 0,
+      tid: 0,
+
+      draft: {
+
+        pk: 0,
+        rd: 0,
+        tid: 0,
+        otid: 0,
+        yr: 0
+
+      },
+
+      fantasyDrafts: [],
+      expansionDrafts: [],
+      injuries: [],
+      yearDeclared: 0,
+      yearRetired: 0,
+      yearInducted: 0,
+      causeOfDeath: 0
+
+    },
+    
+    careerGoals: {
+
+      game: {
+        PTS: 0,
+        TPM: 0,
+        REB: 0,
+        AST: 0,
+        STL: 0,
+        BLK: 0,
+        TD: 0
+      },
+
+      season: {
+        PTS: 0,
+        TPM: 0,
+        REB: 0,
+        AST: 0,
+        STL: 0,
+        BLK: 0,
+        TD: 0
+      },
+
+      career: {
+        PTS: 0,
+        TPM: 0,
+        REB: 0,
+        AST: 0,
+        STL: 0,
+        BLK: 0,
+        TD: 0
+      }
+
+    },
+
+    contract: {
+
+      tid:
+        0,
+
+      pid:
+        0,
+
+      type:
+        0,
+
+      yrs:
+        0,
+
+      sal:
+        0,
+
+      nil:
+        0,
+
+      opt:
+        0,
+
+      noTrd:
+        0,
+
+      canExt:
+        true,
+
+      ext: {
+
+        yrs:
+          0,
+
+        sal:
+          0,
+
+        opt:
+          0,
+
+        noTrd:
+          0
+
+      }
+
+    },
+
+
+    status: 0,
+    records: 0
+
+  };
+}
+
+
+function makeAccessorySet(player) {
+
+  const skin =
+    player.appearance.skinC;
+
+
+  const shoe =
+    player.appearance.shoeC;
+
+
+  return {
+
+    headAcc:
+      "none",
+
+    headAccC:
+      "FFFFFF",
+
+    headAcc2:
+      "0000",
+
+    headAcc2C:
+      "",
+
+    L_Shoulder:
+      skin,
+
+    R_Shoulder:
+      skin,
+
+    L_Elbow:
+      skin,
+
+    R_Elbow:
+      skin,
+
+    L_Wrist:
+      skin,
+
+    R_Wrist:
+      skin,
+
+    L_Knee:
+      skin,
+
+    R_Knee:
+      skin,
+
+    L_Shin:
+      skin,
+
+    R_Shin:
+      skin,
+
+    sockC:
+      "FFFFFF",
+
+    shoeC:
+      shoe,
+
+    laceC:
+      "FFFFFF",
+
+    soleC:
+      "FFFFFF"
+
+  };
+}
+
+
+function makeHoopLandPlayer(
+  player,
+  index
+) {
+
+  const accessory =
+    makeAccessorySet(
+      player
+    );
+
+
+  return {
+
+    id:
+      index + 1,
+
+    tid:
+      0,
+
+    league:
+      1,
+        false,
+
+      retiring:
+        false,
+
+      gpa:
+        0,
+
+      relationship:
+        0,
+
+      legacyPoints:
+        0,
+
+      following:
+        false,
+
+      legacy:
+        0,
+
+      gameHistory: {
+
+        GP:
+          0,
+
+        W:
+          0,
+
+        L:
+          0
+
+      }
+
+    },
+
+    stats:
+      [],
+
+
+    careerStats: {
+
+      season:
+        makeEmptyStatLine(),
+
+      seasonHighs:
+        makeEmptyStatLine(),
+
+      playoffs:
+        makeEmptyStatLine(),
+
+      playoffHighs:
+        makeEmptyStatLine(),
+
+      finals:
+        makeEmptyStatLine(),
+
+      finalsHighs:
+        makeEmptyStatLine()
+
+    },
+
+
+    awards:
+      [],
+
+    history: {
+
+      coll:
+        0,
+
+      yrs:
+        0,
+
+      collegeStats: {
+
+        season:
+          makeEmptyStatLine(),
+
+        seasonHighs:
+          makeEmptyStatLine(),
+
+        playoffs:
+          makeEmptyStatLine(),
+
+        playoffHighs:
+          makeEmptyStatLine(),
+
+        finals:
+          makeEmptyStatLine(),
+
+        finalsHighs:
+          makeEmptyStatLine()
+
+      },
+
+      id:
+        0,
+
+      tid:
+        0,
+
+
+      id:
+        0,
+
+      tid:
+        0,
+
+      draft: {
+
+        pk: 0,
+        rd: 0,
+        tid: 0,
+        otid: 0,
+        yr: 0
+
+      },
+
+      fantasyDrafts:[],
+      expansionDrafts:[],
+      injuries:[],
+      yearDeclared: 0,
+      yearRetired: 0,
+      yearInducted: 0,
+      causeOfDeath: 0
+
+    },
+
+    careerGoals: {
+
+      game: {
+        PTS: 0,
+        TPM: 0,
+        REB: 0,
+        AST: 0,
+        STL: 0,
+        BLK: 0,
+        TD: 0
+      },
+
+      season: {
+        PTS: 0,
+        TPM: 0,
+        REB: 0,
+        AST: 0,
+        STL: 0,
+        BLK: 0,
+        TD: 0
+      },
+
+      career: {
+        PTS: 0,
+        TPM: 0,
+        REB: 0,
+        AST: 0,
+        STL: 0,
+        BLK: 0,
+        TD: 0
+      }
+
+    },
+
+    contract: {
+
+      tid:
+        0,
+
+      pid:
+        0,
+
+      type:
+        0,
+
+      yrs:
+        0,
+
+      sal:
+        0,
+
+      nil:
+        0,
+
+      opt:
+        0,
+
+      noTrd:
+        0,
+
+      canExt:
+        true,
+
+      ext: {
+
+        yrs:
+          0,
+
+        sal:
+          0,
+
+        opt:
+          0,
+
+        noTrd:
+          0
+
+      }
+
+    },
+
+    status:
+      0,
+
+
+    records:
+      0,
+
+
+    traits: {
+
+      durability:
+        player.traits.durability,
+
+      winning:
+        player.traits.winning,
+
+      money:
+        player.traits.money,
+
+      loyalty:
+        player.traits.loyalty,
+
+      motor:
+        player.traits.motor,
+
+      lockerRoom:
+        player.traits.lockerRoom,
+
+      playoffRiser:
+        player.traits.playoffRiser,
+
+      roadWarrior:
+        player.traits.roadWarrior
+
+    }
+
+  };
+}
+
+
+function downloadHoopLand() {
+
+  if (
+    generated.length === 0
+  ) {
+
+    setStatus(
+      "Generate a class before downloading.",
+      "error"
+    );
+
+    return;
+  }
+
+
+  const classType =
+    document.getElementById(
+      "classType"
+    ).value;
