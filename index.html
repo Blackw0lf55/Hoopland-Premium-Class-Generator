@@ -1,1 +1,1840 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hoopland Class Generator</title>
 
+<style>
+:root{
+  --bg:#081120;
+  --panel:#111d31;
+  --panel2:#0b1628;
+  --line:#2b3b55;
+  --text:#f4f7ff;
+  --muted:#9fb0ca;
+  --accent:#7c5cff;
+  --good:#35c48d;
+  --bad:#ff6577;
+}
+
+*{
+  box-sizing:border-box;
+}
+
+body{
+  margin:0;
+  background:linear-gradient(180deg,#07101f,#0c1830);
+  color:var(--text);
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+}
+
+header{
+  padding:28px 18px;
+  background:linear-gradient(135deg,#172554,#5b21b6);
+}
+
+header>div,
+main{
+  max-width:1180px;
+  margin:auto;
+}
+
+h1{
+  margin:0 0 7px;
+  font-size:clamp(1.45rem,5vw,2.35rem);
+}
+
+h2{
+  font-size:1.15rem;
+  margin:0 0 14px;
+}
+
+.sub,
+.muted{
+  color:var(--muted);
+}
+
+main{
+  padding:18px;
+}
+
+.card{
+  background:rgba(17,29,49,.96);
+  border:1px solid var(--line);
+  border-radius:16px;
+  padding:16px;
+  margin-bottom:16px;
+}
+
+.grid{
+  display:grid;
+  grid-template-columns:
+    repeat(auto-fit,minmax(175px,1fr));
+  gap:12px;
+}
+
+.grid.tight{
+  grid-template-columns:
+    repeat(auto-fit,minmax(120px,1fr));
+}
+
+label{
+  display:block;
+  font-size:.82rem;
+  color:#d9e3f5;
+  margin:0 0 5px;
+}
+
+input,
+select,
+button{
+  font:inherit;
+}
+
+input,
+select{
+  width:100%;
+  padding:10px;
+  border-radius:9px;
+  border:1px solid #40516d;
+  background:#081426;
+  color:var(--text);
+}
+
+input[type=checkbox]{
+  width:auto;
+  accent-color:var(--accent);
+}
+
+button{
+  border:0;
+  border-radius:10px;
+  padding:12px 16px;
+  font-weight:750;
+  cursor:pointer;
+}
+
+.primary{
+  background:var(--accent);
+  color:white;
+}
+
+.secondary{
+  background:#30415e;
+  color:white;
+}
+
+.actions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+}
+
+.notice{
+  margin-top:12px;
+  padding:11px;
+  border-radius:10px;
+  background:#13294c;
+  color:#cde2ff;
+}
+
+.error{
+  background:#4a1721;
+  color:#ffd6db;
+}
+
+.ok{
+  background:#133a31;
+  color:#d4fff0;
+}
+
+.attr{
+  background:var(--panel2);
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:12px;
+}
+
+.attr b{
+  color:#b9c4ff;
+}
+
+.checkrow{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:6px 0;
+}
+
+.checkrow label{
+  margin:0;
+}
+
+.tablewrap{
+  overflow:auto;
+}
+
+table{
+  border-collapse:collapse;
+  width:100%;
+  min-width:820px;
+}
+
+th,
+td{
+  border-bottom:1px solid var(--line);
+  padding:10px 8px;
+  text-align:left;
+  font-size:.86rem;
+}
+
+th{
+  color:#b9c4ff;
+  background:var(--panel);
+}
+
+.pill{
+  display:inline-block;
+  padding:3px 8px;
+  border-radius:999px;
+  background:#273954;
+  color:#dbe8ff;
+  font-size:.76rem;
+}
+
+.summary{
+  display:grid;
+  grid-template-columns:
+    repeat(auto-fit,minmax(140px,1fr));
+  gap:9px;
+  margin:12px 0;
+}
+
+.metric{
+  background:var(--panel2);
+  border:1px solid var(--line);
+  border-radius:10px;
+  padding:10px;
+}
+
+.metric strong{
+  display:block;
+  font-size:1.15rem;
+}
+
+.small{
+  font-size:.78rem;
+}
+
+.section-note{
+  font-size:.82rem;
+  color:var(--muted);
+  margin:-6px 0 12px;
+}
+
+.hidden{
+  display:none;
+}
+
+@media(max-width:540px){
+  main{
+    padding:10px;
+  }
+
+  .card{
+    padding:13px;
+  }
+
+  header{
+    padding:22px 14px;
+  }
+}
+
+/* =========================================
+   HOOP LAND INSPIRED UI THEME
+   VISUAL ONLY - NO GENERATOR LOGIC
+   ========================================= */
+
+:root {
+  --hl-bg: #071d48;
+  --hl-bg-deep: #050d24;
+
+  --hl-panel: #1653a3;
+  --hl-panel-light: #1c60b7;
+  --hl-panel-dark: #103b78;
+
+  --hl-border: #1597ec;
+  --hl-border-bright: #22b3ff;
+  --hl-border-dark: #08295d;
+
+  --hl-input: #08204a;
+  --hl-input-hover: #0b2b60;
+
+  --hl-text: #ffffff;
+  --hl-text-soft: #d8eaff;
+  --hl-text-muted: #91bce8;
+
+  --hl-accent: #42dded;
+  --hl-yellow: #ffe46b;
+
+  --hl-shadow: #03122f;
+}
+
+
+/* PAGE */
+
+html {
+  background:
+    var(--hl-bg-deep);
+}
+
+body {
+  background:
+    linear-gradient(
+      180deg,
+      #09265c 0%,
+      #071d48 45%,
+      #051838 100%
+    );
+
+  color:
+    var(--hl-text);
+
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
+
+  min-height:
+    100vh;
+
+  margin:
+    0;
+}
+
+
+/* MAIN PAGE WRAPPER */
+
+main,
+.container,
+.app,
+.wrapper {
+  color:
+    var(--hl-text);
+}
+
+
+/* HERO / TOP HEADER */
+
+.hero,
+header {
+  background:
+    #100d1c !important;
+
+  border:
+    3px solid
+    var(--hl-border) !important;
+
+  border-radius:
+    2px !important;
+
+  box-shadow:
+    0 6px 0
+    var(--hl-shadow);
+
+  color:
+    var(--hl-text) !important;
+}
+
+
+/* MAIN TITLE */
+
+h1 {
+  color:
+    #ffffff !important;
+
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif !important;
+
+  font-size:
+    clamp(
+      2rem,
+      7vw,
+      3.5rem
+    );
+
+  font-weight:
+    900;
+
+  letter-spacing:
+    0.03em;
+
+  text-transform:
+    uppercase;
+
+  text-shadow:
+    3px 3px 0
+    #06245c;
+
+  margin-bottom:
+    12px;
+}
+
+
+/* SECONDARY HEADINGS */
+
+h2,
+h3 {
+  color:
+    #ffffff !important;
+
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif !important;
+
+  font-weight:
+    900;
+
+  letter-spacing:
+    0.02em;
+}
+
+
+/* REMOVE PURPLE HERO LOOK */
+
+.hero::before,
+.hero::after {
+  opacity:
+    0;
+}
+
+
+/* VERSION BADGE */
+
+.badge,
+.version,
+.version-badge {
+  background:
+    var(--hl-panel) !important;
+
+  border:
+    2px solid
+    var(--hl-border) !important;
+
+  border-radius:
+    2px !important;
+
+  color:
+    #ffffff !important;
+
+  font-weight:
+    900;
+
+  text-transform:
+    uppercase;
+}
+
+
+/* MAIN CARDS / PANELS */
+
+.card,
+.panel,
+section {
+  background:
+    var(--hl-panel) !important;
+
+  border:
+    3px solid
+    var(--hl-border) !important;
+
+  border-radius:
+    3px !important;
+
+  box-shadow:
+    inset 0 0 0 4px
+      var(--hl-panel-dark),
+    0 7px 0
+      var(--hl-shadow);
+
+  color:
+    var(--hl-text);
+}
+
+
+/* PANEL HEADINGS */
+
+.card h2,
+.card h3,
+.panel h2,
+.panel h3,
+section h2,
+section h3 {
+  color:
+    #ffffff !important;
+
+  text-transform:
+    uppercase;
+
+  font-weight:
+    900;
+
+  letter-spacing:
+    0.025em;
+}
+
+
+/* LABELS */
+
+label {
+  color:
+    #ffffff !important;
+
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif !important;
+
+  font-weight:
+    800;
+
+  letter-spacing:
+    0.02em;
+}
+
+
+/* INPUTS */
+
+input,
+select,
+textarea {
+  background:
+    var(--hl-input) !important;
+
+  border:
+    2px solid
+    #4777ac !important;
+
+  border-radius:
+    3px !important;
+
+  color:
+    #ffffff !important;
+
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif !important;
+
+  font-weight:
+    700;
+
+  box-shadow:
+    inset 0 2px 0
+    rgba(0, 0, 0, 0.22);
+
+  outline:
+    none;
+
+  transition:
+    border-color 0.12s ease,
+    background 0.12s ease;
+}
+
+
+/* INPUT FOCUS */
+
+input:focus,
+select:focus,
+textarea:focus {
+  background:
+    var(--hl-input-hover) !important;
+
+  border-color:
+    var(--hl-accent) !important;
+
+  box-shadow:
+    0 0 0 2px
+    rgba(66, 221, 237, 0.2);
+}
+
+
+/* PLACEHOLDER TEXT */
+
+input::placeholder,
+textarea::placeholder {
+  color:
+    #7793b7 !important;
+
+  opacity:
+    1;
+}
+
+
+/* SELECT OPTIONS */
+
+select option {
+  background:
+    var(--hl-input);
+
+  color:
+    #ffffff;
+}
+
+
+/* STANDARD BUTTON */
+
+button {
+  background:
+    var(--hl-panel-light) !important;
+
+  border:
+    3px solid
+    var(--hl-border) !important;
+
+  border-radius:
+    2px !important;
+
+  color:
+    #ffffff !important;
+
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif !important;
+
+  font-weight:
+    900;
+
+  letter-spacing:
+    0.02em;
+
+  box-shadow:
+    0 5px 0
+    var(--hl-shadow);
+
+  cursor:
+    pointer;
+
+  transition:
+    transform 0.08s ease,
+    filter 0.08s ease;
+}
+
+
+/* BUTTON PRESS */
+
+button:active {
+  transform:
+    translateY(3px);
+
+  box-shadow:
+    0 2px 0
+    var(--hl-shadow);
+}
+
+
+/* BUTTON HOVER */
+
+button:hover {
+  filter:
+    brightness(1.12);
+}
+
+
+/* PRIMARY ACTION BUTTONS */
+
+button.primary,
+.primary,
+#generate,
+#download {
+  background:
+    #185db1 !important;
+
+  border-color:
+    var(--hl-accent) !important;
+
+  color:
+    #ffffff !important;
+
+  text-transform:
+    uppercase;
+
+  font-weight:
+    900;
+}
+
+
+/* RANGE SLIDERS */
+
+input[type="range"] {
+  accent-color:
+    var(--hl-border-bright);
+
+  background:
+    transparent !important;
+
+  border:
+    0 !important;
+
+  box-shadow:
+    none;
+}
+
+
+/* CHECKBOX / RADIO */
+
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color:
+    var(--hl-border-bright);
+}
+
+
+/* DIVIDERS */
+
+hr {
+  border:
+    0;
+
+  border-top:
+    2px solid
+    var(--hl-border);
+}
+
+
+/* HELP / MUTED TEXT */
+
+small,
+.help,
+.hint,
+.muted {
+  color:
+    var(--hl-text-soft) !important;
+}
+
+
+/* STATUS BOX */
+
+#status,
+.status {
+  background:
+    var(--hl-input);
+
+  border:
+    2px solid
+    var(--hl-border);
+
+  border-radius:
+    2px;
+
+  color:
+    #ffffff;
+}
+
+
+/* GENERATED PLAYER AREA */
+
+.player,
+.player-card,
+.prospect,
+.prospect-card {
+  background:
+    #104b96 !important;
+
+  border:
+    2px solid
+    var(--hl-border) !important;
+
+  border-radius:
+    2px !important;
+
+  box-shadow:
+    inset 0 0 0 2px
+    #07346e;
+
+  color:
+    #ffffff !important;
+}
+
+
+/* PLAYER NAME */
+.player-name,
+.prospect-name {
+  color:
+    #ffffff !important;
+
+  font-weight:
+    900;
+}
+
+
+/* ATTRIBUTE / STAT BOXES */
+
+.stat,
+.attribute,
+.rating {
+  background:
+    var(--hl-input);
+
+  border:
+    2px solid
+    var(--hl-border);
+
+  border-radius:
+    2px;
+
+  color:
+    #ffffff;
+}
+
+
+/* BLUE OUTER FRAME FEEL */
+
+@media (min-width: 700px) {
+
+  body {
+    padding:
+      18px;
+  }
+
+  main,
+  .container,
+  .app,
+  .wrapper {
+    max-width:
+      1180px;
+
+    margin:
+      0 auto;
+  }
+
+}
+
+
+/* MOBILE */
+
+@media (max-width: 699px) {
+
+  body {
+    padding:
+      0;
+  }
+
+  .card,
+  .panel,
+  section {
+    border-left-width:
+      3px;
+
+    border-right-width:
+      3px;
+
+    box-shadow:
+      inset 0 0 0 3px
+        var(--hl-panel-dark),
+      0 5px 0
+        var(--hl-shadow);
+  }
+
+  input,
+  select,
+  textarea,
+  button {
+    min-height:
+      52px;
+  }
+
+}
+
+/* =========================================
+   CLASS SETUP - HOOP LAND LAYOUT
+   ========================================= */
+
+.setup-panel {
+  position: relative;
+  padding: 26px 22px 24px !important;
+}
+
+.setup-panel > h2 {
+  display: none;
+}
+
+.hl-screen-title {
+  background: #100d1c;
+  border: 3px solid var(--hl-border);
+  box-shadow:
+    inset 0 -3px 0 #08295d,
+    0 5px 0 var(--hl-shadow);
+
+  color: #ffffff;
+
+  font-size: clamp(1.25rem, 5vw, 1.8rem);
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-align: center;
+  text-transform: uppercase;
+
+  padding: 14px 12px;
+  margin:
+    -12px -8px
+    24px;
+}
+
+
+.setup-grid {
+  display: grid;
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+
+  gap: 18px;
+}
+
+
+.setup-control {
+  min-width: 0;
+}
+
+
+.setup-control label {
+  display: block;
+
+  margin-bottom: 7px;
+
+  color: #ffffff !important;
+
+  font-size: 0.9rem;
+  font-weight: 900;
+
+  text-align: center;
+  text-transform: uppercase;
+}
+
+
+.setup-control select,
+.setup-control input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+
+.setup-wide {
+  grid-column: 1 / -1;
+}
+
+
+.label-muted {
+  color: var(--hl-text-muted);
+  font-size: 0.72em;
+  font-weight: 700;
+}
+
+
+.number-control {
+  display: grid;
+
+  grid-template-columns:
+    52px
+    minmax(70px, 1fr)
+    52px;
+
+  gap: 8px;
+
+  align-items: stretch;
+}
+
+
+.number-control input {
+  text-align: center;
+
+  font-size: 1.2rem;
+  font-weight: 900;
+
+  padding-left: 4px;
+  padding-right: 4px;
+
+  appearance: textfield;
+}
+
+
+.number-control input::-webkit-inner-spin-button,
+.number-control input::-webkit-outer-spin-button {
+  appearance: none;
+  margin: 0;
+}
+
+
+.number-step {
+  min-width: 0 !important;
+  width: 52px;
+
+  padding: 0 !important;
+
+  font-size: 1.7rem !important;
+  line-height: 1;
+
+  background: #185db1 !important;
+  border-color: var(--hl-border-bright) !important;
+}
+
+
+/* Phone layout */
+
+@media (max-width: 699px) {
+
+  .setup-panel {
+    padding:
+      20px 14px
+      18px !important;
+  }
+
+  .setup-grid {
+    grid-template-columns:
+      1fr 1fr;
+
+    gap:
+      14px 10px;
+  }
+
+  .setup-control label {
+    font-size:
+      0.77rem;
+  }
+  .setup-control select,
+  .setup-control input {
+    min-height:
+      48px;
+
+    font-size:
+      0.95rem;
+
+    padding:
+      9px 10px;
+  }
+
+  .number-control {
+    grid-template-columns:
+      44px
+      minmax(48px, 1fr)
+      44px;
+
+    gap:
+      5px;
+  }
+
+  .number-step {
+    width:
+      44px;
+
+    min-height:
+      48px !important;
+  }
+
+  .hl-screen-title {
+    margin-bottom:
+      18px;
+  }
+
+}
+
+
+/* Very narrow phones */
+
+@media (max-width: 390px) {
+
+  .setup-grid {
+    grid-template-columns:
+      1fr;
+  }
+
+  .setup-wide {
+    grid-column:
+      auto;
+  }
+
+}
+
+/* =========================================
+   HOOP LAND ATTRIBUTE LIMITS
+   ========================================= */
+
+#attrGrid {
+  display: grid !important;
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+
+  gap: 12px !important;
+}
+
+
+.hl-attribute-card {
+  display: grid;
+
+  grid-template-columns:
+    1fr 1fr;
+
+  gap: 8px;
+
+  position: relative;
+
+  background:
+    #1855a5;
+
+  border:
+    3px solid
+    #1597ec;
+
+  box-shadow:
+    inset 0 0 0 3px
+    #0b3979;
+
+  padding:
+    34px 8px 10px;
+}
+
+
+.hl-attribute-name {
+  position: absolute;
+
+  top: -2px;
+  left: 50%;
+
+  transform:
+    translateX(-50%);
+
+  width:
+    max-content;
+
+  max-width:
+    90%;
+
+  padding:
+    3px 10px;
+
+  background:
+    #1855a5;
+
+  color:
+    #ffffff;
+
+  font-size:
+    0.88rem;
+
+  font-weight:
+    900;
+
+  text-align:
+    center;
+
+  text-transform:
+    uppercase;
+}
+
+
+.hl-attribute-name span {
+  color:
+    #8bdcff;
+
+  margin-left:
+    4px;
+}
+
+
+.hl-rating-column {
+  min-width:
+    0;
+}
+
+
+.hl-rating-heading {
+  color:
+    #ffffff;
+
+  font-size:
+    0.70rem;
+
+  font-weight:
+    900;
+
+  text-align:
+    center;
+
+  margin-bottom:
+    8px;
+}
+
+
+.hl-range-label {
+  color:
+    #8bdcff;
+
+  font-size:
+    0.58rem;
+
+  font-weight:
+    900;
+
+  text-align:
+    center;
+
+  margin:
+    6px 0 3px;
+}
+
+
+.hl-stepper {
+  display: grid;
+
+  grid-template-columns:
+    30px
+    minmax(34px, 1fr)
+    30px;
+
+  gap:
+    3px;
+
+  align-items:
+    center;
+}
+
+
+.hl-step-btn {
+  width:
+    30px !important;
+
+  min-width:
+    0 !important;
+
+  height:
+    34px !important;
+
+  min-height:
+    34px !important;
+
+  padding:
+    0 !important;
+
+  background:
+    #1457aa !important;
+
+  border:
+    2px solid
+    #23b5ff !important;
+
+  box-shadow:
+    0 3px 0
+    #062759 !important;
+
+  color:
+    #ffffff !important;
+
+  font-size:
+    1.2rem !important;
+
+  font-weight:
+    900;
+
+  line-height:
+    1;
+}
+
+
+.hl-rating-value {
+  display:
+    flex;
+
+  align-items:
+    center;
+
+  justify-content:
+    center;
+
+  min-width:
+    0;
+
+  height:
+    32px;
+
+  background:
+    #092b62;
+
+  border:
+    2px solid
+    #0e4389;
+
+  color:
+    #ffffff;
+
+  font-size:
+    0.9rem;
+
+  font-weight:
+    900;
+}
+
+
+.hl-hidden-rating {
+  display:
+    none !important;
+}
+
+
+/* Portrait phones */
+
+@media (max-width: 699px) {
+
+  #attrGrid {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+
+    gap:
+      10px 8px !important;
+  }
+
+
+  .hl-attribute-card {
+    padding:
+      31px 5px 8px;
+
+    gap:
+      5px;
+  }
+
+
+  .hl-attribute-name {
+    font-size:
+      0.72rem;
+
+    padding:
+      3px 6px;
+  }
+
+
+  .hl-rating-heading {
+    font-size:
+      0.58rem;
+  }
+
+
+  .hl-stepper {
+    grid-template-columns:
+      27px
+      minmax(29px, 1fr)
+      27px;
+
+    gap:
+      2px;
+  }
+
+
+  .hl-step-btn {
+    width:
+      27px !important;
+
+    height:
+      32px !important;
+
+    min-height:
+      32px !important;
+
+    font-size:
+      1.05rem !important;
+  }
+
+
+  .hl-rating-value {
+    height:
+      30px;
+
+    font-size:
+      0.78rem;
+  }
+
+}
+
+
+/* Extremely narrow phones */
+
+@media (max-width: 350px) {
+
+  #attrGrid {
+    grid-template-columns:
+      1fr;
+  }
+
+}
+
+
+/* Rebuilt portrait attribute limits and pixel ticker */
+
+body,
+button,
+input,
+select,
+textarea,
+table,
+th,
+td,
+label,
+h1,
+h2,
+h3,
+.sub,
+.muted,
+.section-note,
+.pill,
+.notice{
+  color:#fff!important;
+  font-family:"Courier New",Courier,monospace!important;
+  font-weight:700;
+}
+
+.muted,
+.sub,
+.section-note{
+  color:#fff!important;
+  opacity:.82;
+}
+
+.hl-header{
+  padding:12px 8px!important;
+  background:#083b87!important;
+  border:0!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+}
+
+.hl-ticker-frame{
+  max-width:1180px;
+  margin:0 auto;
+  padding:4px;
+  background:#126fe0;
+  border:2px solid #27a8ff;
+  box-shadow:
+    0 4px 0 #05285f,
+    inset 0 0 0 2px #0750a9;
+}
+
+.hl-ticker-window{
+  overflow:hidden;
+  background:#08070d;
+  border:2px solid #03152f;
+  min-height:48px;
+  display:flex;
+  align-items:center;
+}
+
+.hl-ticker-track{
+  display:flex;
+  width:max-content;
+  white-space:nowrap;
+  animation:hlTicker 14s linear infinite;
+  will-change:transform;
+}
+
+.hl-ticker-track span{
+  flex:0 0 auto;
+  color:#fff!important;
+  font-size:clamp(1.08rem,5vw,2rem);
+  font-weight:900;
+  letter-spacing:.1em;
+  line-height:1;
+  padding:0 2rem;
+}
+
+@keyframes hlTicker{
+  from{
+    transform:translateX(0);
+  }
+
+  to{
+    transform:translateX(-33.333%);
+  }
+}
+
+@media(prefers-reduced-motion:reduce){
+  .hl-ticker-track{
+    animation:none;
+  }
+}
+
+.attribute-limit-grid{
+  display:grid!important;
+  grid-template-columns:
+    repeat(2,minmax(0,1fr))!important;
+  gap:8px 6px!important;
+}
+
+.limit-card{
+  min-width:0;
+  background:#1653a3;
+  border:2px solid #1597ec;
+  box-shadow:
+    inset 0 0 0 2px #0d3b78;
+  padding:24px 4px 7px;
+  position:relative;
+}
+
+.limit-name{
+  position:absolute;
+  top:3px;
+  left:50%;
+  transform:translateX(-50%);
+  color:#fff;
+  font-size:.66rem;
+  font-weight:900;
+  text-align:center;
+  text-transform:uppercase;
+  white-space:nowrap;
+}
+
+.limit-name span{
+  color:#8bdcff;
+  margin-left:4px;
+  font-size:.61rem;
+}
+
+.limit-layout{
+  display:grid;
+  grid-template-columns:
+    28px minmax(0,1fr) 28px;
+  align-items:center;
+  gap:2px;
+}
+
+.limit-side{
+  display:grid;
+  grid-template-rows:
+    auto 15px 15px auto;
+  gap:1px;
+  justify-items:center;
+  min-width:0;
+}
+
+.limit-label{
+  color:#fff;
+  font-size:.59rem;
+  font-weight:900;
+  line-height:1;
+}
+
+.limit-arrow{
+  width:23px!important;
+  min-width:23px!important;
+  height:15px!important;
+  min-height:15px!important;
+  margin:0!important;
+  padding:0!important;
+  border:0!important;
+  border-radius:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  color:#fff!important;
+  font-size:.57rem!important;
+  line-height:15px!important;
+}
+
+.limit-arrow:active{transform:translateY(1px)!important}
+.limit-value{color:#fff;font-size:.67rem;font-weight:900;line-height:1.05;margin-top:2px}
+.limit-bar-wrap{min-width:0;display:flex;align-items:center}
+.limit-bar{width:100%;height:19px;display:grid;grid-template-columns:repeat(20,minmax(0,1fr));gap:1px;align-items:stretch;overflow:hidden}
+.limit-half{display:block;min-width:0;height:100%}
+.limit-half.actual{background:#09bf60}
+.limit-half.potential{background:#030712}
+.limit-half.blank{background:transparent}
+.limit-half.unit-end{margin-right:1px}
+@media(max-width:350px){.attribute-limit-grid{grid-template-columns:1fr!important}}
+
+</style>
+</head>
+
+<body>
+
+<header class="hl-header">
+  <div class="hl-ticker-frame" aria-label="Hoopland Custom Class Generator">
+    <div class="hl-ticker-window">
+      <div class="hl-ticker-track" aria-hidden="true">
+        <span>HOOPLAND CUSTOM CLASS GENERATOR</span>
+        <span>HOOPLAND CUSTOM CLASS GENERATOR</span>
+        <span>HOOPLAND CUSTOM CLASS GENERATOR</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main>
+
+<section class="card setup-panel">
+
+  <div class="hl-screen-title">
+    CREATE NEW CLASS
+  </div>
+
+  <div class="setup-grid">
+
+    <div class="setup-control">
+      <label for="className">
+        Class Name
+      </label>
+
+      <input
+        id="className"
+        value="Custom Class"
+      >
+    </div>
+
+
+    <div class="setup-control">
+      <label for="classStrength">
+        Class Strength
+      </label>
+
+      <select id="classStrength">
+        <option>Generational</option>
+        <option>Strong</option>
+        <option selected>Average</option>
+        <option>Weak</option>
+      </select>
+    </div>
+
+
+    <div class="setup-control">
+      <label for="classType">
+        Class Type
+      </label>
+
+      <select id="classType">
+        <option
+          value="draft"
+          selected
+        >
+          Draft Class
+        </option>
+
+        <option value="freshman">
+          Freshman Class
+        </option>
+      </select>
+    </div>
+
+
+    <div class="setup-control">
+      <label for="mode">
+        Player Mode
+      </label>
+
+      <select id="mode">
+        <option>
+          Fictional
+        </option>
+
+        <option disabled>
+          Real NCAAW - Later
+        </option>
+
+        <option disabled>
+          Hybrid - Later
+        </option>
+      </select>
+    </div>
+
+
+    <div class="setup-control">
+      <label for="classSize">
+        Total Prospects
+      </label>
+
+      <div class="number-control">
+
+        <button
+          type="button"
+          class="number-step"
+          id="classSizeMinus"
+          aria-label="Decrease class size"
+        >
+          −
+        </button>
+
+        <input
+          id="classSize"
+          type="number"
+          min="1"
+          max="500"
+          value="40"
+        >
+
+        <button
+          type="button"
+          class="number-step"
+          id="classSizePlus"
+          aria-label="Increase class size"
+        >
+          +
+        </button>
+
+      </div>
+    </div>
+
+
+    <div class="setup-control">
+      <label for="gender">
+        Class Gender
+      </label>
+
+      <select id="gender">
+        <option
+          value="0"
+          selected
+        >
+          Men's
+        </option>
+
+        <option value="1">
+          Women's
+        </option>
+      </select>
+    </div>
+
+
+    <div class="setup-control setup-wide">
+      <label for="seed">
+        Seed
+        <span class="label-muted">
+          Optional
+        </span>
+      </label>
+
+      <input
+        id="seed"
+        placeholder="Same seed = same class"
+      >
+    </div>
+
+  </div>
+
+</section>
+
+<section class="card">
+ <h2>Attribute Limits</h2>
+
+  <p class="section-note">
+  Set maximum Actual and Potential limits for class generation. Potential cannot be lower than Actual. Speed, strength, and stamina are generated automatically.
+</p>
+
+
+  <div id="attrGrid" class="grid attribute-limit-grid"></div>
+</section>
+
+<section class="card">
+  <h2>Physical Profile</h2>
+
+  <p class="section-note">
+    Height and weight are generated with position in mind.
+    Speed, strength, and stamina use the 8-20 scale and
+    do not count against the 144 core attribute points.
+  </p>
+
+  <div class="grid">
+
+    <div>
+      <label>Minimum Height (inches)</label>
+      <input
+        id="minHt"
+        type="number"
+        min="55"
+        max="90"
+        value="63"
+      >
+    </div>
+
+    <div>
+      <label>Maximum Height (inches)</label>
+      <input
+        id="maxHt"
+        type="number"
+        min="55"
+        max="90"
+        value="80"
+      >
+    </div>
+
+    <div>
+      <label>Minimum Weight (lbs)</label>
+      <input
+        id="minWt"
+        type="number"
+        min="90"
+        max="300"
+        value="120"
+      >
+    </div>
+
+    <div>
+      <label>Maximum Weight (lbs)</label>
+      <input
+        id="maxWt"
+        type="number"
+        min="90"
+        max="300"
+        value="230"
+      >
+    </div>
+
+  </div>
+
+  <div class="notice">
+    SPD, STR, and STA will be generated automatically
+    from position, height, weight, and randomness.
+    Maximum speed will be intentionally rare.
+  </div>
+</section>
+
+
+<section class="card">
+  <h2>Positions</h2>
+
+  <p class="section-note">
+    Select the Hoop Land positions that may appear
+    in the generated class.
+  </p>
+
+  <div
+    id="positions"
+    class="grid tight">
+  </div>
+</section>
+
+
+<section class="card">
+  <h2>Appearance Framework</h2>
+
+  <div class="grid">
+
+    <div class="checkrow">
+      <input
+        id="regional"
+        type="checkbox"
+        checked
+      >
+      <label for="regional">
+        Country-appropriate names and hometowns
+      </label>
+    </div>
+
+    <div class="checkrow">
+      <input
+        id="colorPairs"
+        type="checkbox"
+        checked
+      >
+      <label for="colorPairs">
+        Compatible skin, eye, hair, and eyebrow colors
+      </label>
+    </div>
+
+    <div class="checkrow">
+      <input
+        id="shoes"
