@@ -6433,6 +6433,80 @@ document
 
 
 buildInputs();
+const classSizeInput =
+  document.getElementById(
+    "classSize"
+  );
+
+const classSizeMinus =
+  document.getElementById(
+    "classSizeMinus"
+  );
+
+const classSizePlus =
+  document.getElementById(
+    "classSizePlus"
+  );
+
+
+function changeClassSize(
+  amount
+) {
+
+  const min =
+    Number(
+      classSizeInput.min
+    ) || 1;
+
+  const max =
+    Number(
+      classSizeInput.max
+    ) || 500;
+
+  const current =
+    Number(
+      classSizeInput.value
+    ) || 40;
+
+  classSizeInput.value =
+    Math.max(
+      min,
+      Math.min(
+        max,
+        current + amount
+      )
+    );
+
+  classSizeInput.dispatchEvent(
+    new Event(
+      "change",
+      {
+        bubbles: true
+      }
+    )
+  );
+
+}
+
+
+classSizeMinus.addEventListener(
+  "click",
+  () => {
+    changeClassSize(
+      -1
+    );
+  }
+);
+
+
+classSizePlus.addEventListener(
+  "click",
+  () => {
+    changeClassSize(
+      1
+    );
+  }
+);
 
 </script>
 
