@@ -1838,3 +1838,1506 @@ h3,
     <div class="checkrow">
       <input
         id="shoes"
+        type="checkbox"
+        checked
+      >
+      <label for="shoes">
+        Random shoe colors
+      </label>
+    </div>
+
+    <div class="checkrow">
+      <input
+        id="femaleLooks"
+        type="checkbox"
+        checked
+      >
+      <label for="femaleLooks">
+        Female-focused appearance pool
+      </label>
+    </div>
+
+  </div>
+
+  <p class="section-note">
+    Hairstyle filtering, accessories, and occasional
+    tattoo-style accessories will be expanded later.
+  </p>
+</section>
+
+<section class="card">
+  <h2>Generate</h2>
+
+  <div class="actions">
+
+    <button
+      id="generate"
+      class="primary">
+      Generate V2 Class
+    </button>
+
+    <button
+      id="clear"
+      class="secondary">
+      Clear
+    </button>
+
+    <button
+      id="downloadHoopLand"
+      class="secondary">
+      Download Class
+    </button>
+
+  </div>
+
+  <div
+    id="status"
+    class="notice">
+    Ready.
+  </div>
+</section>
+
+
+<section class="card">
+  <h2>Class Preview</h2>
+
+  <div
+    id="summary"
+    class="summary hidden">
+  </div>
+
+  <div class="tablewrap">
+
+    <table>
+
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Player</th>
+          <th>Pos</th>
+          <th>Age</th>
+          <th>Ht/Wt</th>
+          <th>Current</th>
+          <th>Potential</th>
+          <th>Points</th>
+          <th>SPD/STR/STA</th>
+          <th>DNK</th>
+          <th>Country</th>
+        </tr>
+      </thead>
+
+      <tbody id="players">
+
+        <tr>
+          <td
+            colspan="11"
+            class="muted">
+            No class generated yet.
+          </td>
+        </tr>
+
+      </tbody>
+
+    </table>
+
+  </div>
+</section>
+
+</main>
+
+
+<script>
+
+const ATTRS = [
+  ["LAY", "Layup"],
+  ["DNK", "Dunk"],
+  ["INS", "Inside"],
+  ["MID", "Midrange"],
+  ["TPT", "Three Point"],
+  ["FTS", "Free Throw"],
+  ["DRB", "Dribbling"],
+  ["PAS", "Passing"],
+  ["ORE", "Offensive Rebound"],
+  ["DRE", "Defensive Rebound"],
+  ["STL", "Steal"],
+  ["BLK", "Block"]
+];
+
+
+const POS = [
+  ["0", "PG"],
+  ["1", "G"],
+  ["2", "SG"],
+  ["3", "GF"],
+  ["4", "SF"],
+  ["5", "F"],
+  ["6", "PF"],
+  ["7", "FC"],
+  ["8", "C"]
+];
+
+
+const POS_PROFILE = {
+
+  0: [64, 70, 125, 175, 16, 9],
+  1: [65, 72, 130, 185, 15, 10],
+  2: [66, 73, 135, 190, 15, 10],
+  3: [67, 74, 140, 200, 14, 11],
+  4: [68, 75, 145, 205, 14, 11],
+  5: [69, 77, 150, 215, 13, 12],
+  6: [70, 78, 155, 225, 12, 13],
+  7: [71, 79, 160, 230, 11, 14],
+  8: [72, 80, 165, 235, 10, 15]
+
+};
+
+
+const COUNTRIES = [
+  ["US", 78],
+  ["CA", 6],
+  ["AU", 5],
+  ["FR", 4],
+  ["UK", 2],
+  ["DE", 2],
+  ["ES", 1],
+  ["RS", 1],
+  ["BE", 1]
+];
+
+
+const NAMES = {
+
+  US: [
+    [
+      "Aaliyah",
+      "Amaya",
+      "Arianna",
+      "Camille",
+      "Jada",
+      "Jasmine",
+      "Jordan",
+      "Kayla",
+      "Kennedy",
+      "Maya",
+      "Naomi",
+      "Nia",
+      "Olivia",
+      "Simone",
+      "Sydney",
+      "Tiana",
+      "Zoe"
+    ],
+
+    [
+      "Adams",
+      "Bennett",
+      "Brooks",
+      "Carter",
+      "Coleman",
+      "Davis",
+      "Edwards",
+      "Edwards",
+    ]
+  ]
+
+};
+
+
+const APPEARANCE_PALETTES = [
+  {group:"light",skins:["EEBAA9","E7B099","D9A388","CD9D7E","C69479"],hair:{blonde:["C9A070","BB9766","AC8C5A","A08050","906F4C"],brunette:["7A5A40","704A33","604A23","4A2D1D","3C2514"],red:["905742","804937","6D3A29"],black:["303030","252525","202020"]},eyes:["2060B0","134890","0C3A70","505045","394035","293029","393029","312923","2D2320","261C1A","131009","90502"],tattoos:["7A6358","594338"]},
+  {group:"medium",skins:["B98360","AD795C","A07053","99694F","8C5D4B"],hair:{blonde:["C9A070","BB9766","AC8C5A","A08050","906F4C"],brunette:["7A5A40","704A33","604A23","4A2D1D","3C2514"],red:["905742","804937","6D3A29"],black:["303030","252525","202020"]},eyes:["505045","394035","293029","393029","312923","2D2320","261C1A","131009","90502"],tattoos:["605043","403025"]},
+  {group:"bronze",skins:["835444","7A4D3D","734937","6B4232","633D2F"],hair:{brunette:["7A5A40","704A33","604A23","4A2D1D","3C2514"],black:["303030","252525","202020"]},eyes:["393029","312923","2D2320","261C1A","131009","90502"],tattoos:["433029","2A201A"]},
+  {group:"dark",skins:["5A392B","533329","4B2D23","44291D","3A231A"],hair:{black:["303030","252525","202020"],brunette:["4A2D1D","3C2514"]},eyes:["393029","312923","2D2320","261C1A","131009","90502"],tattoos:["2A201A","1C1816"]}
+];
+
+const MEN_HAIRS=[
+  0,8,10,11,12,16,30,36,41,43,51,56,60,62,66,67,
+  90,94,96,97,99,100,101,105,107,115,133,168,169,170
+];
+
+const WOMEN_HAIRS=[
+  18,19,26,42,80,81,82,103,125,126,127,153,154,155,167
+];
+
+const SHARED_HAIRS=[
+  1,4,5,22,25,27,38,46,61,
+  ...Array.from({length:9},(_,i)=>70+i),
+  84,102,106,108,109,110,111,112,114,116,117,118,
+  121,129,130,138,139,
+  ...Array.from({length:12},(_,i)=>141+i),
+  ...Array.from({length:8},(_,i)=>156+i)
+];
+
+const MEN_FACIAL_HAIR=
+  Array.from({length:32},(_,i)=>i)
+    .filter(i=>![8,9,10,11,13,14,24].includes(i));
+
+const PRIMARY_ACCESSORIES=[
+  18,19,20,21,22,23
+];
+
+const SECONDARY_ACCESSORIES=[
+  5,6
+];
+
+const SHOE_COLORS=[
+  "FFFFFF",
+  "000000",
+  "DBE0E7",
+  "7F3B86",
+  "ED5259",
+  "2E5A78",
+  "D4AF37",
+  "E94B35",
+  "13B2F2",
+  "E37033"
+];
+
+const TEAM_ACCESSORY_COLORS=[
+  "PRI",
+  "SEC",
+  "TER"
+];
+
+const BODY_SEGMENTS=[
+  "L_Shoulder",
+  "R_Shoulder",
+  "L_Elbow",
+  "R_Elbow",
+  "L_Wrist",
+  "R_Wrist",
+  "L_Knee",
+  "R_Knee",
+  "L_Shin",
+  "R_Shin"
+];
+
+function padStyle(id){
+  return String(id).padStart(4,"0")
+}
+
+function weightedPick(items){
+  let total=
+    items.reduce(
+      (sum,item)=>sum+item[1],
+      0
+    );
+
+  let roll=
+    rng()*total;
+
+  for(const [value,weight] of items){
+    roll-=weight;
+
+    if(roll<=0){
+      return value
+    }
+  }
+
+  return items[0][0]
+}
+
+function shuffled(items){
+  const out=[...items];
+
+  for(
+    let i=out.length-1;
+    i>0;
+    i--
+  ){
+    const j=
+      randomInteger(0,i);
+
+    [out[i],out[j]]=
+      [out[j],out[i]]
+  }
+
+  return out
+}
+
+function chooseHairColor(palette){
+  const groups=
+    Object.keys(
+      palette.hair
+    );
+
+  const group=
+    weightedPick(
+      groups.map(
+        group=>[
+          group,
+          group==="black"
+            ?4
+            :group==="brunette"
+              ?4
+              :group==="blonde"
+                ?2
+                :1
+        ]
+      )
+    );
+
+  return{
+    group,
+    color:pick(
+      palette.hair[group]
+    )
+  }
+}
+
+function chooseHairStyle(
+  gender,
+  palette,
+  hairGroup
+){
+  if(gender==="1"){
+    const weighted=[];
+
+    const add=
+      (id,weight)=>
+        weighted.push(
+          [id,weight]
+        );
+    SHARED_HAIRS.forEach(id=>add(id,1));
+    WOMEN_HAIRS.forEach(id=>add(id,[80,81].includes(id)?8:[126,127].includes(id)?5:1));
+    if(palette.group!=="light")for(let i=weighted.length-1;i>=0;i--)if(weighted[i][0]===19)weighted.splice(i,1);
+    if(hairGroup==="blonde")add(80,8);
+    if(["black","brunette"].includes(hairGroup))add(81,8);
+    return weightedPick(weighted);
+  }
+  return pick([...MEN_HAIRS,...SHARED_HAIRS]);
+}
+
+function buildAccessories(skinC,tattooColor,gender,shoeC){
+  const hasTattoos=rng()<.25,usesAccessories=rng()<.80,theme=pick(TEAM_ACCESSORY_COLORS);
+  const base={headAcc:"none",headAccC:theme,headAcc2:"0000",headAcc2C:"",L_Shoulder:skinC,R_Shoulder:skinC,L_Elbow:skinC,R_Elbow:skinC,L_Wrist:skinC,R_Wrist:skinC,L_Knee:skinC,R_Knee:skinC,L_Shin:skinC,R_Shin:skinC,sockC:"FFFFFF",shoeC,laceC:pick(["FFFFFF","000000",theme]),soleC:pick(["FFFFFF","000000",theme])};
+
+  if(hasTattoos)shuffled(BODY_SEGMENTS).slice(0,randomInteger(1,4)).forEach(segment=>base[segment]=tattooColor);
+
+  if(usesAccessories){
+    const primaryPool=[...PRIMARY_ACCESSORIES];
+
+    if(gender==="1")primaryPool.push(2,2,2);
+    if(rng()<.025)primaryPool.push(24);
+
+    base.headAcc=padStyle(pick(primaryPool));
+
+    shuffled([
+      "L_Shoulder",
+      "R_Shoulder",
+      "L_Elbow",
+      "R_Elbow",
+      "L_Wrist",
+      "R_Wrist",
+      "L_Knee",
+      "R_Knee"
+    ])
+    .slice(0,randomInteger(1,4))
+    .forEach(segment=>base[segment]=theme);
+
+    if(rng()<.18){
+      const pool=[...SECONDARY_ACCESSORIES];
+
+      if(rng()<.18)pool.push(16);
+      if(rng()<.03)pool.push(25);
+
+      const id=pick(pool);
+
+      base.headAcc2=padStyle(id);
+      base.headAcc2C=
+        id===16
+          ?pick(["FFFFFF","D4AF37"])
+          :theme;
+    }
+  }
+
+  if(rng()<.14){
+    const c=pick(["FFFFFF","000000"]);
+    base.L_Shin=c;
+    base.R_Shin=c;
+  }
+
+  if(rng()<.18){
+    base.sockC=pick(SHOE_COLORS);
+  }
+
+  return Array.from(
+    {length:4},
+    ()=>({...base})
+  );
+}
+
+
+let rng = Math.random;
+let generated = [];
+
+
+function hashSeed(text) {
+
+  let hash = 2166136261;
+
+  for (const character of text) {
+    hash ^= character.charCodeAt(0);
+    hash = Math.imul(hash, 16777619);
+  }
+
+  return hash >>> 0;
+}
+
+
+function seededRandom(seed) {
+
+  let value = hashSeed(seed);
+
+  return function () {
+
+    value |= 0;
+
+    value =
+      value + 0x6D2B79F5 | 0;
+
+    let result =
+      Math.imul(
+        value ^ value >>> 15,
+        1 | value
+      );
+
+    result =
+      result +
+      Math.imul(
+        result ^ result >>> 7,
+        61 | result
+      ) ^
+      result;
+
+    return (
+      (result ^ result >>> 14) >>> 0
+    ) / 4294967296;
+  };
+}
+
+
+function randomInteger(minimum, maximum) {
+
+  minimum = Math.ceil(minimum);
+  maximum = Math.floor(maximum);
+
+  return Math.floor(
+    rng() * (maximum - minimum + 1)
+  ) + minimum;
+}
+
+
+function pick(items) {
+
+  return items[
+    randomInteger(0, items.length - 1)
+  ];
+}
+
+
+function clamp(value, minimum, maximum) {
+
+  return Math.min(
+    maximum,
+    Math.max(minimum, value)
+  );
+}
+
+
+function numberValue(id, fallback = 0) {
+
+  const value =
+    Number(
+      document.getElementById(id).value
+    );
+
+  if (!Number.isFinite(value)) {
+    return fallback;
+  }
+  return value;
+}
+
+
+function normalRandom() {
+
+  return (
+    rng() +
+    rng() +
+    rng() +
+    rng() +
+    rng() +
+    rng() -
+    3
+  ) / 1.225;
+}
+
+
+function weightedChoice(items) {
+
+  const total =
+    items.reduce(
+      (sum, item) => sum + item[1],
+      0
+    );
+
+  let value = rng() * total;
+
+  for (const item of items) {
+
+    value -= item[1];
+
+    if (value <= 0) {
+      return item[0];
+    }
+  }
+
+  return items[0][0];
+}
+
+
+function budgetForStars(stars) {
+
+  return clamp(
+    Math.round(28 * stars + 4),
+    32,
+    144
+  );
+}
+
+
+function starsForBudget(points) {
+
+  return clamp(
+    (points - 4) / 28,
+    1,
+    5
+  );
+}
+
+
+function starText(value) {
+
+  return Number(value).toFixed(1) + "★";
+}
+
+
+function buildInputs() {
+
+  const attributeGrid =
+    document.getElementById("attrGrid");
+
+  const defaults = {
+    DNK: [6, 8]
+  };
+
+  const display =
+    value =>
+      (value / 2)
+        .toFixed(1)
+        .replace(/\.0$/, "");
+
+
+  function renderBar(code) {
+
+    const actual =
+      Number(
+        document.getElementById(
+          code + "cmax"
+        ).value
+      );
+
+    const potential =
+      Number(
+        document.getElementById(
+          code + "pmax"
+        ).value
+      );
+
+    const bar =
+      document.getElementById(
+        code + "LimitBar"
+      );
+
+    bar.innerHTML = "";
+
+    for (
+      let raw = 1;
+      raw <= 20;
+      raw++
+    ) {
+
+      const half =
+        document.createElement(
+          "span"
+        );
+
+      half.className =
+        "limit-half";
+
+      if (raw <= actual) {
+
+        half.classList.add(
+          "actual"
+        );
+
+      }
+      else if (
+        raw <= potential
+      ) {
+
+        half.classList.add(
+          "potential"
+        );
+
+      }
+      else {
+
+        half.classList.add(
+          "blank"
+        );
+      }
+
+      if (raw % 2 === 0) {
+
+        half.classList.add(
+          "unit-end"
+        );
+      }
+
+      bar.appendChild(
+        half
+      );
+    }
+
+    document.getElementById(
+      code + "cmaxValue"
+    ).textContent =
+      display(actual);
+
+    document.getElementById(
+      code + "pmaxValue"
+    ).textContent =
+      display(potential);
+  }
+
+
+  function changeLimit(
+    code,
+    side,
+    delta
+  ) {
+
+    const actualInput =
+      document.getElementById(
+        code + "cmax"
+      );
+
+    const potentialInput =
+      document.getElementById(
+        code + "pmax"
+      );
+
+    let actual =
+      Number(
+        actualInput.value
+      );
+
+    let potential =
+      Number(
+        potentialInput.value
+      );
+
+
+    if (side === "actual") {
+
+      actual =
+        clamp(
+          actual + delta,
+          4,
+          20
+        );
+
+      if (
+        actual > potential
+      ) {
+
+        potential =
+          actual;
+      }
+
+    }
+    else {
+
+      potential =
+        clamp(
+          potential + delta,
+          actual,
+          20
+        );
+    }
+
+
+    actualInput.value =
+      actual;
+
+    potentialInput.value =
+      potential;
+
+    document.getElementById(
+      code + "pmin"
+    ).value =
+      actual;
+
+    renderBar(code);
+  }
+
+
+  ATTRS.forEach(
+    ([code, name]) => {
+
+      const [
+        actualDefault,
+        potentialDefault
+      ] =
+        defaults[code] ||
+        [16, 20];
+
+      const card =
+        document.createElement(
+          "div"
+        );
+
+      card.className =
+        "limit-card";
+
+      card.innerHTML = `
+        <div class="limit-name">
+          ${name}<span>${code}</span>
+        </div>
+
+        <div class="limit-layout">
+
+          <div class="limit-side">
+
+            <div class="limit-label">
+              ACT
+            </div>
+
+            <button
+              type="button"
+              class="limit-arrow"
+              data-code="${code}"
+              data-side="actual"
+              data-delta="1"
+              aria-label="Increase ${name} Actual maximum"
+            >
+              ▲
+            </button>
+
+            <button
+              type="button"
+              class="limit-arrow"
+              data-code="${code}"
+              data-side="actual"
+              data-delta="-1"
+              aria-label="Decrease ${name} Actual maximum"
+            >
+              ▼
+            </button>
+          <div class="limit-value" id="${code}cmaxValue">${display(actualDefault)}</div>
+        </div>
+
+        <div class="limit-bar-wrap">
+          <div class="limit-bar" id="${code}LimitBar"></div>
+        </div>
+
+        <div class="limit-side">
+          <div class="limit-label">POT</div>
+
+          <button
+            type="button"
+            class="limit-arrow"
+            data-code="${code}"
+            data-side="potential"
+            data-delta="1"
+            aria-label="Increase ${name} Potential maximum"
+          >
+            ▲
+          </button>
+
+          <button
+            type="button"
+            class="limit-arrow"
+            data-code="${code}"
+            data-side="potential"
+            data-delta="-1"
+            aria-label="Decrease ${name} Potential maximum"
+          >
+            ▼
+          </button>
+
+          <div class="limit-value" id="${code}pmaxValue">${display(potentialDefault)}</div>
+        </div>
+      </div>
+
+      <input id="${code}cmin" type="hidden" value="2">
+      <input id="${code}cmax" type="hidden" value="${actualDefault}">
+      <input id="${code}pmin" type="hidden" value="${actualDefault}">
+      <input id="${code}pmax" type="hidden" value="${potentialDefault}">
+    `;
+
+    attributeGrid.appendChild(card);
+    renderBar(code);
+  });
+
+
+  attributeGrid.addEventListener(
+    "click",
+    event => {
+
+      const button =
+        event.target.closest(
+          ".limit-arrow"
+        );
+
+      if (button) {
+
+        changeLimit(
+          button.dataset.code,
+          button.dataset.side,
+          Number(
+            button.dataset.delta
+          )
+        );
+      }
+    }
+  );
+
+
+  const positionGrid =
+    document.getElementById(
+      "positions"
+    );
+
+
+  POS.forEach(
+    ([value, name]) => {
+
+      const row =
+        document.createElement(
+          "div"
+        );
+
+      row.className =
+        "checkrow";
+
+      row.innerHTML = `
+        <input
+          class="poscheck"
+          id="position${value}"
+          type="checkbox"
+          value="${value}"
+          checked
+        >
+        <label for="position${value}">
+          ${name} (${value})
+        </label>
+      `;
+
+      positionGrid.appendChild(
+        row
+      );
+    }
+  );
+}
+
+
+function attributeBounds(code, type) {
+
+  let minimum =
+    clamp(
+      Math.round(
+        numberValue(
+          code + type + "min",
+          2
+        )
+      ),
+      2,
+      20
+    );
+
+  let maximum =
+    clamp(
+      Math.round(
+        numberValue(
+          code + type + "max",
+          20
+        )
+      ),
+      2,
+      20
+    );
+
+  if (minimum > maximum) {
+
+    [minimum, maximum] =
+      [maximum, minimum];
+  }
+
+  return [
+    minimum,
+    maximum
+  ];
+}
+
+
+function allocatePoints(
+  target,
+  minimums,
+  maximums,
+  weights
+) {
+
+  const values =
+    [...minimums];
+
+  let pointsLeft =
+    target -
+    values.reduce(
+      (sum, value) =>
+        sum + value,
+      0
+    );
+
+  const capacity =
+    maximums.reduce(
+      (
+        sum,
+        maximum,
+        index
+      ) =>
+        sum +
+        (
+          maximum -
+          values[index]
+        ),
+      0
+    );
+
+  if (
+    pointsLeft < 0 ||
+    pointsLeft > capacity
+  ) {
+
+    return null;
+  }
+
+
+  let guard =
+    5000;
+
+
+  while (
+    pointsLeft > 0 &&
+    guard > 0
+  ) {
+
+    guard--;
+
+    const options =
+      values.map(
+        (
+          value,
+          index
+        ) =>
+          value <
+          maximums[index]
+            ? Math.max(
+                0.05,
+                weights[index]
+              )
+            : 0
+      );
+
+    const total =
+      options.reduce(
+        (sum, value) =>
+          sum + value,
+        0
+      );
+
+    if (total <= 0) {
+      break;
+    }
+    let choice = rng() * total;
+    let selectedIndex = 0;
+
+    for (
+      selectedIndex = 0;
+      selectedIndex < options.length;
+      selectedIndex++
+    ) {
+
+      choice -= options[selectedIndex];
+
+      if (choice <= 0) {
+        break;
+      }
+    }
+
+    selectedIndex =
+      Math.min(
+        selectedIndex,
+        values.length - 1
+      );
+
+    values[selectedIndex]++;
+    pointsLeft--;
+  }
+
+  if (pointsLeft !== 0) {
+    return null;
+  }
+
+  return values;
+}
+
+
+function archetypeWeights(position) {
+
+  const weights =
+    ATTRS.map(() => 1);
+
+  function boost(codes, amount) {
+
+    codes.forEach(code => {
+
+      const index =
+        ATTRS.findIndex(
+          attribute =>
+            attribute[0] === code
+        );
+
+      if (index >= 0) {
+        weights[index] += amount;
+      }
+    });
+  }
+
+
+  if (position <= 1) {
+
+    boost(
+      ["DRB", "PAS", "LAY", "TPT"],
+      2.2
+    );
+
+  }
+  else if (position <= 3) {
+
+    boost(
+      ["LAY", "MID", "TPT", "STL"],
+      1.8
+    );
+
+  }
+  else if (position <= 5) {
+
+    boost(
+      ["LAY", "INS", "MID", "DRE"],
+      1.5
+    );
+
+  }
+  else {
+
+    boost(
+      ["INS", "ORE", "DRE", "BLK"],
+      2.2
+    );
+  }
+
+
+  const styles = [
+
+    [
+      "Shooter",
+      ["TPT", "MID", "FTS"]
+    ],
+
+    [
+      "Slasher",
+      ["LAY", "DRB", "INS"]
+    ],
+
+    [
+      "Playmaker",
+      ["PAS", "DRB", "LAY"]
+    ],
+
+    [
+      "Defender",
+      ["STL", "BLK", "DRE"]
+    ],
+
+    [
+      "Interior",
+      ["INS", "ORE", "DRE", "BLK"]
+    ]
+
+  ];
+
+
+  const style = pick(styles);
+
+  boost(
+    style[1],
+    2.5
+  );
+
+
+  return {
+    weights: weights,
+    arc: style[0]
+  };
+}
+
+
+const TIER_TARGETS = {
+
+  Generational: {
+    hof: 4,
+    allStar: 8,
+    starter: 10,
+    role: 9,
+    bad: 9
+  },
+
+  Strong: {
+    hof: 2,
+    allStar: 6,
+    starter: 11,
+    role: 12,
+    bad: 9
+  },
+
+  Average: {
+    hof: 1,
+    allStar: 4,
+    starter: 10,
+    role: 15,
+    bad: 10
+  },
+
+  Weak: {
+    hof: 0,
+    allStar: 2,
+    starter: 7,
+    role: 17,
+    bad: 14
+  }
+
+};
+
+
+const TIER_RULES = {
+
+  hof: {
+    name: "Hall of Fame",
+    currentMin: 4.0,
+    currentMax: 5.0,
+    potentialMin: 5.0,
+    potentialMax: 5.0
+  },
+
+  allStar: {
+    name: "All-Star / Fringe HOF",
+    currentMin: 3.0,
+    currentMax: 4.5,
+    potentialMin: 4.5,
+    potentialMax: 4.5
+  },
+
+  starter: {
+    name: "Starter",
+    currentMin: 2.5,
+    currentMax: 4.0,
+    potentialMin: 3.5,
+    potentialMax: 4.0
+  },
+
+  role: {
+    name: "Role Player",
+    currentMin: 2.0,
+    currentMax: 3.0,
+    potentialMin: 3.0,
+    potentialMax: 3.0
+  },
+
+  bad: {
+    name: "Replacement Level",
+    currentMin: 1.0,
+    currentMax: 2.5,
+    potentialMin: 2.0,
+    potentialMax: 2.5
+  }
+
+};
+
+
+function shuffle(items) {
+
+  for (
+    let index = items.length - 1;
+    index > 0;
+    index--
+  ) {
+
+    const otherIndex =
+      randomInteger(
+        0,
+        index
+      );
+
+
+    [
+      items[index],
+      items[otherIndex]
+    ] = [
+      items[otherIndex],
+      items[index]
+    ];
+  }
+
+  return items;
+}
+
+
+function buildTierPlan(
+  strength,
+  classSize
+) {
+
+  const targets =
+    TIER_TARGETS[strength] ||
+    TIER_TARGETS.Average;
+
+
+  const tierNames = [
+    "hof",
+    "allStar",
+    "starter",
+    "role",
+    "bad"
+  ];
+
+
+  const exactCounts = {};
+
+
+  let assigned = 0;
+
+
+  tierNames.forEach(
+    tierName => {
+
+      const scaledCount =
+        targets[tierName] *
+        classSize /
+        40;
+
+
+      exactCounts[tierName] = {
+        count:
+          Math.floor(
+            scaledCount
+          ),
+
+        remainder:
+          scaledCount -
+          Math.floor(
+            scaledCount
+          )
+      };
+
+
+      assigned +=
+        exactCounts[tierName].count;
+    }
+  );
+
+
+  const remaining =
+    classSize -
+    assigned;
+
+
+  const remainderOrder =
+    [...tierNames].sort(
+      (
+        first,
+        second
+      ) =>
+        exactCounts[second].remainder -
+        exactCounts[first].remainder
+    );
+
+
+  for (
+    let index = 0;
+    index < remaining;
+    index++
+  ) {
+
+    const tierName =
+      remainderOrder[
+        index %
+        remainderOrder.length
+      ];
+
+
+    exactCounts[tierName].count++;
+  }
+
+
+  /*
+    Add a small amount of variation by occasionally
+    moving one player between neighboring tiers.
+
+    This keeps class strengths recognizable without
+    making every class use identical counts.
+  */
+
+  const neighboringTiers = [
+    ["hof", "allStar"],
+    ["allStar", "starter"],
+    ["starter", "role"],
+    ["role", "bad"]
+  ];
+
+
+  neighboringTiers.forEach(
+    pair => {
+
+      if (rng() < 0.35) {
+
+        const direction =
+          rng() < 0.5
+            ? 0
+            : 1;
+
+
+        const source =
+          pair[direction];
+
+
+        const destination =
+          pair[1 - direction];
+
+
+        if (
+          exactCounts[source].count > 0
+        ) {
+
+          exactCounts[source].count--;
+
+          exactCounts[destination].count++;
+        }
+      }
+    }
+  );
+
+
+  const plan = [];
+
+
+  tierNames.forEach(
+    tierName => {
+
+      for (
+        let index = 0;
+        index <
+          exactCounts[tierName].count;
+        index++
+      ) {
+
+        plan.push(
+          tierName
+        );
+      }
+    }
+  );
+
+
+  return shuffle(plan);
+}
+
+
+function randomHalfStar(
+  minimum,
+  maximum
+) {
+
+  const minimumRaw =
+    Math.round(
+      minimum * 2
+    );
+
+
+  const maximumRaw =
+    Math.round(
+      maximum * 2
+    );
+
+
+  return (
+    randomInteger(
+      minimumRaw,
+      maximumRaw
+    ) / 2
+  );
+}
+
+
+function qualityForTier(
+  tierName
+) {
+
+  const rule =
+    TIER_RULES[tierName];
+
+
+  let potentialStars =
+    randomHalfStar(
+      rule.potentialMin,
+      rule.potentialMax
+    );
+
+
+  let currentMaximum =
+    Math.min(
+      rule.currentMax,
+      potentialStars
+    );
+
+
+  let currentStars =
+    randomHalfStar(
+      rule.currentMin,
+      currentMaximum
+    );
+
+
+  return {
+
+    tier:
+      tierName,
+
+    tierName:
+      rule.name,
+
+    currentStars:
+      currentStars,
+
+    potentialStars:
