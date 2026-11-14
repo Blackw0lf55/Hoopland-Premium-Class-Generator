@@ -4112,6 +4112,22 @@ function downloadHoopLand() {
       "className"
     ).value.trim();
 
+  const safeClassName =
+  String(
+    className ||
+    "Custom Class"
+  )
+    .replace(
+      /[\/\\:*?"<>|]/g,
+      "-"
+    )
+    .replace(
+      /\s+/g,
+      " "
+    )
+    .trim() ||
+  "Custom Class";
+
 
   const className =
     enteredName ||
