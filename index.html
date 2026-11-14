@@ -3044,6 +3044,8 @@ function clearClass() {
     num: -1,
     GP: 0,
     GS: 0,
+    DNP: 0,
+    INJ: 0,
     W: 0,
     L: 0,
     MIN: [0, 0, 0, 0, 0, 0],
@@ -3070,6 +3072,343 @@ function clearClass() {
   };
 }
 
+  function makeEmptyCommissioner() {
+
+  const emptyAttributes = {
+
+    LAY: [0, 0],
+    DNK: [0, 0],
+    INS: [0, 0],
+    MID: [0, 0],
+    TPT: [0, 0],
+    FTS: [0, 0],
+    DRB: [0, 0],
+    PAS: [0, 0],
+    ORE: [0, 0],
+    DRE: [0, 0],
+    STL: [0, 0],
+    BLK: [0, 0],
+    STR: [0, 0],
+    SPD: [0, 0],
+    STM: [0, 0]
+
+  };
+
+
+  const emptyCareerStats = {
+
+    season:
+      makeEmptyStatLine(),
+
+    seasonHighs:
+      makeEmptyStatLine(),
+
+    playoffs:
+      makeEmptyStatLine(),
+
+    playoffHighs:
+      makeEmptyStatLine(),
+
+    finals:
+      makeEmptyStatLine(),
+
+    finalsHighs:
+      makeEmptyStatLine()
+
+  };
+
+
+  return {
+
+    id: 0,
+    tid: 0,
+    league: 0,
+
+    fn: "",
+    ln: "",
+    tag: "",
+    home: "",
+    ctry: "",
+
+    loc: {
+      x: 0,
+      y: 0
+    },
+
+    age: 0,
+    ht: 0,
+    wt: 0,
+    yrs: 0,
+    num: 0,
+    gender: 0,
+    pos: 0,
+    teamPos: 0,
+    posRnk: 0,
+    linePos: 0,
+    rating: 0.0,
+
+    minutes:
+      [0, 0, 0, 0, 0, 0],
+
+    usage: 0,
+    pri: 0,
+    sec: 0,
+    arc: "",
+    pot: 0,
+
+    regressionAge:
+      32,
+
+
+    appearance: {
+
+      skinC: "",
+      eyeC: "",
+      unibrow: false,
+      browC: "",
+      hair: "",
+      hairC: "",
+      fHair: "",
+      fHairC: ""
+
+    },
+
+
+    accessories:
+      [],
+
+    suits:
+      [],
+
+
+    attributes:
+      emptyAttributes,
+
+
+    skills:
+      [],
+
+
+    tendencies: {
+
+      dunk: 0,
+      floater: 0,
+      hook: 0,
+      post: 0,
+      twoPoint: 0,
+      threePoint: 0,
+      pumpFake: 0,
+      fades: 0,
+      pass: 0,
+      lob: 0,
+      cross: 0,
+      spin: 0,
+      step: 0,
+      offReb: 0,
+      runPlay: 0,
+      defReb: 0,
+      takeCharge: 0,
+      stealOnBall: 0,
+      stealOffBall: 0,
+      block: 0
+
+    },
+
+
+    gameStatus: {
+
+      startPos: 0,
+      stamina: 0,
+      gradePoints: -1,
+      grade: 5,
+      streak: 0,
+      matchup: 0,
+      pressure: 0,
+      doubleTeam: 0,
+      xpEarned: 0,
+      relationship: 0,
+      onBench: false,
+      injured: false,
+      isPlayer: false
+
+    },
+
+
+    gameStats:
+      makeEmptyStatLine(),
+
+
+    season: {
+
+      xp:
+        [0, 0, 0, 0, 0],
+
+      ap:
+        [0, 0, 0, 0, 0],
+
+      condition: 100,
+      morale: 100,
+      restDay: false,
+
+      injury: {
+
+        yr: 0,
+        core: 0,
+        upperBody: 0,
+        lowerBody: 0,
+        minorSeverity: 0,
+        majorSeverity: 0,
+        gamesOut: 0,
+        ageRegression: 0,
+        age: 0
+
+      },
+
+      onTradeBlock: 0,
+      regimen: 0,
+      focus: 0,
+      watch: false,
+      scout: false,
+      progress: 0,
+      protect: false,
+      retiring: false,
+      gpa: 0,
+      relationship: 0,
+      legacyPoints: 0,
+      following: false,
+      legacy: 0,
+
+      gameHistory: {
+        GP: 0,
+        W: 0,
+        L: 0
+      }
+
+    },
+
+
+    stats:
+      [],
+
+
+    careerStats:
+      emptyCareerStats,
+
+
+    awards:
+      [],
+
+
+    history: {
+
+      coll: 0,
+
+      collegeStats: {
+
+        season:
+          makeEmptyStatLine(),
+
+        seasonHighs:
+          makeEmptyStatLine(),
+
+        playoffs:
+          makeEmptyStatLine(),
+
+        playoffHighs:
+          makeEmptyStatLine(),
+
+        finals:
+          makeEmptyStatLine(),
+
+        finalsHighs:
+          makeEmptyStatLine()
+
+      },
+
+      id: 0,
+      tid: 0,
+
+      draft: {
+
+        pk: 0,
+        rd: 0,
+        tid: 0,
+        otid: 0,
+        yr: 0
+
+      },
+
+      fantasyDrafts: [],
+      expansionDrafts: [],
+      injuries: [],
+      yearRetired: 0,
+      yearInducted: 0,
+      causeOfDeath: 0
+
+    },
+
+
+    careerGoals: {
+
+      game: {
+        PTS: 0,
+        TPM: 0,
+        REB: 0,
+        AST: 0,
+        STL: 0,
+        BLK: 0,
+        TD: 0
+      },
+
+      season: {
+        PTS: 0,
+        TPM: 0,
+        REB: 0,
+        AST: 0,
+        STL: 0,
+        BLK: 0,
+        TD: 0
+      },
+
+      career: {
+        PTS: 0,
+        TPM: 0,
+        REB: 0,
+        AST: 0,
+        STL: 0,
+        BLK: 0,
+        TD: 0
+      }
+
+    },
+
+
+    contract: {
+
+      tid: 0,
+      pid: 0,
+      type: 0,
+      yrs: 0,
+      sal: 0,
+      opt: 0,
+      noTrd: false,
+      canExt: true,
+
+      ext: {
+        yrs: 0,
+        sal: 0,
+        opt: 0,
+        noTrd: false
+      }
+
+    },
+
+    status: 0,
+    records: 0
+
+  };
+}
+  
   function makeAccessorySet(player) {
 
   const skin =
@@ -3159,10 +3498,14 @@ function clearClass() {
       player.fn,
 
     ln:
-      player.ln,
+  player.ln,
 
-    home:
-      player.home,
+tag:
+  "",
+
+home:
+  player.home,
+,
 
     ctry:
       player.ctry,
@@ -3185,13 +3528,20 @@ function clearClass() {
       0,
 
     num:
-      randomInteger(
-        0,
-        99
-      ),
+  randomInteger(
+    0,
+    99
+  ),
 
-    pos:
-      player.pos,
+gender:
+  Number(
+    document.getElementById(
+      "gender"
+    ).value
+  ),
+
+pos:
+  player.pos,
 
     teamPos:
       0,
@@ -3200,13 +3550,19 @@ function clearClass() {
       0,
 
     linePos:
-      -1,
+  0,
 
-    minutes:
-      [0, 0, 0, 0, 0, 0],
+rating:
+  0.0,
 
-    pri:
-      11,
+minutes:
+  [0, 0, 0, 0, 0, 0],
+
+usage:
+  0,
+
+pri:
+  11,
 
     sec:
       0,
@@ -3326,25 +3682,53 @@ function clearClass() {
     tendencies:
       player.tendencies,
 
-        gameStatus: {
+            gameStatus: {
 
-      startPos: 0,
-      stamina: 0,
-      streak: 0,
-      matchup: 0,
-      pressure: 0,
-      doubleTeam: 0,
-      xpEarned: 0,
-      injured: false
+      startPos:
+        0,
+
+      stamina:
+        0,
+
+      gradePoints:
+        -1,
+
+      grade:
+        5,
+
+      streak:
+        0,
+
+      matchup:
+        0,
+
+      pressure:
+        0,
+
+      doubleTeam:
+        0,
+
+      xpEarned:
+        0,
+
+      relationship:
+        0,
+
+      onBench:
+        false,
+
+      injured:
+        false,
+
+      isPlayer:
+        false
 
     },
-
 
     gameStats:
       makeEmptyStatLine(),
 
-
-    season: {
+        season: {
 
       xp:
         [0, 0, 0, 0, 0],
@@ -3355,20 +3739,51 @@ function clearClass() {
       condition:
         100,
 
+      morale:
+        100,
+
       restDay:
         false,
 
       injury: {
 
-        yr: 0,
-        core: 0,
-        upperBody: 0,
-        lowerBody: 0,
-        minorSeverity: 0,
-        majorSeverity: 0,
-        gamesOut: 0
+        yr:
+          0,
+
+        core:
+          0,
+
+        upperBody:
+          0,
+
+        lowerBody:
+          0,
+
+        minorSeverity:
+          0,
+
+        majorSeverity:
+          0,
+
+        gamesOut:
+          0,
+
+        ageRegression:
+          0,
+
+        age:
+          0
 
       },
+
+      onTradeBlock:
+        0,
+
+      regimen:
+        0,
+
+      focus:
+        0,
 
       watch:
         false,
@@ -3383,10 +3798,37 @@ function clearClass() {
         false,
 
       retiring:
-        false
+        false,
+
+      gpa:
+        0,
+
+      relationship:
+        0,
+
+      legacyPoints:
+        0,
+
+      following:
+        false,
+
+      legacy:
+        0,
+
+      gameHistory: {
+
+        GP:
+          0,
+
+        W:
+          0,
+
+        L:
+          0
+
+      }
 
     },
-
 
     stats:
       [],
@@ -3419,10 +3861,39 @@ function clearClass() {
       [],
 
 
-    history: {
+  history: {
 
       coll:
         0,
+
+      collegeStats: {
+
+        season:
+          makeEmptyStatLine(),
+
+        seasonHighs:
+          makeEmptyStatLine(),
+
+        playoffs:
+          makeEmptyStatLine(),
+
+        playoffHighs:
+          makeEmptyStatLine(),
+
+        finals:
+          makeEmptyStatLine(),
+
+        finalsHighs:
+          makeEmptyStatLine()
+
+      },
+
+      id:
+        0,
+
+      tid:
+        0,
+
 
       id:
         0,
@@ -3460,14 +3931,143 @@ function clearClass() {
 
     },
 
+        careerGoals: {
 
-    contract: {
+      game: {
+
+        PTS: 0,
+        TPM: 0,
+        REB: 0,
+        AST: 0,
+        STL: 0,
+        BLK: 0,
+        TD: 0
+
+      },
+
+          season: {
+
+      xp:
+        [0, 0, 0, 0, 0],
+
+      ap:
+        [0, 0, 0, 0, 0],
+
+      condition:
+        100,
+
+      morale:
+        100,
+
+      restDay:
+        false,
+
+      injury: {
+
+        yr:
+          0,
+
+        core:
+          0,
+
+        upperBody:
+          0,
+
+        lowerBody:
+          0,
+
+        minorSeverity:
+          0,
+
+        majorSeverity:
+          0,
+
+        gamesOut:
+          0,
+
+        ageRegression:
+          0,
+
+        age:
+          0
+
+      },
+
+      onTradeBlock:
+        0,
+
+      regimen:
+        0,
+
+      focus:
+        0,
+
+      watch:
+        false,
+
+      scout:
+        false,
+
+      progress:
+        0,
+
+      protect:
+        false,
+
+      retiring:
+        false,
+
+      gpa:
+        0,
+
+      relationship:
+        0,
+
+      legacyPoints:
+        0,
+
+      following:
+        false,
+
+      legacy:
+        0,
+
+      gameHistory: {
+
+        GP:
+          0,
+
+        W:
+          0,
+
+        L:
+          0
+
+      }
+
+    },
+
+      career: {
+
+        PTS: 0,
+        TPM: 0,
+        REB: 0,
+        AST: 0,
+        STL: 0,
+        BLK: 0,
+        TD: 0
+
+      }
+
+    },
+
+        contract: {
 
       tid:
         0,
 
       pid:
-        index + 1,
+        0,
 
       type:
         0,
@@ -3482,10 +4082,28 @@ function clearClass() {
         0,
 
       noTrd:
-        false
+        false,
+
+      canExt:
+        true,
+
+      ext: {
+
+        yrs:
+          0,
+
+        sal:
+          0,
+
+        opt:
+          0,
+
+        noTrd:
+          false
+
+      }
 
     },
-
 
     status:
       0,
@@ -3578,27 +4196,62 @@ function downloadHoopLand() {
 
 
   const exportFile = {
+const exportFile = {
 
-    leagueName:
+  leagueName:
+    "",
+
+  shortName:
+    "",
+
+  logoURL:
+    "",
+
+  logoSize:
+    0,
+
+  leagueType:
+    1,
+
+  workshop: {
+
+    id:
+      0,
+
+    title:
       "",
 
-    shortName:
+    description:
       "",
 
-    logoURL:
+    changelog:
       "",
 
-    leagueType:
-      1,
+    previewPath:
+      "",
 
+    folderPath:
+      "",
 
-    meta: {
+    visibility:
+      0,
+
+    time:
+      "",
+
+    subscribed:
+      false
+
+  },
+
+  meta: {
 
       saveName:
         className,
 
       buildVersion:
-        "1.06.2.1",
+        buildVersion:
+  "1.09.61",
 
       uPID:
         hoopLandPlayers.length + 1,
@@ -3664,18 +4317,22 @@ function downloadHoopLand() {
 
       ],
 
-      gender:
-  Number(
-    document.getElementById(
-      "gender"
-    ).value
-  )
+            gender:
+        Number(
+          document.getElementById(
+            "gender"
+          ).value
+        ),
 
+      teams:
+        0,
+
+      filesize:
+        0
 
     },
 
-
-    conferences:
+        conferences:
       [],
 
     divisions:
@@ -3685,6 +4342,53 @@ function downloadHoopLand() {
       [],
 
     starTeams:
+      [],
+
+commissioner:
+  makeEmptyCommissioner(),
+  
+    referees:
+      [],
+
+
+    gameballs: [
+
+      {
+        pri: "E37033",
+        sec: "E37033",
+        ter: "E37033",
+        outline: "44220f"
+      },
+
+      {
+        pri: "FFFFFF",
+        sec: "E37033",
+        ter: "E37033",
+        outline: "44220f"
+      },
+
+      {
+        pri: "FFFFFF",
+        sec: "C22E3A",
+        ter: "154FA1",
+        outline: "061830"
+      },
+
+      {
+        pri: "13b2f2",
+        sec: "0e82ce",
+        ter: "0d2f6d",
+        outline: "040e21"
+      }
+
+    ],
+
+
+    coaches:
+      [],
+
+
+    media:
       [],
 
 
