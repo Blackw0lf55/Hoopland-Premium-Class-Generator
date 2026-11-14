@@ -2330,20 +2330,26 @@ function randomInteger(minimum, maximum) {
 
 function pick(items) {
 
+  if (!Array.isArray(items)) {
+    throw new Error(
+      "pick() received an invalid list. Value: " +
+      String(items)
+    );
+  }
+
+  if (items.length === 0) {
+    throw new Error(
+      "pick() received an empty list."
+    );
+  }
+
   return items[
-    randomInteger(0, items.length - 1)
+    randomInteger(
+      0,
+      items.length - 1
+    )
   ];
 }
-
-
-function clamp(value, minimum, maximum) {
-
-  return Math.min(
-    maximum,
-    Math.max(minimum, value)
-  );
-}
-
 
 function numberValue(id, fallback = 0) {
 
