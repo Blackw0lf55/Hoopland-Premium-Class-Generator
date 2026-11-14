@@ -3748,31 +3748,18 @@ function generateAutomaticTendencies(
 
 function makePlayer(id, tierName) {
 
-  const allowedPositions = [
-    ...document.querySelectorAll(
-      ".poscheck:checked"
-    )
-  ].map(
-    item =>
-      Number(item.value)
-  );
-
-
-  if (
-    allowedPositions.length === 0
-  ) {
-
-    throw new Error(
-      "Select at least one position."
-    );
-  }
-
-
   const position =
-    pick(
-      allowedPositions
-    );
-
+  weightedChoice([
+    [0, 14],
+    [1, 10],
+    [2, 14],
+    [3, 9],
+    [4, 13],
+    [5, 9],
+    [6, 13],
+    [7, 7],
+    [8, 11]
+  ]);
 
   const profile =
     POS_PROFILE[position];
