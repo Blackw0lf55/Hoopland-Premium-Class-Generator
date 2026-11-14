@@ -3306,7 +3306,11 @@ function clearClass() {
 
     history: {
 
-      coll: 0,
+  coll:
+    0,
+
+  yrs:
+    0,
 
       collegeStats: {
 
@@ -3345,7 +3349,8 @@ function clearClass() {
 
       fantasyDrafts: [],
       expansionDrafts: [],
-      injuries: [],
+      injuries:[],
+      yearDeclared:0,
       yearRetired: 0,
       yearInducted: 0,
       causeOfDeath: 0
@@ -3386,25 +3391,53 @@ function clearClass() {
 
     },
 
-    contract: {
+        contract: {
 
-      tid: 0,
-      pid: 0,
-      type: 0,
-      yrs: 0,
-      sal: 0,
-      opt: 0,
-      noTrd: false,
-      canExt: true,
+      tid:
+        0,
+
+      pid:
+        0,
+
+      type:
+        0,
+
+      yrs:
+        0,
+
+      sal:
+        0,
+
+      nil:
+        0,
+
+      opt:
+        0,
+
+      noTrd:
+        0,
+
+      canExt:
+        true,
 
       ext: {
-        yrs: 0,
-        sal: 0,
-        opt: 0,
-        noTrd: false
+
+        yrs:
+          0,
+
+        sal:
+          0,
+
+        opt:
+          0,
+
+        noTrd:
+          0
+
       }
 
     },
+
 
     status: 0,
     records: 0
@@ -3429,6 +3462,12 @@ function clearClass() {
 
     headAccC:
       "FFFFFF",
+
+    headAcc2:
+  "0000",
+
+headAcc2C:
+  "",
 
     L_Shoulder:
       skin,
@@ -3552,7 +3591,7 @@ pos:
       0,
 
     linePos:
-  0,
+  -1,
 
 rating:
   0.0,
@@ -3862,10 +3901,12 @@ pri:
     awards:
       [],
 
-
   history: {
 
       coll:
+        0,
+
+      yrs:
         0,
 
       collegeStats: {
@@ -3913,23 +3954,13 @@ pri:
 
       },
 
-      fantasyDrafts:
-        [],
-
-      expansionDrafts:
-        [],
-
-      injuries:
-        [],
-
-      yearRetired:
-        0,
-
-      yearInducted:
-        0,
-
-      causeOfDeath:
-        0
+      fantasyDrafts:[],
+      expansionDrafts:[],
+      injuries:[],
+      yearDeclared: 0,
+      yearRetired: 0,
+      yearInducted: 0,
+      causeOfDeath: 0
 
     },
 
@@ -3967,7 +3998,7 @@ pri:
 
     },
 
-        contract: {
+            contract: {
 
       tid:
         0,
@@ -3984,11 +4015,14 @@ pri:
       sal:
         0,
 
+      nil:
+        0,
+
       opt:
         0,
 
       noTrd:
-        false,
+        0,
 
       canExt:
         true,
@@ -4005,7 +4039,7 @@ pri:
           0,
 
         noTrd:
-          false
+          0
 
       }
 
@@ -4154,7 +4188,7 @@ const exportFile = {
         className,
 
         buildVersion:
-  "1.09.61",
+  "1.12.1",
 
       uPID:
         hoopLandPlayers.length + 1,
@@ -4286,6 +4320,8 @@ commissioner:
 
     ],
 
+      courts:
+      [],
 
     coaches:
       [],
@@ -4295,9 +4331,406 @@ commissioner:
       [],
 
 
-    draftClass:
-      hoopLandPlayers
+        draftClass:
+      hoopLandPlayers,
 
+  freeAgents:
+      [],
+
+    threePointContestants:
+      [],
+
+    retirees:
+      [],
+
+    hallOfFame:
+      [],
+
+    contractOffers:
+      [],
+
+        awards:
+      [],
+
+
+    records: {
+
+      season: {
+        PTS: [],
+        FGM: [],
+        TPM: [],
+        FTM: [],
+        REB: [],
+        AST: [],
+        STL: [],
+        BLK: [],
+        TO: []
+      },
+
+      playoffs: {
+        PTS: [],
+        FGM: [],
+        TPM: [],
+        FTM: [],
+        REB: [],
+        AST: [],
+        STL: [],
+        BLK: [],
+        TO: []
+      },
+
+      finals: {
+        PTS: [],
+        FGM: [],
+        TPM: [],
+        FTM: [],
+        REB: [],
+        AST: [],
+        STL: [],
+        BLK: [],
+        TO: []
+      }
+
+    },
+    
+  settings: {
+
+      gameBall:
+        0,
+
+      referee:
+        0,
+
+      gameLength:
+        0,
+
+      totalPeriods:
+        0,
+
+      shotClock:
+        1,
+
+      difficulty:
+        1,
+
+      rules:
+        0,
+
+      gameStyle:
+        0
+
+    },
+   
+  difficulty: {
+
+      shotStyle:
+        0,
+
+      shotSpeed:
+        0,
+
+      defensiveAssistance:
+        1,
+
+      offensiveAssistance:
+        0,
+
+      CPUShotTiming:
+        2,
+
+      CPUReactionTime:
+        2,
+
+      CPUPlayerSpeed:
+        1
+
+    },
+
+      sliders: {
+
+      layupAccuracy:
+        50,
+
+      dunkAccuracy:
+        50,
+
+      insideAccuracy:
+        50,
+
+      midrangeAccuracy:
+        50,
+
+      threePointAccuracy:
+        50,
+
+      freeThrowAccuracy:
+        50,
+
+      contestedShotStrength:
+        50,
+
+      stealSuccessRate:
+        50,
+
+      blockSuccessRate:
+        50,
+
+      fatigueStrength:
+        50,
+
+      homeCourtAdvantage:
+        50,
+
+      playerVSCPUAccuracy:
+        50,
+
+      shootingFoulFrequency:
+        50
+
+    },
+
+
+    simulationSliders: {
+
+      layupAccuracy:
+        50,
+
+      dunkAccuracy:
+        50,
+
+      insideAccuracy:
+        50,
+
+      midrangeAccuracy:
+        50,
+
+      threePointAccuracy:
+        50,
+
+      freeThrowAccuracy:
+        50,
+
+      contestedShotStrength:
+        50,
+
+      stealSuccessRate:
+        50,
+
+      blockSuccessRate:
+        50,
+
+      fatigueStrength:
+        50,
+
+      homeCourtAdvantage:
+        50,
+
+      playerVSCPUAccuracy:
+        50,
+
+      shootingFoulFrequency:
+        50
+
+    },
+
+      optimization: {
+
+      teamLogos:
+        false,
+
+      courts:
+        false,
+
+      tableGraphics:
+        false,
+
+      playerStatsHistory:
+        0,
+
+      disableBoxScores:
+        false,
+
+      restrictImageSizes:
+        true
+
+    },
+
+      season: {
+
+      mode:
+        0,
+
+      teamId:
+        0,
+
+      playerId:
+        0,
+
+      playerHistory:
+        [],
+
+      startingYear:
+        0,
+
+      currentYear:
+        0,
+
+      currentDay:
+        0,
+
+      currentRound:
+        0,
+
+      allStarWeekend:
+        0,
+
+      allStarHostId:
+        0,
+
+      tradeDeadline:
+        0,
+
+      optimization:
+        0,
+
+      lotteryTeams:
+        0,
+
+      lotteryOdds:
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+
+      fantasyDraft:
+        false,
+
+      expansionDraft:
+        false,
+
+      customDraftClass:
+        false,
+
+      declareAllPlayers:
+        false,
+
+      allowOtherProspects:
+        false,
+
+      draftEligibility:
+        0,
+
+      draftRounds:
+        0,
+
+      signingDays:
+        3,
+
+      classStrength:
+        4,
+
+      totalGames:
+        0,
+
+      divisionGames:
+        0,
+
+      conferenceGames:
+        0,
+
+      nonConferenceGames:
+        0,
+
+      salaryCap:
+        0,
+
+      maxContract:
+        [10, 15, 20],
+
+      tierBudgets:
+        [20, 25, 30, 35, 40],
+
+      playoffTeams:
+        0,
+
+      seriesLength:
+        [0, 0, 0, 0, 0, 0],
+      playInTournament:
+        false,
+
+      simulationPace:
+        0,
+
+      progressionRate:
+        0,
+
+      injuryProbability:
+        0,
+
+      cpuTrading:
+        true,
+
+      generatedFreeAgents:
+        false,
+
+      ageAppearance:
+        false,
+
+      hidePotential:
+        false,
+
+      HOFbar:
+        10,
+
+      dynamicPrestige:
+        true,
+
+      randomizePrestige:
+        false,
+
+      cpuRosterChanges:
+        false,
+
+      cpuTradeBlock:
+        true,
+
+      cpuProgression:
+        false,
+
+      autoTradeApproval:
+        false,
+
+      overrideCPU:
+        false,
+
+      injuries:
+        false,
+
+      regression:
+        true,
+
+      simulationPreset:
+        0,
+
+      phase:
+        0,
+
+      news:
+        [],
+
+      draftWorkouts:
+        [],
+
+      schedule:
+        [],
+
+      tradeOffers:
+        [],
+
+      playoffs:
+        [],
+
+      posts:
+        []
+
+    },
   };
 
 
