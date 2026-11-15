@@ -1522,19 +1522,16 @@ h3,
 }
 
 .limit-arrow{
-  width:23px!important;
-  min-width:23px!important;
-  height:15px!important;
-  min-height:15px!important;
-  margin:0!important;
-  padding:0!important;
-  border:0!important;
-  border-radius:0!important;
-  background:transparent!important;
-  box-shadow:none!important;
-  color:#fff!important;
-  font-size:.57rem!important;
-  line-height:15px!important;
+  width:44px;
+  height:44px;
+  min-width:44px;
+  min-height:44px;
+  font-size:22px;
+  line-height:1;
+  padding:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
 }
 
 .limit-arrow:active{transform:translateY(1px)!important}
@@ -2661,7 +2658,6 @@ function starText(value) {
   return Number(value).toFixed(1) + "★";
 }
 
-
 function buildInputs() {
 
   const attributeGrid =
@@ -2677,90 +2673,91 @@ function buildInputs() {
         .toFixed(1)
         .replace(/\.0$/, "");
 
+function renderBar(code) {
 
-  function renderBar(code) {
-
-    const actual =
-      Number(
-        document.getElementById(
-          code + "cmax"
-        ).value
-      );
-
-    const potential =
-      Number(
-        document.getElementById(
-          code + "pmax"
-        ).value
-      );
-
-    const bar =
+  const actual =
+    Number(
       document.getElementById(
-        code + "LimitBar"
+        code + "cmax"
+      ).value
+    );
+
+  const potential =
+    Number(
+      document.getElementById(
+        code + "pmax"
+      ).value
+    );
+
+  const bar =
+    document.getElementById(
+      code + "LimitBar"
+    );
+
+  bar.innerHTML = "";
+
+
+  for (
+    let rating = 1;
+    rating <= 10;
+    rating++
+  ) {
+
+    const segment =
+      document.createElement(
+        "span"
       );
 
-    bar.innerHTML = "";
+    segment.className =
+      "limit-half";
 
-    for (
-      let raw = 1;
-      raw <= 20;
-      raw++
-    ) {
+    const raw =
+      rating * 2;
 
-      const half =
-        document.createElement(
-          "span"
-        );
 
-      half.className =
-        "limit-half";
+    if (raw <= actual) {
 
-      if (raw <= actual) {
+      segment.classList.add(
+        "actual"
+      );
 
-        half.classList.add(
-          "actual"
-        );
+    }
+    else if (raw <= potential) {
 
-      }
-      else if (
-        raw <= potential
-      ) {
+      segment.classList.add(
+        "potential"
+      );
 
-        half.classList.add(
-          "potential"
-        );
+    }
+    else {
 
-      }
-      else {
-
-        half.classList.add(
-          "blank"
-        );
-      }
-
-      if (raw % 2 === 0) {
-
-        half.classList.add(
-          "unit-end"
-        );
-      }
-
-      bar.appendChild(
-        half
+      segment.classList.add(
+        "blank"
       );
     }
 
-    document.getElementById(
-      code + "cmaxValue"
-    ).textContent =
-      display(actual);
 
-    document.getElementById(
-      code + "pmaxValue"
-    ).textContent =
-      display(potential);
+    segment.classList.add(
+      "unit-end"
+    );
+
+    bar.appendChild(
+      segment
+    );
   }
 
+
+  document.getElementById(
+    code + "cmaxValue"
+  ).textContent =
+    String(actual / 2);
+
+
+  document.getElementById(
+    code + "pmaxValue"
+  ).textContent =
+    String(potential / 2);
+}
 
   function changeLimit(
     code,
@@ -2869,7 +2866,7 @@ function buildInputs() {
               class="limit-arrow"
               data-code="${code}"
               data-side="actual"
-              data-delta="1"
+              data-delta="2"
               aria-label="Increase ${name} Actual maximum"
             >
               ▲
@@ -2880,7 +2877,7 @@ function buildInputs() {
               class="limit-arrow"
               data-code="${code}"
               data-side="actual"
-              data-delta="-1"
+              data-delta="-2"
               aria-label="Decrease ${name} Actual maximum"
             >
               ▼
