@@ -203,6 +203,186 @@ function parseWnbaDraftBoard(
 
 }
 
+function normalizePlayerName(
+  value
+) {
+
+  return String(
+    value || ""
+  )
+    .normalize(
+      "NFD"
+    )
+    .replace(
+      /[\u0300-\u036f]/g,
+      ""
+    )
+    .replace(
+      /[’']/g,
+      ""
+    )
+    .replace(
+      /[^a-zA-Z0-9]/g,
+      ""
+    )
+    .toLowerCase();
+
+}
+
+
+function cleanBiographyText(
+  html
+) {
+
+  return String(
+    html || ""
+  )
+    .replace(
+      /<script[\s\S]*?<\/script>/gi,
+      " "
+    )
+    .replace(
+      /<style[\s\S]*?<\/style>/gi,
+      " "
+    )
+    .replace(
+      /<[^>]*>/g,
+      " "
+    )
+    .replace(
+      /&nbsp;/gi,
+      " "
+    )
+    .replace(
+      /&amp;/gi,
+      "&"
+    )
+    .replace(
+      /&#x27;|&#39;/gi,
+      "'"
+    )
+    .replace(
+      /&quot;/gi,
+      "\""
+    )
+    .replace(
+      /\s+/g,
+      " "
+    )
+    .trim();
+
+}
+
+
+function parseUsbasketBiographies(
+  html
+) {
+
+  const text =
+    cleanBiographyText(
+      html
+    );
+
+  const biographies =
+    [];
+
+
+  /*
+    Examples handled:
+
+    1 Azzi Fudd (5'11''-G-2002)
+    3 Awa Fam Thiam (6'4''-C-2006)
+    17 Frieda Buehner (6'1''-C/F-2004)
+
+    Birth year is optional because the source
+    does not display it for every prospect.
+  */
+
+  const pattern =
+    /\b(\d{1,2})\s+([A-Za-zÀ-ž'’.-]+(?:\s+[A-Za-zÀ-ž'’.-]+){1,4})\s+$$(\d+)'(\d+)''-([A-Z/]+)(?:-(\d{4}))?$$/g;
+
+
+  let match;
+
+
+  while (
+    (
+      match =
+        pattern.exec(
+          text
+        )
+    ) !== null
+  ) {
+
+    const draftPick =
+      Number(
+        match[1]
+      );
+
+    const fullName =
+      match[2]
+        .replace(
+          /\s+/g,
+          " "
+        )
+        .trim();
+
+    const feet =
+      Number(
+        match[3]
+      );
+
+    const inches =
+      Number(
+        match[4]
+      );
+
+    const sourcePosition =
+      match[5];
+
+    const birthYear =
+      match[6]
+        ? Number(
+            match[6]
+          )
+        : null;
+
+
+    biographies.push({
+
+      draftPick:
+        draftPick,
+
+      fullName:
+        fullName,
+
+      nameKey:
+        normalizePlayerName(
+          fullName
+        ),
+
+      height:
+        feet * 12 +
+        inches,
+
+      sourcePosition:
+        sourcePosition,
+
+      birthYear:
+        birthYear,
+
+      source:
+        "USbasket 2026 WNBA Draft"
+
+    });
+
+  }
+
+
+  return biographies;
+
+}
+
 export default {
 
   async fetch(
