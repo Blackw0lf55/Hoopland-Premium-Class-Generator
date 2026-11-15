@@ -4140,7 +4140,12 @@ function makePlayer(id, tierName) {
       COUNTRIES
     );
 
-  const namePool =
+const gender =
+  document.getElementById(
+    "gender"
+  ).value;
+
+const namePool =
   NAMES[country] ||
   NAMES.US;
 
@@ -4370,7 +4375,6 @@ const hometown =
 
 
   const classType=document.getElementById("classType").value;
-  const gender=document.getElementById("gender").value;
   const international=country!=="US";
   const year=classType==="freshman"?"Fr.":(gender==="1"?"Sr.":pick(["Fr.","So.","Jr.","Sr."]));
   const age=classType==="freshman"?randomInteger(17,19):(gender==="0"?randomInteger(18,22):(international?randomInteger(19,21):randomInteger(20,21)));
