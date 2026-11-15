@@ -2521,6 +2521,36 @@ function buildAccessories(skinC,tattooColor,gender,shoeC){
 const hasTattoos = rng() < 0.12;
 const usesAccessories = rng() < 0.28;
 
+const theme =
+  pick(ACCESSORY_COLORS);
+
+const base = {
+  headAcc: "none",
+  headAccC: theme,
+  headAcc2: "0000",
+  headAcc2C: "",
+
+  L_Shoulder: skinC,
+  R_Shoulder: skinC,
+
+  L_Elbow: skinC,
+  R_Elbow: skinC,
+
+  L_Wrist: skinC,
+  R_Wrist: skinC,
+
+  L_Knee: skinC,
+  R_Knee: skinC,
+
+  L_Shin: skinC,
+  R_Shin: skinC,
+
+  sockC: "FFFFFF",
+  shoeC: shoeC,
+  laceC: "FFFFFF",
+  soleC: "FFFFFF"
+};
+  
   if(hasTattoos)shuffled(BODY_SEGMENTS).slice(0,randomInteger(1,2)).forEach(segment=>base[segment]=tattooColor);
 
   if(usesAccessories){
@@ -2541,10 +2571,10 @@ const usesAccessories = rng() < 0.28;
       "L_Knee",
       "R_Knee"
     ])
-    .slice(0,randomInteger(1,4))
+    .slice(0,randomInteger(1,2))
     .forEach(segment=>base[segment]=theme);
 
-    if(rng()<.18){
+    if(rng()<.07){
       const pool=[...SECONDARY_ACCESSORIES];
 
       if(rng()<.07)pool.push(16);
