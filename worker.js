@@ -650,6 +650,17 @@ const players =
         biographiesParsed:
   biographies.length
 
+        biographyStatus:
+  biographyResponse.status,
+
+biographyCharacters:
+  biographyText.length,
+
+biographyContainsAzzi:
+  biographyText.includes(
+    "Azzi Fudd"
+  )
+
       },
 
       players:
