@@ -430,6 +430,8 @@ export default {
 
     const sourceURL =
       "https://www.wnba.com/draft/2026/board";
+const biographyURL =
+  "https://www.usbasket.com/WNBA/news/986346/WNBA-Draft-2026";
 
 
     const sourceResponse =
@@ -442,6 +444,16 @@ export default {
           }
         }
       );
+const biographyResponse =
+  await fetch(
+    biographyURL,
+    {
+      headers: {
+        "User-Agent":
+          "Hoopland-Class-Generator/1.0"
+      }
+    }
+  );
 
 
     if (
@@ -470,6 +482,18 @@ export default {
 
     const sourceText =
       await sourceResponse.text();
+
+    const biographyText =
+  biographyResponse.ok
+    ? await biographyResponse.text()
+    : "";
+
+    const biographies =
+  biographyText
+    ? parseUsbasketBiographies(
+        biographyText
+      )
+    : [];
 
     const players =
   parseWnbaDraftBoard(
