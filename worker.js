@@ -11,50 +11,155 @@ export default {
       );
 
 
+ if (
+  url.pathname ===
+  "/api/class-data"
+) {
+
+  const gender =
+    url.searchParams.get(
+      "gender"
+    );
+
+  const type =
+    url.searchParams.get(
+      "type"
+    );
+
+  const year =
+    url.searchParams.get(
+      "year"
+    );
+
+
+  /*
+    First live source connection:
+    Official WNBA Draft Board.
+  */
+
+  if (
+    gender === "women" &&
+    type === "draft" &&
+    year === "2026"
+  ) {
+
+    const sourceURL =
+      "https://www.wnba.com/draft/2026/board";
+
+
+    const sourceResponse =
+      await fetch(
+        sourceURL,
+        {
+          headers: {
+            "User-Agent":
+              "Hoopland-Class-Generator/1.0"
+          }
+        }
+      );
+
+
     if (
-      url.pathname ===
-      "/api/class-data"
+      !sourceResponse.ok
     ) {
 
-      const gender =
-        url.searchParams.get(
-          "gender"
-        );
+      return Response.json(
+        {
+          ok:
+            false,
 
-      const type =
-        url.searchParams.get(
-          "type"
-        );
+          error:
+            "WNBA source request failed.",
 
-      const year =
-        url.searchParams.get(
-          "year"
-        );
+          sourceStatus:
+            sourceResponse.status
+        },
+        {
+          status:
+            502
+        }
+      );
+
+    }
 
 
-      return Response.json({
+    const sourceText =
+      await sourceResponse.text();
 
-        ok:
+
+    return Response.json({
+
+      ok:
+        true,
+
+      message:
+        "Official WNBA draft source connected.",
+
+      request: {
+        gender:
+          gender,
+
+        type:
+          type,
+
+        year:
+          year
+      },
+
+      source: {
+        name:
+          "WNBA 2026 Draft Board",
+
+        connected:
           true,
 
-        message:
-          "Real class API is working.",
+        status:
+          sourceResponse.status,
 
-        request: {
-          gender:
-            gender,
+        charactersReceived:
+          sourceText.length,
 
-          type:
-            type,
+        containsKnownDraftPick:
+          sourceText.includes(
+            "Azzi Fudd"
+          )
+      },
 
-          year:
-            year
-        },
+      players:
+        []
 
-        players:
-          []
+    });
 
-      });
+  }
+
+
+  return Response.json(
+    {
+      ok:
+        false,
+
+      error:
+        "No real-player source configured for this class yet.",
+
+      request: {
+        gender:
+          gender,
+
+        type:
+          type,
+
+        year:
+          year
+      }
+    },
+    {
+      status:
+        400
+    }
+  );
+
+}
+
 
     }
 
