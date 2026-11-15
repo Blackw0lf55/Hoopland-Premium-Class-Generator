@@ -3820,28 +3820,39 @@ function makePlayer(id, tierName) {
     );
 
 
-  const namePool =
-    NAMES[country] ||
-    NAMES.US;
+  if (!namePool) {
+  throw new Error(
+    `Missing NAMES pool for country: ${country}`
+  );
+}
+
+if (!Array.isArray(namePool[0])) {
+  throw new Error(
+    `Missing first-name list for country: ${country}`
+  );
+}
+
+if (!Array.isArray(namePool[1])) {
+  throw new Error(
+    `Missing last-name list for country: ${country}`
+  );
+}
+
+if (!Array.isArray(namePool[2])) {
+  throw new Error(
+    `Missing hometown list for country: ${country}`
+  );
+}
 
 
-  const firstName =
-    pick(
-      namePool[0]
-    );
+const firstName =
+  pick(namePool[0]);
 
+const lastName =
+  pick(namePool[1]);
 
-  const lastName =
-    pick(
-      namePool[1]
-    );
-
-
-  const hometown =
-    pick(
-      namePool[2]
-    );
-
+const hometown =
+  pick(namePool[2]);
 
   const quality =
     qualityForTier(
