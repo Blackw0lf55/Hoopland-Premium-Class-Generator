@@ -597,10 +597,18 @@ const biographyResponse =
       )
     : [];
 
-    const players =
+    const draftPlayers =
   parseWnbaDraftBoard(
     sourceText
   );
+
+
+const players =
+  mergeDraftBiographies(
+    draftPlayers,
+    biographies
+  );
+
 
     return Response.json({
 
