@@ -3819,6 +3819,9 @@ function makePlayer(id, tierName) {
       COUNTRIES
     );
 
+  const namePool =
+  NAMES[country] ||
+  NAMES.US;
 
   if (!namePool) {
   throw new Error(
