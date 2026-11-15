@@ -1970,8 +1970,10 @@ h3,
       </select>
     </div>
 
-    <div class="setup-control">
-      <label for="classStrength">
+    <div
+  id="classStrengthControl"
+  class="setup-control">
+   <label for="classStrength">
         Class Strength
       </label>
 
@@ -7698,6 +7700,11 @@ function updatePlayerPoolUI() {
       "draftYearControl"
     );
 
+  const classStrengthControl =
+  document.getElementById(
+    "classStrengthControl"
+  );
+
   if (
     mode === "real" ||
     mode === "hybrid"
@@ -7713,8 +7720,20 @@ function updatePlayerPoolUI() {
       "none";
 
   }
+  if (mode === "real") {
+
+  classStrengthControl.style.display =
+    "none";
+
+}
+else {
+
+  classStrengthControl.style.display =
+    "";
+
 }
 
+}
 
 document
   .getElementById(
