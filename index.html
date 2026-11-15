@@ -2521,8 +2521,7 @@ function buildAccessories(skinC,tattooColor,gender,shoeC){
 const hasTattoos = rng() < 0.12;
 const usesAccessories = rng() < 0.28;
 
-const theme =
-  pick(ACCESSORY_COLORS);
+const theme = shoeC;
 
 const base = {
   headAcc: "none",
