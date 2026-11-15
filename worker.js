@@ -331,7 +331,8 @@ export default {
       },
 
       players:
-        []
+       players
+
 
     });
 
