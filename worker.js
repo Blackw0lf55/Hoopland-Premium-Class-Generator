@@ -648,9 +648,9 @@ const players =
           ),
        
         biographiesParsed:
-  biographies.length
+  biographies.length,
 
-        biographyStatus:
+biographyStatus:
   biographyResponse.status,
 
 biographyCharacters:
