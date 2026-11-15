@@ -258,8 +258,9 @@ function cleanBiographyText(
       "&"
     )
     .replace(
-      /&#x27;|&#39;/gi,
-      "'"
+  /&#x27;|&#39;|&apos;/gi,
+  "'"
+)
     )
     .replace(
       /&quot;/gi,
@@ -299,8 +300,7 @@ function parseUsbasketBiographies(
   */
 
   const pattern =
-    /\b(\d{1,2})\s+([A-Za-zÀ-ž'’.-]+(?:\s+[A-Za-zÀ-ž'’.-]+){1,4})\s+$$(\d+)'(\d+)''-([A-Z/]+)(?:-(\d{4}))?$$/g;
-
+  /(?:^|\s)(\d{1,2})\s+([\p{L}'’.-]+(?:\s+[\p{L}'’.-]+){1,4})\s*$$\s*(\d+)\s*['’]\s*(\d+)\s*(?:['’]{2}|")\s*-\s*([A-Z]+(?:\/[A-Z]+)*)(?:\s*-\s*(\d{4}))?\s*$$/gu;
 
   let match;
 
