@@ -3119,16 +3119,18 @@ function allocatePoints(
   weights
 ) {
 
-  const values =
-    [...minimums];
+  const values = [...minimums];
 
-  let pointsLeft =
-    target -
-    values.reduce(
-      (sum, value) =>
-        sum + value,
-      0
-    );
+const basePoints =
+  ATTRS.length * 2;
+
+let pointsLeft =
+  basePoints +
+  target -
+  values.reduce(
+    (sum, value) => sum + value,
+    0
+  );
 
   const capacity =
     maximums.reduce(
