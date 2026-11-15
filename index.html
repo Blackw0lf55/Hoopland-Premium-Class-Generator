@@ -4150,33 +4150,37 @@ function makePlayer(id, tierName) {
   );
 }
 
-if (!Array.isArray(namePool[0])) {
+const firstNames =
+  gender === "1"
+    ? namePool.female
+    : namePool.male;
+
+if (!Array.isArray(firstNames)) {
   throw new Error(
     `Missing first-name list for country: ${country}`
   );
 }
 
-if (!Array.isArray(namePool[1])) {
+if (!Array.isArray(namePool.last)) {
   throw new Error(
     `Missing last-name list for country: ${country}`
   );
 }
 
-if (!Array.isArray(namePool[2])) {
+if (!Array.isArray(namePool.hometowns)) {
   throw new Error(
     `Missing hometown list for country: ${country}`
   );
 }
 
-
 const firstName =
-  pick(namePool[0]);
+  pick(firstNames);
 
 const lastName =
-  pick(namePool[1]);
+  pick(namePool.last);
 
 const hometown =
-  pick(namePool[2]);
+  pick(namePool.hometowns);
 
   const quality =
     qualityForTier(
