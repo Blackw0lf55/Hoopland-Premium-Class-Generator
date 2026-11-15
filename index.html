@@ -4874,20 +4874,7 @@ function generateClass() {
 
   try {
 
-    const seed =
-      document
-        .getElementById(
-          "seed"
-        )
-        .value
-        .trim();
-
-
-    rng =
-      seed
-        ? seededRandom(seed)
-        : Math.random;
-
+    rng = Math.random;
 
     let classSize =
       clamp(
