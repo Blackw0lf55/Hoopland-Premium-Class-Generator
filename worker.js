@@ -291,6 +291,10 @@ export default {
     const sourceText =
       await sourceResponse.text();
 
+    const players =
+  parseWnbaDraftBoard(
+    sourceText
+  );
 
     return Response.json({
 
