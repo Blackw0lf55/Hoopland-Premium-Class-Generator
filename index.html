@@ -4408,35 +4408,92 @@ const hometown =
   let year;
 let age;
 
+
 if (classType === "freshman") {
 
   year = 0;
   age = randomInteger(17, 19);
 
 }
-else if (international) {
+else if (gender === "1") {
 
-  age = randomInteger(19, 21);
+  /*
+    WNBA-style eligibility.
 
-  year =
-    age === 19
-      ? 1
-      : age === 20
+    Domestic prospects are generally graduating
+    seniors or age-eligible players.
+
+    International prospects become eligible younger.
+  */
+
+  if (international) {
+
+    age = randomInteger(20, 21);
+
+    year =
+      age === 20
         ? 2
         : 3;
+
+  }
+  else {
+
+    year = 3;
+
+    age =
+      weightedChoice([
+        [21, 25],
+        [22, 75]
+      ]);
+
+  }
 
 }
 else {
 
-  age = randomInteger(20, 21);
+  /*
+    NBA-style eligibility using the generator's
+    preferred age ranges.
 
-  year =
-    age === 20
-      ? weightedChoice([
-          [2, 70],
-          [3, 30]
-        ])
-      : 3;
+    Domestic: 20-21
+    International: 19-21
+  */
+
+  if (international) {
+
+    age = randomInteger(19, 21);
+
+    year =
+      age === 19
+        ? 1
+        : age === 20
+          ? 2
+          : 3;
+
+  }
+  else {
+
+    age = randomInteger(20, 21);
+
+    if (age === 20) {
+
+      year =
+        weightedChoice([
+          [1, 30],
+          [2, 70]
+        ]);
+
+    }
+    else {
+
+      year =
+        weightedChoice([
+          [2, 55],
+          [3, 45]
+        ]);
+    }
+  }
+
 }
 
   const physical =
