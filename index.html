@@ -1988,24 +1988,43 @@ h3,
 
     <div class="setup-control">
       <label for="mode">
-        Player Mode
+        Player Pool
       </label>
 
       <select id="mode">
-        <option>
-          Fictional
-        </option>
+        <option value="fictional" selected>
+  Fictional
+</option>
 
-        <option disabled>
-          Real NCAAW - Later
-        </option>
+<option value="real">
+  Real
+</option>
 
-        <option disabled>
-          Hybrid - Later
-        </option>
+<option value="hybrid">
+  Hybrid
+</option>
       </select>
     </div>
 
+<div
+  id="draftYearControl"
+  class="setup-control"
+  style="display:none;">
+
+  <label for="draftYear">
+    Draft Year
+  </label>
+
+  <select id="draftYear">
+    <option
+      value="2026"
+      selected
+    >
+      2026
+    </option>
+  </select>
+
+</div>
 
     <div class="setup-control">
       <label for="classSize">
@@ -7670,6 +7689,47 @@ document
     downloadHoopLand
   );
 
+function updatePlayerPoolUI() {
+
+  const mode =
+    document.getElementById(
+      "mode"
+    ).value;
+
+  const draftYearControl =
+    document.getElementById(
+      "draftYearControl"
+    );
+
+  if (
+    mode === "real" ||
+    mode === "hybrid"
+  ) {
+
+    draftYearControl.style.display =
+      "";
+
+  }
+  else {
+
+    draftYearControl.style.display =
+      "none";
+
+  }
+}
+
+
+document
+  .getElementById(
+    "mode"
+  )
+  .addEventListener(
+    "change",
+    updatePlayerPoolUI
+  );
+
+
+updatePlayerPoolUI();
 
 buildInputs();
 
