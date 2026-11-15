@@ -382,6 +382,108 @@ function parseUsbasketBiographies(
   return biographies;
 
 }
+function mergeDraftBiographies(
+  players,
+  biographies
+) {
+
+  const biographyMap =
+    new Map();
+
+
+  biographies.forEach(
+    biography => {
+
+      biographyMap.set(
+        biography.nameKey,
+        biography
+      );
+
+    }
+  );
+
+
+  return players.map(
+    player => {
+
+      const fullName =
+        [
+          player.fn,
+          player.ln
+        ]
+          .filter(Boolean)
+          .join(" ");
+
+
+      const nameKey =
+        normalizePlayerName(
+          fullName
+        );
+
+
+      const biography =
+        biographyMap.get(
+          nameKey
+        );
+
+
+      if (!biography) {
+
+        return {
+
+          ...player,
+
+          biographyMatched:
+            false,
+
+          height:
+            null,
+
+          birthYear:
+            null,
+
+          draftPick:
+            null,
+
+          sourcePosition:
+            player.position,
+
+          bioPosition:
+            null
+
+        };
+
+      }
+
+
+      return {
+
+        ...player,
+
+        biographyMatched:
+          true,
+
+        height:
+          biography.height,
+
+        birthYear:
+          biography.birthYear,
+
+        draftPick:
+          biography.draftPick,
+
+        sourcePosition:
+          player.position,
+
+        bioPosition:
+          biography.sourcePosition
+
+      };
+
+    }
+  );
+
+}
 
 export default {
 
