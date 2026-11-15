@@ -2948,14 +2948,8 @@ function renderBar(code) {
     potentialInput.value =
       potential;
 
-    document.getElementById(
-      code + "pmin"
-    ).value =
-      actual;
-
     renderBar(code);
   }
-
 
   ATTRS.forEach(
     ([code, name]) => {
@@ -3047,7 +3041,7 @@ function renderBar(code) {
 
       <input id="${code}cmin" type="hidden" value="2">
       <input id="${code}cmax" type="hidden" value="${actualDefault}">
-      <input id="${code}pmin" type="hidden" value="${actualDefault}">
+      <input id="${code}pmin" type="hidden" value="2">
       <input id="${code}pmax" type="hidden" value="${potentialDefault}">
     `;
 
