@@ -645,7 +645,11 @@ const players =
         containsKnownDraftPick:
           sourceText.includes(
             "Azzi Fudd"
-          )
+          ),
+       
+        biographiesParsed:
+  biographies.length
+
       },
 
       players:
