@@ -335,7 +335,7 @@ function parseUsbasketBiographies(
     (
       linkMatch =
         playerLinkPattern.exec(
-          decidedHtml
+          decodedHtml
         )
     ) !== null
   ) {
