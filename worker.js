@@ -666,6 +666,11 @@ const biographySample =
       )
     : "Physical marker not found";
     
+const draftPlayers =
+  parseWnbaDraftBoard(
+    sourceText
+  );
+
 const biographies =
   biographyText
     ? parseUsbasketBiographies(
@@ -673,13 +678,6 @@ const biographies =
         draftPlayers
       )
     : [];
-
-
-    const draftPlayers =
-  parseWnbaDraftBoard(
-    sourceText
-  );
-
 
 const players =
   mergeDraftBiographies(
