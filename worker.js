@@ -282,6 +282,36 @@ function parseUsbasketBiographies(
   const seen =
     new Set();
 
+  const decodedHtml =
+  String(html || "")
+    .replace(
+      /\\u003C/gi,
+      "<"
+    )
+    .replace(
+      /\\u003E/gi,
+      ">"
+    )
+    .replace(
+      /\\u0026/gi,
+      "&"
+    )
+    .replace(
+      /\\"/g,
+      "\""
+    )
+    .replace(
+      /\\r/g,
+      " "
+    )
+    .replace(
+      /\\n/g,
+      " "
+    )
+    .replace(
+      /\\t/g,
+      " "
+    );
 
   /*
     Find links to individual player profiles.
@@ -301,12 +331,11 @@ function parseUsbasketBiographies(
 
   let linkMatch;
 
-
   while (
     (
       linkMatch =
         playerLinkPattern.exec(
-          html
+          decidedHtml
         )
     ) !== null
   ) {
@@ -329,7 +358,7 @@ function parseUsbasketBiographies(
 
     const afterLink =
       cleanBiographyText(
-        html.slice(
+        decodedHtml.slice(
           playerLinkPattern.lastIndex,
           playerLinkPattern.lastIndex + 600
         )
