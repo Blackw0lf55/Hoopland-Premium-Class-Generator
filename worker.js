@@ -361,10 +361,9 @@ function parseUsbasketBiographies(
 
 
         const physicalMatch =
-          nearbyText.match(
-            /$$\s*(\d+)\s*['’]\s*(\d+)\s*(?:['’]{2}|")\s*-\s*([A-Z]+(?:\/[A-Z]+)*)(?:\s*-\s*(\d{4}))?\s*$$/
-          );
-
+  nearbyText.match(
+    /(\d+)\s*['’]\s*(\d+)\s*(?:['’]{2}|")\s*-\s*([A-Z]+(?:\/[A-Z]+)*)(?:\s*-\s*(\d{4}))?/
+  );
 
         if (
           physicalMatch
