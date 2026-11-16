@@ -4487,6 +4487,483 @@ function validateAppearanceCatalogs() {
 
 }
 
+  /*
+  REAL-PLAYER APPEARANCE PROFILES
+
+  Keys use normalized player names.
+
+  A profile may specify:
+
+  hairId:
+    Exact Hoop Land hairstyle ID when manually curated.
+
+  hairMatch:
+    Visual characteristics used by the matcher when
+    an exact ID has not been manually assigned.
+
+  hairC:
+    Optional hair-color override.
+
+  eyeC:
+    Optional eye-color override.
+
+  primaryAccessoryId:
+    Exact Hoop Land primary-accessory ID.
+
+  primaryAccessoryColor:
+    Accessory color. Full black is not permitted.
+
+  The profile database stays separate from makePlayer()
+  so additional classes and years can reuse the matcher.
+*/
+
+const REAL_PLAYER_APPEARANCE_PROFILES = {};
+
+  function normalizeAppearancePlayerName(
+  value
+) {
+
+  return String(
+    value || ""
+  )
+    .normalize(
+      "NFD"
+    )
+    .replace(
+      /[\u0300-\u036f]/g,
+      ""
+    )
+    .replace(
+      /[’']/g,
+      ""
+    )
+    .replace(
+      /[^a-zA-Z0-9]/g,
+      ""
+    )
+    .toLowerCase();
+
+}
+
+  function hairMatchScore(
+  catalogEntry,
+  requested
+) {
+
+  if (
+    !catalogEntry ||
+    !requested
+  ) {
+
+    return -Infinity;
+  }
+
+
+  let score = 0;
+
+
+  if (
+    requested.length &&
+    catalogEntry.length ===
+      requested.length
+  ) {
+
+    score += 8;
+  }
+
+
+  if (
+    requested.texture &&
+    catalogEntry.texture ===
+      requested.texture
+  ) {
+
+    score += 10;
+  }
+
+
+  if (
+    requested.structure &&
+    catalogEntry.structure ===
+      requested.structure
+  ) {
+
+    score += 14;
+  }
+
+
+  if (
+    requested.volume &&
+    catalogEntry.volume ===
+      requested.volume
+  ) {
+
+    score += 6;
+  }
+
+
+  const requestedTags =
+    Array.isArray(
+      requested.tags
+    )
+      ? requested.tags
+      : [];
+
+
+  const catalogTags =
+    Array.isArray(
+      catalogEntry.tags
+    )
+      ? catalogEntry.tags
+      : [];
+
+
+  requestedTags.forEach(
+    tag => {
+
+      if (
+        catalogTags.includes(
+          tag
+        )
+      ) {
+
+        score += 4;
+      }
+
+    }
+  );
+
+
+  const excludedTags =
+    Array.isArray(
+      requested.excludeTags
+    )
+      ? requested.excludeTags
+      : [];
+
+
+  excludedTags.forEach(
+    tag => {
+
+      if (
+        catalogTags.includes(
+          tag
+        )
+      ) {
+
+        score -= 20;
+      }
+
+    }
+  );
+
+
+  return score;
+
+}
+
+  function findBestHairReference(
+  requested
+) {
+
+  if (!requested) {
+
+    return null;
+  }
+
+
+  let bestEntry =
+    null;
+
+  let bestScore =
+    -Infinity;
+
+
+  for (
+    let id = 0;
+    id <= 170;
+    id++
+  ) {
+
+    const entry =
+      getHairReference(
+        id
+      );
+
+
+    if (!entry) {
+
+      continue;
+    }
+
+
+    const score =
+      hairMatchScore(
+        entry,
+        requested
+      );
+
+
+    if (
+      score >
+      bestScore
+    ) {
+
+      bestEntry =
+        entry;
+
+      bestScore =
+        score;
+    }
+
+  }
+
+
+  return bestEntry
+    ? {
+
+        entry:
+          bestEntry,
+
+        score:
+          bestScore
+
+      }
+    : null;
+
+}
+
+  function safeAccessoryColor(
+  requestedColor,
+  fallbackColor
+) {
+
+  const requested =
+    String(
+      requestedColor || ""
+    )
+      .replace(
+        "#",
+        ""
+      )
+      .toUpperCase();
+
+
+  const fallback =
+    String(
+      fallbackColor || "FFFFFF"
+    )
+      .replace(
+        "#",
+        ""
+      )
+      .toUpperCase();
+
+
+  if (
+    requested &&
+    requested !== "000000"
+  ) {
+
+    return requested;
+  }
+
+
+  if (
+    fallback &&
+    fallback !== "000000"
+  ) {
+
+    return fallback;
+  }
+
+
+  return "30343B";
+
+}
+
+  function generateRealPlayerAppearance(
+  sourcePlayer,
+  gender
+) {
+
+  /*
+    Start from the known-good fictional appearance
+    structure so every required export field exists.
+  */
+
+  const baseAppearance =
+    generateAppearance(
+      gender
+    );
+
+
+  const fullName =
+    [
+      sourcePlayer?.fn,
+      sourcePlayer?.ln
+    ]
+      .filter(Boolean)
+      .join(" ");
+
+
+  const nameKey =
+    normalizeAppearancePlayerName(
+      fullName
+    );
+
+
+  const profile =
+    REAL_PLAYER_APPEARANCE_PROFILES[
+      nameKey
+    ];
+
+
+  /*
+    A real prospect without a curated profile keeps
+    the compatible fallback appearance rather than
+    receiving an incomplete or invalid object.
+  */
+
+  if (!profile) {
+
+    return baseAppearance;
+  }
+
+
+  let hairId =
+    Number.isInteger(
+      profile.hairId
+    )
+      ? profile.hairId
+      : null;
+
+
+  if (
+    hairId === null &&
+    profile.hairMatch
+  ) {
+
+    const hairMatch =
+      findBestHairReference(
+        profile.hairMatch
+      );
+
+
+    if (
+      hairMatch &&
+      hairMatch.entry
+    ) {
+
+      hairId =
+        hairMatch.entry.id;
+    }
+
+  }
+
+
+  const finalHair =
+    hairId !== null
+      ? padStyle(
+          hairId
+        )
+      : baseAppearance.hair;
+
+
+  const finalHairColor =
+    profile.hairC ||
+    baseAppearance.hairC;
+
+
+  const finalEyeColor =
+    profile.eyeC ||
+    baseAppearance.eyeC;
+
+
+  let finalAccessories =
+    {
+      ...baseAppearance.accessories
+    };
+
+
+  if (
+    Number.isInteger(
+      profile.primaryAccessoryId
+    )
+  ) {
+
+    const accessoryReference =
+      getPrimaryAccessoryReference(
+        profile.primaryAccessoryId
+      );
+
+
+    if (
+      accessoryReference
+    ) {
+
+      finalAccessories = {
+
+        ...finalAccessories,
+
+        headAcc:
+          profile.primaryAccessoryId === 0
+            ? "none"
+            : padStyle(
+                profile.primaryAccessoryId
+              ),
+
+        headAccC:
+          safeAccessoryColor(
+            profile.primaryAccessoryColor,
+            finalAccessories.headAccC
+          )
+
+      };
+
+    }
+
+  }
+
+
+  return {
+
+    ...baseAppearance,
+
+    eyeC:
+      finalEyeColor,
+
+    browC:
+      profile.browC ||
+      finalHairColor,
+
+    hair:
+      finalHair,
+
+    hairC:
+      finalHairColor,
+
+    /*
+      Women's real-player profiles default to no
+      facial hair unless an explicit future profile
+      for another class supplies one.
+    */
+
+    fHair:
+      gender === "1"
+        ? padStyle(0)
+        : baseAppearance.fHair,
+
+    fHairC:
+      finalHairColor,
+
+    accessories:
+      finalAccessories
+
+  };
+
+}
+
 const MEN_FACIAL_HAIR=
   Array.from({length:32},(_,i)=>i)
     .filter(i=>![8,9,10,11,13,14,24].includes(i));
@@ -6857,7 +7334,14 @@ else {
       ),
 
     appearance:
-      generateAppearance(gender)
+  sourcePlayer
+    ? generateRealPlayerAppearance(
+        sourcePlayer,
+        gender
+      )
+    : generateAppearance(
+        gender
+      )
 
   };
 
