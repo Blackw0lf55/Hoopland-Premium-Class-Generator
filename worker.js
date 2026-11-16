@@ -680,8 +680,6 @@ biographyContainsAzzi:
 biographySample:
   biographySample
 
-  )
-
       },
 
       players:
