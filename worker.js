@@ -235,6 +235,414 @@ const rejectedSamples = [];
 
 }
 
+function parseWnbaProspectIndex(
+  html
+) {
+
+  function cleanText(
+    fragment
+  ) {
+
+    return String(
+      fragment || ""
+    )
+      .replace(
+        /<script[\s\S]*?<\/script>/gi,
+        " "
+      )
+      .replace(
+        /<style[\s\S]*?<\/style>/gi,
+        " "
+      )
+      .replace(
+        /<[^>]*>/g,
+        " "
+      )
+      .replace(
+        /&nbsp;/gi,
+        " "
+      )
+      .replace(
+        /&amp;/gi,
+        "&"
+      )
+      .replace(
+        /&#x27;|&#39;|&apos;/gi,
+        "'"
+      )
+      .replace(
+        /&quot;/gi,
+        "\""
+      )
+      .replace(
+        /&middot;|&#183;/gi,
+        " · "
+      )
+      .replace(
+        /\s+/g,
+        " "
+      )
+      .trim();
+
+  }
+
+
+  function splitName(
+    fullName
+  ) {
+
+    const nameParts =
+      String(
+        fullName || ""
+      )
+        .trim()
+        .split(
+          /\s+/
+        );
+
+
+    const firstName =
+      nameParts.shift() ||
+      "";
+
+
+    return {
+
+      fn:
+        firstName,
+
+      ln:
+        nameParts.join(
+          " "
+        )
+
+    };
+
+  }
+
+
+  function splitTeamCountry(
+    value
+  ) {
+
+    const parts =
+      String(
+        value || ""
+      )
+        .split(
+          " / "
+        )
+        .map(
+          item =>
+            item.trim()
+        )
+        .filter(Boolean);
+
+
+    if (
+      parts.length > 1
+    ) {
+
+      return {
+
+        team:
+          parts
+            .slice(
+              0,
+              -1
+            )
+            .join(
+              " / "
+            ),
+
+        country:
+          parts[
+            parts.length - 1
+          ]
+
+      };
+
+    }
+
+
+    const countryOnlyNames =
+      new Set([
+        "Australia",
+        "China",
+        "France",
+        "Germany",
+        "Hungary",
+        "Japan",
+        "New Zealand",
+        "Spain"
+      ]);
+
+
+    if (
+      countryOnlyNames.has(
+        parts[0]
+      )
+    ) {
+
+      return {
+
+        team:
+          "",
+
+        country:
+          parts[0]
+
+      };
+
+    }
+
+
+    return {
+
+      team:
+        parts[0] ||
+        "",
+
+      country:
+        null
+
+    };
+
+  }
+
+
+  function parseDraftResult(
+    value
+  ) {
+
+    const resultText =
+      String(
+        value || ""
+      )
+        .replace(
+          /—/g,
+          ""
+        )
+        .trim();
+
+
+    const overallMatch =
+      resultText.match(
+        /(\d+)(?:st|nd|rd|th)\s+Overall/i
+      );
+
+
+    const roundPickMatch =
+      resultText.match(
+        /Round\s+(\d+)\s*[·\-]\s*Pick\s+(\d+)/i
+      );
+
+
+    return {
+
+      drafted:
+        Boolean(
+          overallMatch ||
+          roundPickMatch
+        ),
+
+      draftRound:
+        roundPickMatch
+          ? Number(
+              roundPickMatch[1]
+            )
+          : null,
+
+      roundPick:
+        roundPickMatch
+          ? Number(
+              roundPickMatch[2]
+            )
+          : null,
+
+      draftPick:
+        overallMatch
+          ? Number(
+              overallMatch[1]
+            )
+          : null,
+
+      draftResult:
+        resultText ||
+        null
+
+    };
+
+  }
+
+
+  const prospects = [];
+
+  const rowPattern =
+    /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
+
+
+  let rowMatch;
+
+
+  while (
+    (
+      rowMatch =
+        rowPattern.exec(
+          html
+        )
+    ) !== null
+  ) {
+
+    const cells = [];
+
+    const cellPattern =
+      /<td[^>]*>([\s\S]*?)<\/td>/gi;
+
+
+    let cellMatch;
+
+
+    while (
+      (
+        cellMatch =
+          cellPattern.exec(
+            rowMatch[1]
+          )
+      ) !== null
+    ) {
+
+      cells.push(
+        cleanText(
+          cellMatch[1]
+        )
+      );
+    }
+
+
+    if (
+      cells.length < 3
+    ) {
+
+      continue;
+    }
+
+
+    const fullName =
+      cells[0];
+
+
+    const sourcePosition =
+      cells[1] ||
+      null;
+
+
+    const teamCountry =
+      splitTeamCountry(
+        cells[2]
+      );
+
+
+    const draftResult =
+      parseDraftResult(
+        cells[3] ||
+        ""
+      );
+
+
+    if (
+      !fullName ||
+      fullName.toUpperCase() ===
+        "NAME"
+    ) {
+
+      continue;
+    }
+
+
+    const name =
+      splitName(
+        fullName
+      );
+
+
+    if (
+      !name.fn ||
+      !name.ln
+    ) {
+
+      continue;
+    }
+
+
+    prospects.push({
+
+      fn:
+        name.fn,
+
+      ln:
+        name.ln,
+
+      position:
+        sourcePosition,
+
+      team:
+        teamCountry.team,
+
+      country:
+        teamCountry.country,
+
+      stats: {
+
+        ppg:
+          null,
+
+        rpg:
+          null,
+
+        apg:
+          null,
+
+        fgPct:
+          null
+
+      },
+
+      drafted:
+        draftResult.drafted,
+
+      draftRound:
+        draftResult.draftRound,
+
+      roundPick:
+        draftResult.roundPick,
+
+      draftPick:
+        draftResult.draftPick,
+
+      draftResult:
+        draftResult.draftResult,
+
+      poolSource:
+        "WNBA 2026 Prospect Index"
+
+    });
+
+  }
+
+
+  prospects.diagnostics = {
+
+    rowsParsed:
+      prospects.length
+
+  };
+
+
+  return prospects;
+
+}
+
 function normalizePlayerName(
   value
 ) {
@@ -261,6 +669,98 @@ function normalizePlayerName(
 
 }
 
+function mergeProspectPoolWithDraftBoard(
+  prospects,
+  draftBoardPlayers
+) {
+
+  const draftBoardMap =
+    new Map();
+
+
+  draftBoardPlayers.forEach(
+    player => {
+
+      const key =
+        normalizePlayerName(
+          [
+            player.fn,
+            player.ln
+          ]
+            .filter(Boolean)
+            .join(" ")
+        );
+
+
+      draftBoardMap.set(
+        key,
+        player
+      );
+
+    }
+  );
+
+
+  return prospects.map(
+    prospect => {
+
+      const key =
+        normalizePlayerName(
+          [
+            prospect.fn,
+            prospect.ln
+          ]
+            .filter(Boolean)
+            .join(" ")
+        );
+
+
+      const boardPlayer =
+        draftBoardMap.get(
+          key
+        );
+
+
+      if (!boardPlayer) {
+
+        return {
+          ...prospect,
+
+          draftBoardMatched:
+            false
+        };
+
+      }
+
+
+      return {
+
+        ...prospect,
+
+        position:
+          prospect.position ||
+          boardPlayer.position,
+
+        team:
+          prospect.team ||
+          boardPlayer.team,
+
+        country:
+          prospect.country ||
+          boardPlayer.country,
+
+        stats:
+          boardPlayer.stats,
+
+        draftBoardMatched:
+          true
+
+      };
+
+    }
+  );
+
+}
 
 function cleanBiographyText(
   html
@@ -623,6 +1123,10 @@ export default {
 
     const sourceURL =
       "https://www.wnba.com/draft/2026/board";
+
+    const prospectURL =
+  "https://www.wnba.com/draft/2026/prospects";
+
 const biographyURL =
   "https://www.usbasket.com/WNBA/news/986346/WNBA-Draft-2026";
 
@@ -637,6 +1141,16 @@ const biographyURL =
           }
         }
       );
+    const prospectResponse =
+  await fetch(
+    prospectURL,
+    {
+      headers: {
+        "User-Agent":
+          "Hoopland-Class-Generator/1.0"
+      }
+    }
+  );
 const biographyResponse =
   await fetch(
     biographyURL,
@@ -650,8 +1164,9 @@ const biographyResponse =
 
 
     if (
-      !sourceResponse.ok
-    ) {
+  !sourceResponse.ok ||
+  !prospectResponse.ok
+) {
 
       return Response.json(
         {
@@ -676,6 +1191,9 @@ const biographyResponse =
     const sourceText =
       await sourceResponse.text();
 
+    const prospectText =
+  await prospectResponse.text();
+
     const biographyText =
   biographyResponse.ok
     ? await biographyResponse.text()
@@ -697,10 +1215,24 @@ const biographySample =
       )
     : "Physical marker not found";
     
-const draftPlayers =
+const draftBoardPlayers =
   parseWnbaDraftBoard(
     sourceText
   );
+
+
+const prospectPlayers =
+  parseWnbaProspectIndex(
+    prospectText
+  );
+
+
+const draftPlayers =
+  mergeProspectPoolWithDraftBoard(
+    prospectPlayers,
+    draftBoardPlayers
+  );
+
 
 const biographies =
   biographyText
@@ -755,16 +1287,22 @@ const players =
           ),
 
         draftLinksFound:
-  draftPlayers.diagnostics.linksFound,
+  draftBoardPlayers.diagnostics.linksFound,
 
 draftPlayersAccepted:
-  draftPlayers.diagnostics.acceptedPlayers,
+  draftBoardPlayers.diagnostics.acceptedPlayers,
 
 draftPlayersRejected:
-  draftPlayers.diagnostics.rejectedPlayers,
+  draftBoardPlayers.diagnostics.rejectedPlayers,
 
 rejectedDraftSamples:
-  draftPlayers.diagnostics.rejectedSamples,
+  draftBoardPlayers.diagnostics.rejectedSamples,
+
+prospectIndexPlayers:
+  prospectPlayers.length,
+
+mergedPlayerPool:
+  draftPlayers.length,
 
         biographiesParsed:
   biographies.length,
