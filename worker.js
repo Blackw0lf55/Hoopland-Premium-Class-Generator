@@ -274,7 +274,8 @@ function cleanBiographyText(
 }
 
 function parseUsbasketBiographies(
-  html
+  html,
+  draftPlayers
 ) {
 
   const decodedHtml =
@@ -311,118 +312,135 @@ function parseUsbasketBiographies(
 
   const biographies = [];
 
-  const seen =
-    new Set();
+
+  draftPlayers.forEach(
+    player => {
+
+      const fullName =
+        [
+          player.fn,
+          player.ln
+        ]
+          .filter(Boolean)
+          .join(" ");
 
 
-  /*
-    Matches cleaned entries such as:
+      let searchIndex =
+        0;
 
-    Azzi Fudd (5'11''-G-2002)
-    Awa Fam Thiam (6'4''-C-2006)
-    Frieda Buehner (6'1''-C/F-2004)
-
-    Birth year remains optional.
-  */
-
-  const pattern =
-    /([\p{L}'’.-]+(?:\s+[\p{L}'’.-]+){1,4})\s*$$\s*(\d+)\s*['’]\s*(\d+)\s*(?:['’]{2}|")\s*-\s*([A-Z]+(?:\/[A-Z]+)*)(?:\s*-\s*(\d{4}))?\s*$$/gu;
+      let biography =
+        null;
 
 
-  let match;
+      while (
+        searchIndex <
+        text.length
+      ) {
+
+        const nameIndex =
+          text.indexOf(
+            fullName,
+            searchIndex
+          );
 
 
-  while (
-    (
-      match =
-        pattern.exec(
-          text
-        )
-    ) !== null
-  ) {
+        if (
+          nameIndex < 0
+        ) {
 
-    const fullName =
-      match[1]
-        .replace(
-          /\s+/g,
-          " "
-        )
-        .trim();
+          break;
+
+        }
 
 
-    const nameKey =
-      normalizePlayerName(
-        fullName
-      );
+        const nearbyText =
+          text.slice(
+            nameIndex,
+            nameIndex + 350
+          );
 
 
-    if (
-      !nameKey ||
-      seen.has(
-        nameKey
-      )
-    ) {
+        const physicalMatch =
+          nearbyText.match(
+            /$$\s*(\d+)\s*['’]\s*(\d+)\s*(?:['’]{2}|")\s*-\s*([A-Z]+(?:\/[A-Z]+)*)(?:\s*-\s*(\d{4}))?\s*$$/
+          );
 
-      continue;
+
+        if (
+          physicalMatch
+        ) {
+
+          const feet =
+            Number(
+              physicalMatch[1]
+            );
+
+          const inches =
+            Number(
+              physicalMatch[2]
+            );
+
+
+          biography = {
+
+            fullName:
+              fullName,
+
+            nameKey:
+              normalizePlayerName(
+                fullName
+              ),
+
+            height:
+              feet * 12 +
+              inches,
+
+            sourcePosition:
+              physicalMatch[3],
+
+            birthYear:
+              physicalMatch[4]
+                ? Number(
+                    physicalMatch[4]
+                  )
+                : null,
+
+            source:
+              "USbasket 2026 WNBA Draft"
+
+          };
+
+
+          break;
+
+        }
+
+
+        searchIndex =
+          nameIndex +
+          fullName.length;
+
+      }
+
+
+      if (
+        biography
+      ) {
+
+        biographies.push(
+          biography
+        );
+
+      }
 
     }
-
-
-    seen.add(
-      nameKey
-    );
-
-
-    const feet =
-      Number(
-        match[2]
-      );
-
-    const inches =
-      Number(
-        match[3]
-      );
-
-    const sourcePosition =
-      match[4];
-
-    const birthYear =
-      match[5]
-        ? Number(
-            match[5]
-          )
-        : null;
-
-
-    biographies.push({
-
-      fullName:
-        fullName,
-
-      nameKey:
-        nameKey,
-
-      height:
-        feet * 12 +
-        inches,
-
-      sourcePosition:
-        sourcePosition,
-
-      birthYear:
-        birthYear,
-
-      source:
-        "USbasket 2026 WNBA Draft"
-
-    });
-
-  }
+  );
 
 
   return biographies;
 
 }
+
       
 function mergeDraftBiographies(
   players,
@@ -648,12 +666,14 @@ const biographySample =
       )
     : "Physical marker not found";
     
-    const biographies =
+const biographies =
   biographyText
     ? parseUsbasketBiographies(
-        biographyText
+        biographyText,
+        draftPlayers
       )
     : [];
+
 
     const draftPlayers =
   parseWnbaDraftBoard(
