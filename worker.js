@@ -590,6 +590,22 @@ const biographyResponse =
     ? await biographyResponse.text()
     : "";
 
+    const azziIndex =
+  biographyText.indexOf(
+    "Azzi Fudd"
+  );
+
+const biographySample =
+  azziIndex >= 0
+    ? biographyText.slice(
+        Math.max(
+          0,
+          azziIndex - 250
+        ),
+        azziIndex + 500
+      )
+    : "";
+    
     const biographies =
   biographyText
     ? parseUsbasketBiographies(
@@ -659,6 +675,11 @@ biographyCharacters:
 biographyContainsAzzi:
   biographyText.includes(
     "Azzi Fudd"
+  ),
+
+biographySample:
+  biographySample
+
   )
 
       },
