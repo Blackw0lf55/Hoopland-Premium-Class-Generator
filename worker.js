@@ -277,102 +277,77 @@ function parseUsbasketBiographies(
   html
 ) {
 
+  const decodedHtml =
+    String(
+      html || ""
+    )
+      .replace(
+        /\\u003C/gi,
+        "<"
+      )
+      .replace(
+        /\\u003E/gi,
+        ">"
+      )
+      .replace(
+        /\\u0026/gi,
+        "&"
+      )
+      .replace(
+        /\\"/g,
+        "\""
+      )
+      .replace(
+        /\\r|\\n|\\t/g,
+        " "
+      );
+
+
+  const text =
+    cleanBiographyText(
+      decodedHtml
+    );
+
+
   const biographies = [];
 
   const seen =
     new Set();
 
-  const decodedHtml =
-  String(html || "")
-    .replace(
-      /\\u003C/gi,
-      "<"
-    )
-    .replace(
-      /\\u003E/gi,
-      ">"
-    )
-    .replace(
-      /\\u0026/gi,
-      "&"
-    )
-    .replace(
-      /\\"/g,
-      "\""
-    )
-    .replace(
-      /\\r/g,
-      " "
-    )
-    .replace(
-      /\\n/g,
-      " "
-    )
-    .replace(
-      /\\t/g,
-      " "
-    );
 
   /*
-    Find links to individual player profiles.
+    Matches cleaned entries such as:
 
-    The same player can appear elsewhere on the page,
-    so we only keep links followed by draft-style
-    physical information such as:
+    Azzi Fudd (5'11''-G-2002)
+    Awa Fam Thiam (6'4''-C-2006)
+    Frieda Buehner (6'1''-C/F-2004)
 
-    (5'11''-G-2002)
-    (6'4''-C-2006)
-    (6'1''-C/F-2004)
+    Birth year remains optional.
   */
 
-  const playerLinkPattern =
-    /<a[^>]+href=["'][^"']*\/player\/[^"']+["'][^>]*>([\s\S]*?)<\/a>/gi;
+  const pattern =
+    /([\p{L}'’.-]+(?:\s+[\p{L}'’.-]+){1,4})\s*$$\s*(\d+)\s*['’]\s*(\d+)\s*(?:['’]{2}|")\s*-\s*([A-Z]+(?:\/[A-Z]+)*)(?:\s*-\s*(\d{4}))?\s*$$/gu;
 
 
-  let linkMatch;
+  let match;
+
 
   while (
     (
-      linkMatch =
-        playerLinkPattern.exec(
-          decodedHtml
+      match =
+        pattern.exec(
+          text
         )
     ) !== null
   ) {
 
     const fullName =
-      cleanBiographyText(
-        linkMatch[1]
-      );
-
-
-    /*
-      Image-only links near the top of the page
-      contain no usable player-name text.
-    */
-
-    if (!fullName) {
-      continue;
-    }
-
-
-    const afterLink =
-      cleanBiographyText(
-        decodedHtml.slice(
-          playerLinkPattern.lastIndex,
-          playerLinkPattern.lastIndex + 600
+      match[1]
+        .replace(
+          /\s+/g,
+          " "
         )
-      );
-
-
-    const physicalMatch =
-  afterLink.match(
-    /$$\s*(\d+)\d+(?:['’]{2}|")-([A-Z]+(?:\/[A-Z]+)*)(?:-(\d{4}))?\s*$$/
-  );
-
-    if (!physicalMatch) {
-      continue;
-    }
+        .trim();
 
 
     const nameKey =
@@ -387,7 +362,9 @@ function parseUsbasketBiographies(
         nameKey
       )
     ) {
+
       continue;
+
     }
 
 
@@ -398,21 +375,21 @@ function parseUsbasketBiographies(
 
     const feet =
       Number(
-        physicalMatch[1]
+        match[2]
       );
 
     const inches =
       Number(
-        physicalMatch[2]
+        match[3]
       );
 
     const sourcePosition =
-      physicalMatch[3];
+      match[4];
 
     const birthYear =
-      physicalMatch[4]
+      match[5]
         ? Number(
-            physicalMatch[4]
+            match[5]
           )
         : null;
 
@@ -446,7 +423,7 @@ function parseUsbasketBiographies(
   return biographies;
 
 }
-       
+      
 function mergeDraftBiographies(
   players,
   biographies
