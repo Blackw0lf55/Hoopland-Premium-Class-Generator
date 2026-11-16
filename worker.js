@@ -1246,8 +1246,37 @@ const players =
   mergeDraftBiographies(
     draftPlayers,
     biographies
-  );
+  )
+    .sort(
+      (a, b) => {
 
+        const aPick =
+          Number.isFinite(
+            Number(a.draftPick)
+          )
+            ? Number(a.draftPick)
+            : Infinity;
+
+
+        const bPick =
+          Number.isFinite(
+            Number(b.draftPick)
+          )
+            ? Number(b.draftPick)
+            : Infinity;
+
+
+        if (
+          aPick !== bPick
+        ) {
+
+          return aPick - bPick;
+        }
+
+
+        return 0;
+      }
+    );
 
     return Response.json({
 
