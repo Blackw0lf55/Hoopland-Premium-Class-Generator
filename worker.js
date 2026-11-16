@@ -4,6 +4,10 @@ function parseWnbaDraftBoard(
 
   const players = [];
 
+  let linksFound = 0;
+let rejectedPlayers = 0;
+const rejectedSamples = [];
+
   const linkPattern =
     /<a[^>]+href=["'][^"']*\/draft\/2026\/prospects\/[^"']+["'][^>]*>([\s\S]*?)<\/a>/gi;
 
@@ -83,6 +87,8 @@ function parseWnbaDraftBoard(
     ) !== null
   ) {
 
+    linksFound++;
+
     const text =
       cleanText(
         linkMatch[1]
@@ -96,13 +102,22 @@ function parseWnbaDraftBoard(
 
 
     if (
-      !playerMatch
-    ) {
+  !playerMatch
+) {
 
-      continue;
+  rejectedPlayers++;
 
-    }
+  if (
+    rejectedSamples.length < 10
+  ) {
 
+    rejectedSamples.push(
+      text
+    );
+  }
+
+  continue;
+}
 
     const name =
       playerMatch[1].trim();
@@ -197,6 +212,23 @@ function parseWnbaDraftBoard(
     });
 
   }
+
+
+    players.diagnostics = {
+
+    linksFound:
+      linksFound,
+
+    acceptedPlayers:
+      players.length,
+
+    rejectedPlayers:
+      rejectedPlayers,
+
+    rejectedSamples:
+      rejectedSamples
+
+  };
 
 
   return players;
@@ -721,7 +753,19 @@ const players =
           sourceText.includes(
             "Azzi Fudd"
           ),
-       
+
+        draftLinksFound:
+  draftPlayers.diagnostics.linksFound,
+
+draftPlayersAccepted:
+  draftPlayers.diagnostics.acceptedPlayers,
+
+draftPlayersRejected:
+  draftPlayers.diagnostics.rejectedPlayers,
+
+rejectedDraftSamples:
+  draftPlayers.diagnostics.rejectedSamples,
+
         biographiesParsed:
   biographies.length,
 
