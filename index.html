@@ -4911,9 +4911,11 @@ const REAL_PLAYER_APPEARANCE_PROFILES = {};
 
 
   let finalAccessories =
-    {
-      ...baseAppearance.accessories
-    };
+  baseAppearance.accessories.map(
+    accessory => ({
+      ...accessory
+    })
+  );
 
 
   if (
@@ -4932,24 +4934,27 @@ const REAL_PLAYER_APPEARANCE_PROFILES = {};
       accessoryReference
     ) {
 
-      finalAccessories = {
+      finalAccessories =
+  finalAccessories.map(
+    accessory => ({
 
-        ...finalAccessories,
+      ...accessory,
 
-        headAcc:
-          profile.primaryAccessoryId === 0
-            ? "none"
-            : padStyle(
-                profile.primaryAccessoryId
-              ),
+      headAcc:
+        profile.primaryAccessoryId === 0
+          ? "none"
+          : padStyle(
+              profile.primaryAccessoryId
+            ),
 
-        headAccC:
-          safeAccessoryColor(
-            profile.primaryAccessoryColor,
-            finalAccessories.headAccC
-          )
+      headAccC:
+        safeAccessoryColor(
+          profile.primaryAccessoryColor,
+          accessory.headAccC
+        )
 
-      };
+    })
+  );
 
     }
 
