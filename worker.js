@@ -261,7 +261,6 @@ function cleanBiographyText(
   /&#x27;|&#39;|&apos;/gi,
   "'"
 )
-    )
     .replace(
       /&quot;/gi,
       "\""
