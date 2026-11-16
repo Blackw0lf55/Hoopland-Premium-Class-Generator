@@ -1034,7 +1034,8 @@ function mergeDraftBiographies(
             null,
 
           draftPick:
-            null,
+  player.draftPick ?? null,
+
 
           sourcePosition:
             player.position,
@@ -1061,7 +1062,7 @@ function mergeDraftBiographies(
           biography.birthYear,
 
         draftPick:
-          biography.draftPick,
+  player.draftPick ?? null,
 
         sourcePosition:
           player.position,
@@ -1251,20 +1252,20 @@ const players =
       (a, b) => {
 
         const aPick =
-          Number.isFinite(
-            Number(a.draftPick)
-          )
-            ? Number(a.draftPick)
-            : Infinity;
-
+  a.draftPick != null &&
+  Number.isFinite(
+    Number(a.draftPick)
+  )
+    ? Number(a.draftPick)
+    : Infinity;
 
         const bPick =
-          Number.isFinite(
-            Number(b.draftPick)
-          )
-            ? Number(b.draftPick)
-            : Infinity;
-
+  b.draftPick != null &&
+  Number.isFinite(
+    Number(b.draftPick)
+  )
+    ? Number(b.draftPick)
+    : Infinity;
 
         if (
           aPick !== bPick
