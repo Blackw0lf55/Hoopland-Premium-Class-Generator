@@ -273,92 +273,129 @@ function cleanBiographyText(
 
 }
 
-
 function parseUsbasketBiographies(
   html
 ) {
 
-  const text =
-    cleanBiographyText(
-      html
-    );
+  const biographies = [];
 
-  const biographies =
-    [];
+  const seen =
+    new Set();
 
 
   /*
-    Examples handled:
+    Find links to individual player profiles.
 
-    1 Azzi Fudd (5'11''-G-2002)
-    3 Awa Fam Thiam (6'4''-C-2006)
-    17 Frieda Buehner (6'1''-C/F-2004)
+    The same player can appear elsewhere on the page,
+    so we only keep links followed by draft-style
+    physical information such as:
 
-    Birth year is optional because the source
-    does not display it for every prospect.
+    (5'11''-G-2002)
+    (6'4''-C-2006)
+    (6'1''-C/F-2004)
   */
 
-  const pattern =
-  /(?:^|\s)(\d{1,2})\s+([\p{L}'’.-]+(?:\s+[\p{L}'’.-]+){1,4})\s*$$\s*(\d+)\s*['’]\s*(\d+)\s*(?:['’]{2}|")\s*-\s*([A-Z]+(?:\/[A-Z]+)*)(?:\s*-\s*(\d{4}))?\s*$$/gu;
+  const playerLinkPattern =
+    /<a[^>]+href=["'][^"']*\/player\/[^"']+["'][^>]*>([\s\S]*?)<\/a>/gi;
 
-  let match;
+
+  let linkMatch;
 
 
   while (
     (
-      match =
-        pattern.exec(
-          text
+      linkMatch =
+        playerLinkPattern.exec(
+          html
         )
     ) !== null
   ) {
 
-    const draftPick =
-      Number(
-        match[1]
+    const fullName =
+      cleanBiographyText(
+        linkMatch[1]
       );
 
-    const fullName =
-      match[2]
-        .replace(
-          /\s+/g,
-          " "
+
+    /*
+      Image-only links near the top of the page
+      contain no usable player-name text.
+    */
+
+    if (!fullName) {
+      continue;
+    }
+
+
+    const afterLink =
+      cleanBiographyText(
+        html.slice(
+          playerLinkPattern.lastIndex,
+          playerLinkPattern.lastIndex + 600
         )
-        .trim();
+      );
+
+
+    const physicalMatch =
+      afterLink.match(
+        /^\s*$$?\s*(\d+)\s*['’]\s*(\d+)\s*(?:['’]{2}|")\s*-\s*([A-Z]+(?:\/[A-Z]+)*)(?:\s*-\s*(\d{4}))?\s*$$?/
+      );
+
+
+    if (!physicalMatch) {
+      continue;
+    }
+
+
+    const nameKey =
+      normalizePlayerName(
+        fullName
+      );
+
+
+    if (
+      !nameKey ||
+      seen.has(
+        nameKey
+      )
+    ) {
+      continue;
+    }
+
+
+    seen.add(
+      nameKey
+    );
+
 
     const feet =
       Number(
-        match[3]
+        physicalMatch[1]
       );
 
     const inches =
       Number(
-        match[4]
+        physicalMatch[2]
       );
 
     const sourcePosition =
-      match[5];
+      physicalMatch[3];
 
     const birthYear =
-      match[6]
+      physicalMatch[4]
         ? Number(
-            match[6]
+            physicalMatch[4]
           )
         : null;
 
 
     biographies.push({
 
-      draftPick:
-        draftPick,
-
       fullName:
         fullName,
 
       nameKey:
-        normalizePlayerName(
-          fullName
-        ),
+        nameKey,
 
       height:
         feet * 12 +
@@ -381,6 +418,7 @@ function parseUsbasketBiographies(
   return biographies;
 
 }
+       
 function mergeDraftBiographies(
   players,
   biographies
