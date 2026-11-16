@@ -337,10 +337,9 @@ function parseUsbasketBiographies(
 
 
     const physicalMatch =
-      afterLink.match(
-        /^\s*$$?\s*(\d+)\s*['’]\s*(\d+)\s*(?:['’]{2}|")\s*-\s*([A-Z]+(?:\/[A-Z]+)*)(?:\s*-\s*(\d{4}))?\s*$$?/
-      );
-
+  afterLink.match(
+    /$$\s*(\d+)\d+(?:['’]{2}|")-([A-Z]+(?:\/[A-Z]+)*)(?:-(\d{4}))?\s*$$/
+  );
 
     if (!physicalMatch) {
       continue;
