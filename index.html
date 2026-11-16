@@ -2649,6 +2649,1844 @@ const SHARED_HAIRS=[
   ...Array.from({length:8},(_,i)=>156+i)
 ];
 
+  /*
+  HOOP LAND HAIRSTYLE REFERENCE CATALOG
+
+  IMPORTANT:
+  These IDs are the actual Hoop Land hairstyle IDs.
+  They must NEVER be renumbered.
+
+  Page 1:   0-23
+  Page 2:  24-47
+  Page 3:  48-71
+  Page 4:  72-95
+  Page 5:  96-119
+  Page 6: 120-143
+  Page 7: 144-167
+  Page 8: 168-170
+*/
+
+const HAIR_CATALOG = {};
+
+
+function addHairReference(
+  id,
+  data
+) {
+
+  if (
+    !Number.isInteger(id) ||
+    id < 0 ||
+    id > 170
+  ) {
+
+    throw new Error(
+      `Invalid Hoop Land hair ID: ${id}`
+    );
+  }
+
+
+  if (
+    HAIR_CATALOG[id]
+  ) {
+
+    throw new Error(
+      `Duplicate Hoop Land hair ID: ${id}`
+    );
+  }
+
+
+  HAIR_CATALOG[id] =
+    Object.freeze({
+
+      id:
+        id,
+
+      ...data
+
+    });
+
+}
+
+
+function getHairReference(
+  id
+) {
+
+  return (
+    HAIR_CATALOG[id] ||
+    null
+  );
+
+}
+
+  /*
+  HAIR CATALOG - PAGE 1
+  Hoop Land IDs 0-23
+  IDs are immutable.
+*/
+
+addHairReference(
+  0,
+  {
+    description:
+      "No visible hair; fully bald head.",
+    tags: [
+      "bald",
+      "none",
+      "shaved"
+    ],
+    length: "none",
+    texture: "none",
+    structure: "bald",
+    volume: "none"
+  }
+);
+
+
+addHairReference(
+  1,
+  {
+    description:
+      "Very short close-cropped hair with a simple rounded silhouette.",
+    tags: [
+      "very-short",
+      "close-cropped",
+      "rounded"
+    ],
+    length: "very-short",
+    texture: "straight",
+    structure: "close-crop",
+    volume: "low"
+  }
+);
+
+
+addHairReference(
+  2,
+  {
+    description:
+      "Short upright spiked top with closely trimmed sides and back.",
+    tags: [
+      "short",
+      "spiked",
+      "upright",
+      "trimmed-sides"
+    ],
+    length: "short",
+    texture: "straight",
+    structure: "spiked-top",
+    volume: "medium"
+  }
+);
+
+
+addHairReference(
+  3,
+  {
+    description:
+      "Short smooth rounded cut with a full even crown.",
+    tags: [
+      "short",
+      "smooth",
+      "rounded",
+      "full-crown"
+    ],
+    length: "short",
+    texture: "straight",
+    structure: "rounded-crop",
+    volume: "medium"
+  }
+);
+
+
+addHairReference(
+  4,
+  {
+    description:
+      "Short compact crop with a rounded top and clean outline.",
+    tags: [
+      "short",
+      "compact",
+      "rounded",
+      "crop"
+    ],
+    length: "short",
+    texture: "straight",
+    structure: "compact-crop",
+    volume: "low"
+  }
+);
+
+
+addHairReference(
+  5,
+  {
+    description:
+      "Short side-swept cut with a raised front and compact back.",
+    tags: [
+      "short",
+      "side-swept",
+      "raised-front",
+      "compact"
+    ],
+    length: "short",
+    texture: "straight",
+    structure: "side-swept",
+    volume: "medium"
+  }
+);
+
+
+addHairReference(
+  6,
+  {
+    description:
+      "Asymmetric tied style with a side ponytail or side-gathered section.",
+    tags: [
+      "side-ponytail",
+      "tied",
+      "asymmetric",
+      "side-gathered"
+    ],
+    length: "medium",
+    texture: "straight",
+    structure: "side-ponytail",
+    volume: "medium"
+  }
+);
+
+
+addHairReference(
+  7,
+  {
+    description:
+      "Short angular cut with a pronounced swept front section.",
+    tags: [
+      "short",
+      "angular",
+      "swept-front",
+      "side-combed"
+    ],
+    length: "short",
+    texture: "straight",
+    structure: "angular-sweep",
+    volume: "medium"
+  }
+);
+
+
+addHairReference(
+  8,
+  {
+    description:
+      "Medium rounded shag with uneven fringe and a fuller back.",
+    tags: [
+      "medium",
+      "shag",
+      "fringe",
+      "rounded"
+    ],
+    length: "medium",
+    texture: "straight",
+    structure: "rounded-shag",
+    volume: "medium"
+  }
+);
+
+
+addHairReference(
+  9,
+  {
+    description:
+      "Medium wide-volume style with separated front sections.",
+    tags: [
+      "medium",
+      "wide",
+      "fluffy",
+      "separated-front"
+    ],
+    length: "medium",
+    texture: "straight",
+    structure: "wide-fluffy",
+    volume: "high"
+  }
+);
+
+
+addHairReference(
+  10,
+  {
+    description:
+      "Medium layered shag with separated fringe and a rounded rear silhouette.",
+    tags: [
+      "medium",
+      "layered",
+      "shag",
+      "separated-fringe"
+    ],
+    length: "medium",
+    texture: "straight",
+    structure: "layered-shag",
+    volume: "medium"
+  }
+);
+
+
+addHairReference(
+  11,
+  {
+    description:
+      "Short rounded cut with center-separated curtain-like front sections.",
+    tags: [
+      "short",
+      "center-separated",
+      "curtain",
+      "rounded"
+    ],
+    length: "short",
+    texture: "straight",
+    structure: "curtain-crop",
+    volume: "medium"
+  }
+);
+
+
+addHairReference(
+  12,
+  {
+    description:
+      "Short dense textured crop with a compact top and uneven fringe.",
+    tags: [
+      "short",
+      "dense",
+      "textured",
+      "uneven-fringe"
+    ],
+    length: "short",
+    texture: "textured",
+    structure: "dense-crop",
+    volume: "medium"
+  }
+);
+
+
+addHairReference(
+  13,
+  {
+    description:
+      "Short dramatic spikes extending upward and outward around the crown.",
+    tags: [
+      "short",
+      "spiky",
+      "outward",
+      "dramatic"
+    ],
+    length: "short",
+    texture: "straight",
+    structure: "outward-spikes",
+    volume: "high"
+  }
+);
+
+
+addHairReference(
+  14,
+  {
+    description:
+      "Tall sculpted upward style formed from several separated pointed sections.",
+    tags: [
+      "tall",
+      "sculpted",
+      "pointed",
+      "upright"
+    ],
+    length: "short",
+    texture: "straight",
+    structure: "sculpted-spikes",
+    volume: "high"
+  }
+);
+
+
+addHairReference(
+  15,
+  {
+    description:
+      "Very short textured crop with many small outward points.",
+    tags: [
+      "very-short",
+      "textured",
+      "micro-spikes",
+      "rounded"
+    ],
+    length: "very-short",
+    texture: "textured",
+    structure: "micro-spiked-crop",
+    volume: "medium"
+  }
+);
+
+
+addHairReference(
+  16,
+  {
+    description:
+      "Medium center-separated style with smooth side sections and a rounded back.",
+    tags: [
+      "medium",
+      "center-separated",
+      "smooth",
+      "curtain"
+    ],
+    length: "medium",
+    texture: "straight",
+    structure: "center-separated",
+    volume: "medium"
+  }
+);
+
+
+addHairReference(
+  17,
+  {
+    description:
+      "Medium highly tousled style with spikes extending broadly around the head.",
+    tags: [
+      "medium",
+      "tousled",
+      "spiky",
+      "wide"
+    ],
+    length: "medium",
+    texture: "textured",
+    structure: "wide-tousled-spikes",
+    volume: "high"
+  }
+);
+
+
+addHairReference(
+  18,
+  {
+    description:
+      "Medium straight asymmetric style with hair gathered toward one side.",
+    tags: [
+      "medium",
+      "straight",
+      "asymmetric",
+      "side-gathered"
+    ],
+    length: "medium",
+    texture: "straight",
+    structure: "side-gathered",
+    volume: "medium"
+  }
+);
+
+
+addHairReference(
+  19,
+  {
+    description:
+      "Medium smooth side-parted style with a prominent swept fringe.",
+    tags: [
+      "medium",
+      "side-part",
+      "smooth",
+      "swept-fringe"
+    ],
+    length: "medium",
+    texture: "straight",
+    structure: "smooth-side-sweep",
+    volume: "medium"
+  }
+);
+
+
+addHairReference(
+  20,
+  {
+    description:
+      "Short tightly textured curly or coiled style with a rounded silhouette.",
+    tags: [
+      "short",
+      "curly",
+      "coiled",
+      "rounded"
+    ],
+    length: "short",
+    texture: "coiled",
+    structure: "rounded-coils",
+    volume: "high"
+  }
+);
+
+
+addHairReference(
+  21,
+  {
+    description:
+      "Medium dense curly or coiled style with substantial rounded volume.",
+    tags: [
+      "medium",
+      "curly",
+      "coiled",
+      "dense"
+    ],
+    length: "medium",
+    texture: "coiled",
+    structure: "dense-coils",
+    volume: "high"
+  }
+);
+
+
+addHairReference(
+  22,
+  {
+    description:
+      "Long separated braided or loc-like strands gathered predominantly toward one side.",
+    tags: [
+      "long",
+      "braided",
+      "loc-like",
+      "side-gathered"
+    ],
+    length: "long",
+    texture: "braided",
+    structure: "side-braids-or-locs",
+    volume: "high"
+  }
+);
+
+
+addHairReference(
+  23,
+  {
+    description:
+      "Tall dense textured style with a compact rounded upper silhouette.",
+    tags: [
+      "tall",
+      "dense",
+      "rounded",
+      "textured"
+    ],
+    length: "medium",
+    texture: "coiled",
+    structure: "tall-rounded-top",
+    volume: "high"
+  }
+);
+/*
+  HAIR CATALOG - PAGE 2
+  Hoop Land IDs 24-47
+  IDs are immutable.
+*/
+
+addHairReference(
+  24,
+  {
+    description:
+      "Medium separated braided or loc-like strands swept predominantly toward one side.",
+    tags: [
+      "medium",
+      "braided",
+      "loc-like",
+      "side-swept"
+    ],
+    length: "medium",
+    texture: "braided",
+    structure: "side-swept-braids",
+    volume: "medium"
+  }
+);
+
+
+addHairReference(
+  25,
+  {
+    description:
+      "Long thick braided or loc-like strands extending behind and toward one side.",
+    tags: [
+      "long",
+      "braided",
+      "loc-like",
+      "side-length"
+    ],
+    length: "long",
+    texture: "braided",
+    structure: "long-side-braids",
+    volume: "high"
+  }
+);
+
+
+addHairReference(
+  26,
+  {
+    description:
+      "Long braided or loc-like style with substantial length extending down the back.",
+    tags: [
+      "long",
+      "braided",
+      "loc-like",
+      "rear-length"
+    ],
+    length: "long",
+    texture: "braided",
+    structure: "long-rear-braids",
+    volume: "high"
+  }
+);
+
+
+addHairReference(
+  27,
+  {
+    description:
+      "Long narrow separated braided or loc-like strands hanging down predominantly toward one side.",
+    tags: [
+      "long",
+      "braided",
+      "loc-like",
+      "narrow-strands"
+    ],
+    length: "long",
+    texture: "braided",
+    structure: "narrow-side-braids",
+    volume: "medium"
+  }
+);
+
+
+addHairReference(
+  28,
+  {
+    description:
+      "Hair gathered into a rounded side-positioned bun with a smooth crown.",
+    tags: [
+      "bun",
+      "side-bun",
+      "tied",
+      "smooth"
+    ],
+    length: "long",
+    texture: "straight",
+    structure: "side-bun",
+    volume: "medium"
+  }
+);
+
+
+addHairReference(
+  29,
+  {
+    description:
+      "Large high-volume asymmetric style swept strongly toward one side.",
+    tags: [
+      "high-volume",
+      "side-swept",
+      "asymmetric",
+      "large"
+    ],
+    length: "medium",
+    texture: "straight",
+    structure: "high-side-sweep",
+    volume: "high"
+  }
+);
+
+
+addHairReference(
+  30,
+  {
+    description:
+      "Short thick textured top with an upright rounded silhouette.",
+    tags: [
+      "short",
+      "thick",
+      "textured",
+      "upright"
+    ],
+    length: "short",
+    texture: "textured",
+    structure: "upright-textured-top",
+    volume: "high"
+  }
+);
+
+
+addHairReference(
+  31,
+  {
+    description:
+      "Short sharply elevated style with a prominent pointed crest toward the front.",
+    tags: [
+      "short",
+      "pointed",
+      "elevated",
+      "crest"
+    ],
+    length: "short",
+    texture: "straight",
+    structure: "pointed-crest",
+    volume: "high"
+  }
+);
+
+
+addHairReference(
+  32,
+  {
+    description:
+      "Medium asymmetric spiked style extending prominently toward one side.",
+    tags: [
+      "medium",
+      "asymmetric",
+      "spiky",
+      "side-extended"
+    ],
+    length: "medium",
+    texture: "straight",
+    structure: "side-extended-spikes",
+    volume: "high"
+  }
+);
+
+
+addHairReference(
+  33,
+  {
+    description:
+      "Tall narrow upright spiked style with closely shaped sides and back.",
+    tags: [
+      "tall",
+      "narrow",
+      "upright",
+      "spiky"
+    ],
+    length: "short",
+    texture: "straight",
+    structure: "narrow-upright-spikes",
+    volume: "high"
+  }
+);
+
+
+addHairReference(
+  34,
+  {
+    description:
+      "Short elevated spiked top formed from several separated upward points.",
+    tags: [
+      "short",
+      "spiky",
+      "separated",
+      "upright"
+    ],
+    length: "short",
+    texture: "straight",
+    structure: "separated-high-spikes",
+    volume: "high"
+  }
+);
+
+
+addHairReference(
+  35,
+  {
+    description:
+      "Short irregular crown with multiple uneven spikes extending outward.",
+    tags: [
+      "short",
+      "irregular",
+      "spiky",
+      "outward"
+    ],
+    length: "short",
+    texture: "straight",
+    structure: "irregular-spikes",
+    volume: "high"
+  }
+);
+
+
+addHairReference(
+  36,
+  {
+    description:
+      "Very short flat geometric crop with a rectangular upper silhouette.",
+    tags: [
+      "very-short",
+      "flat-top",
+      "rectangular",
+      "geometric"
+    ],
+    length: "very-short",
+    texture: "straight",
+    structure: "small-flat-top",
+    volume: "low"
+  }
+);
+
+
+addHairReference(
+  37,
+  {
+    description:
+      "Tall squared flat-top style with straight vertical sides.",
+    tags: [
+      "tall",
+      "flat-top",
+      "squared",
+      "vertical"
+    ],
+    length: "short",
+    texture: "straight",
+    structure: "tall-flat-top",
+    volume: "medium"
+  }
+);
+
+
+addHairReference(
+  38,
+  {
+    description:
+      "Large rounded curly or coiled style with substantial height and width.",
+    tags: [
+      "large",
+      "rounded",
+      "curly",
+      "coiled"
+    ],
+    length: "medium",
+    texture: "coiled",
+    structure: "large-rounded-coils",
+    volume: "high"
+  }
+);
+
+
+addHairReference(
+  39,
+  {
+    description:
+      "Mostly exposed top with sparse close hair concentrated around the sides and rear.",
+    tags: [
+      "balding",
+      "sparse",
+      "side-hair",
+      "close"
+    ],
+    length: "very-short",
+    texture: "straight",
+    structure: "balding-sides",
+    volume: "low"
+  }
+);
+
+
+addHairReference(
+  40,
+  {
+    description:
+      "Mostly exposed top combined with a narrow longer section trailing down the rear.",
+    tags: [
+      "balding",
+      "rear-tail",
+      "long-section",
+      "sparse"
+    ],
+    length: "long",
+    texture: "straight",
+    structure: "balding-rear-tail",
+    volume: "low"
+  }
+);
+
+
+addHairReference(
+  41,
+  {
+    description:
+      "Short smooth bowl-like cut with a rounded fringe and compact rear.",
+    tags: [
+      "short",
+      "bowl",
+      "smooth",
+      "rounded"
+    ],
+    length: "short",
+    texture: "straight",
+    structure: "rounded-bowl",
+    volume: "medium"
+  }
+);
+
+
+addHairReference(
+  42,
+  {
+    description:
+      "Medium rounded bob-like style with curved side sections and a full lower silhouette.",
+    tags: [
+      "medium",
+      "bob",
+      "rounded",
+      "full-sides"
+    ],
+    length: "medium",
+    texture: "wavy",
+    structure: "rounded-bob",
+    volume: "high"
+  }
+);
+
+
+addHairReference(
+  43,
+  {
+    description:
+      "Very short close crop with minimal height and a low clean silhouette.",
+    tags: [
+      "very-short",
+      "close-crop",
+      "low",
+      "clean"
+    ],
+    length: "very-short",
+    texture: "straight",
+    structure: "low-close-crop",
+    volume: "low"
+  }
+);
+
+
+addHairReference(
+  44,
+  {
+    description:
+      "Short compact rounded crop with a slightly fuller crown.",
+    tags: [
+      "short",
+      "compact",
+      "rounded",
+      "full-crown"
+    ],
+    length: "short",
+    texture: "straight",
+    structure: "compact-rounded-crop",
+    volume: "medium"
+  }
+);
+
+
+addHairReference(
+  45,
+  {
+    description:
+      "Short wide textured style with upper sections extending outward from the crown.",
+    tags: [
+      "short",
+      "wide",
+      "textured",
+      "outward"
+    ],
+    length: "short",
+    texture: "textured",
+    structure: "flared-textured-top",
+    volume: "high"
+  }
+);
+
+
+addHairReference(
+  46,
+  {
+    description:
+      "Medium smooth side-parted style with a softly swept front and rounded rear.",
+    tags: [
+      "medium",
+      "smooth",
+      "side-part",
+      "soft-sweep"
+    ],
+    length: "medium",
+    texture: "straight",
+    structure: "soft-side-part",
+    volume: "medium"
+  }
+);
+
+
+addHairReference(
+  47,
+  {
+    description:
+      "Short uneven side-parted crop with a small pointed front section.",
+    tags: [
+      "short",
+      "side-part",
+      "uneven",
+      "pointed-front"
+    ],
+    length: "short",
+    texture: "straight",
+    structure: "uneven-side-crop",
+    volume: "medium"
+  }
+);
+/*
+  HAIR CATALOG - PAGES 3-8
+  Hoop Land IDs 48-170
+  IDs ARE IMMUTABLE.
+*/
+
+const HAIR_REFERENCE_DATA = [
+
+  // PAGE 3 - IDs 48-71
+
+  [48, "Medium heavy side-swept style with a broad angular fringe.", "medium", "straight", "broad-side-sweep", "medium"],
+  [49, "Medium messy rounded style with dense irregular texture and heavy side fringe.", "medium", "textured", "messy-rounded", "high"],
+  [50, "Tall dense flat-top style with straight vertical sides.", "short", "textured", "tall-flat-top", "high"],
+  [51, "Short angular style with raised pointed sections around the crown.", "short", "straight", "angular-crown", "medium"],
+  [52, "Medium full side-swept style with long diagonal fringe.", "medium", "straight", "long-side-sweep", "high"],
+  [53, "Short smooth rounded side-parted cut with compact rear coverage.", "short", "straight", "smooth-side-part", "medium"],
+  [54, "Large messy spiked style with irregular points around the crown.", "medium", "textured", "large-messy-spikes", "high"],
+  [55, "Tall narrow pointed crest with very short sides.", "short", "straight", "narrow-crest", "medium"],
+
+  [56, "Very short central pointed crest with closely cropped sides.", "very-short", "straight", "small-crest", "low"],
+  [57, "Short front and crown with a long narrow trailing section down one side of the back.", "long", "straight", "long-side-tail", "medium"],
+  [58, "Short compact swept crop with a small raised front.", "short", "straight", "compact-sweep", "low"],
+  [59, "Short rounded crop with a subtle raised center.", "short", "straight", "rounded-crop", "low"],
+  [60, "Short narrow upright top with closely shaped sides.", "short", "straight", "narrow-upright", "medium"],
+  [61, "Short smooth side-swept cut with moderate front height.", "short", "straight", "short-side-sweep", "medium"],
+  [62, "Short compact crop with a squared upper silhouette.", "short", "straight", "square-crop", "low"],
+  [63, "Large messy multi-directional spikes spreading broadly around the head.", "medium", "textured", "wide-spikes", "high"],
+
+  [64, "Long straight loose hair framing both sides of the face and extending well down the back.", "long", "straight", "long-loose", "high"],
+  [65, "Short smooth rounded crop with slightly asymmetrical front coverage.", "short", "straight", "rounded-crop", "low"],
+  [66, "Very short low flat crop with closely cut sides.", "very-short", "straight", "close-flat-crop", "low"],
+  [67, "Very short rounded crop with minimal height.", "very-short", "straight", "close-rounded-crop", "low"],
+  [68, "Very short narrow center strip with heavily exposed sides.", "very-short", "straight", "central-strip", "low"],
+  [69, "Mostly bald head with a small dark patch concentrated near the top or rear.", "very-short", "straight", "sparse-top", "low"],
+  [70, "Braided or loc-like hair gathered into a high tied top section with hanging rear strands.", "long", "braided", "braided-top-knot", "high"],
+  [71, "Medium thick braided or loc-like hair with rounded coverage around the head.", "medium", "braided", "rounded-braids", "high"],
+
+
+  // PAGE 4 - IDs 72-95
+
+  [72, "Short dense twisted or loc-like strands forming a rounded silhouette.", "short", "loc-like", "rounded-short-locs", "high"],
+  [73, "Medium separated loc-like strands hanging around the forehead and sides.", "medium", "loc-like", "hanging-locs", "high"],
+  [74, "Short textured swept style with layered side-oriented sections.", "short", "textured", "textured-side-sweep", "medium"],
+  [75, "Short dense curly or coiled top with a rounded silhouette.", "short", "coiled", "compact-coils", "high"],
+  [76, "Medium thick textured hair swept across one side of the forehead.", "medium", "textured", "thick-side-sweep", "high"],
+  [77, "Short smooth asymmetric side-swept style.", "short", "straight", "asymmetric-sweep", "medium"],
+  [78, "Short dense curly or coiled style with irregular upper texture.", "short", "coiled", "textured-coils", "medium"],
+  [79, "Medium straight bob with strong side separation and jaw-length sides.", "medium", "straight", "side-parted-bob", "medium"],
+
+  [80, "Long smooth ponytail tied toward the rear with substantial hanging length.", "long", "straight", "long-ponytail", "medium"],
+  [81, "Medium-to-long tied ponytail with a fuller raised crown.", "long", "straight", "raised-ponytail", "medium"],
+  [82, "Two large rounded side buns or puffs positioned toward the rear sides.", "medium", "textured", "double-buns", "high"],
+  [83, "Very short smooth rounded crop with closely fitted sides.", "very-short", "straight", "smooth-close-crop", "low"],
+  [84, "Very short plain close crop with an even low silhouette.", "very-short", "straight", "plain-close-crop", "low"],
+  [85, "Short side-parted crop with gently raised front volume.", "short", "straight", "gentle-side-part", "medium"],
+  [86, "Short rounded style with subtle side sweep.", "short", "straight", "soft-rounded-sweep", "medium"],
+  [87, "Short neat compact crop with a slightly raised crown.", "short", "straight", "neat-raised-crop", "medium"],
+
+  [88, "Very short narrow rectangular flat-top.", "very-short", "straight", "narrow-flat-top", "low"],
+  [89, "Short smooth rounded crop with closely shaped sides.", "short", "straight", "smooth-rounded-crop", "medium"],
+  [90, "Short tapered style with a narrow top section and closely cut sides.", "short", "straight", "tapered-top", "low"],
+  [91, "Short low rounded crop with an even outline.", "short", "straight", "low-rounded-crop", "low"],
+  [92, "Short smooth rounded style with slightly increased crown height.", "short", "straight", "raised-rounded-crop", "medium"],
+  [93, "Short side-swept cut with smooth moderate volume.", "short", "straight", "smooth-swept-crop", "medium"],
+  [94, "Short dense textured crop with several upright front sections.", "short", "textured", "dense-upright-crop", "medium"],
+  [95, "Short squared textured top with evenly spaced upright points.", "short", "textured", "square-pointed-top", "medium"],
+
+
+  // PAGE 5 - IDs 96-119
+
+  [96, "Short wide rounded crop with thick smooth coverage across the crown.", "short", "straight", "wide-rounded-crop", "medium"],
+  [97, "Short wide flat side-swept style with strong horizontal shape.", "short", "straight", "wide-flat-sweep", "medium"],
+  [98, "Short compact textured crop with numerous small upright points.", "short", "textured", "small-spiked-crop", "medium"],
+  [99, "Short squared textured crop with small fringe points along the front.", "short", "textured", "square-textured-crop", "medium"],
+  [100, "Medium dense messy style with rounded irregular volume.", "medium", "textured", "dense-messy", "high"],
+  [101, "Short dramatic irregular spikes concentrated across the upper crown.", "short", "textured", "irregular-crown-spikes", "high"],
+  [102, "Medium smooth side-oriented hair with a softly rounded silhouette.", "medium", "straight", "rounded-side-style", "medium"],
+  [103, "Medium smooth rounded bob with full side and rear coverage.", "medium", "straight", "smooth-rounded-bob", "medium"],
+
+  [104, "Long loose hair extending down both sides and the back with a full silhouette.", "long", "straight", "long-full-loose", "high"],
+  [105, "Very short close buzzed or shaved style with minimal visible hair.", "very-short", "straight", "buzz-cut", "low"],
+  [106, "Short simple close crop with modest top coverage.", "short", "straight", "simple-close-crop", "low"],
+  [107, "Short rounded crop with slightly raised front volume.", "short", "straight", "raised-front-crop", "medium"],
+  [108, "Short upright textured top with closely shaped sides.", "short", "textured", "upright-textured-top", "medium"],
+  [109, "Short tall narrow textured top with strong vertical lines.", "short", "textured", "vertical-textured-top", "medium"],
+  [110, "Medium layered side-oriented style with longer sections surrounding the face.", "medium", "straight", "layered-side-style", "medium"],
+  [111, "Medium center-separated hair with long sections falling along both sides.", "medium", "straight", "center-separated-medium", "medium"],
+
+  [112, "Short rounded tightly textured crop.", "short", "coiled", "tight-rounded-crop", "medium"],
+  [113, "Medium asymmetric style with long side fringe and greater length on one side.", "medium", "straight", "asymmetric-medium", "medium"],
+  [114, "Short narrow textured style with vertical strand definition.", "short", "textured", "vertical-strands", "medium"],
+  [115, "Short messy textured top with several broad outward sections.", "short", "textured", "messy-textured-top", "high"],
+  [116, "Short tied or divided style forming two compact upper sections.", "short", "straight", "small-double-sections", "medium"],
+  [117, "Medium thick separated strands extending vertically and around the crown.", "medium", "loc-like", "thick-separated-strands", "high"],
+  [118, "Medium layered hair forming broad curved sections around both sides.", "medium", "straight", "broad-layered-sections", "high"],
+  [119, "Medium high-volume style divided into two large outward wing-like sections.", "medium", "straight", "double-wing-style", "high"],
+
+
+  // PAGE 6 - IDs 120-143
+
+  [120, "Very short dense textured crop with an even compact top.", "very-short", "textured", "dense-close-crop", "low"],
+  [121, "Large rounded dense textured or coiled style with broad side volume.", "medium", "coiled", "large-rounded-texture", "high"],
+  [122, "Medium fluffy textured style with an irregular rounded crown.", "medium", "textured", "fluffy-rounded", "high"],
+  [123, "Medium curly or coiled side-oriented style with a narrow trailing side section.", "medium", "coiled", "curly-side-tail", "high"],
+  [124, "Large full textured or coiled style with substantial width and height.", "medium", "coiled", "large-full-coils", "high"],
+  [125, "Hair pulled into a high compact bun with smooth close-fitting sides.", "long", "straight", "high-bun", "medium"],
+  [126, "Medium smooth side-swept style with a long section trailing toward one rear side.", "medium", "straight", "side-swept-tail", "medium"],
+  [127, "Long textured or braided hair falling down one side of the head.", "long", "braided", "long-side-braids", "medium"],
+
+  [128, "Long straight loose hair extending below the shoulders with a central rear fall.", "long", "straight", "long-loose-back", "medium"],
+  [129, "Medium-to-long rounded textured style framing the sides and back.", "long", "textured", "rounded-long-texture", "medium"],
+  [130, "Large dense curly or coiled halo with extensive width around the head.", "medium", "coiled", "large-curly-halo", "high"],
+  [131, "Short smooth simple crop with low volume and clean sides.", "short", "straight", "simple-smooth-crop", "low"],
+  [132, "Short compact side-separated crop with a subtle raised front.", "short", "straight", "compact-side-crop", "low"],
+  [133, "Short messy layered style with forward and side-oriented points.", "short", "textured", "messy-layered-crop", "medium"],
+  [134, "Short smooth broad side-swept cut with closely shaped sides.", "short", "straight", "broad-smooth-sweep", "medium"],
+  [135, "Short smooth side-combed style with a longer raised frontal section.", "short", "straight", "side-combed-front", "medium"],
+
+  [136, "Very short flat close crop with a straight upper edge.", "very-short", "straight", "flat-close-crop", "low"],
+  [137, "Short tall textured top with sharply raised upper volume.", "short", "textured", "tall-textured-top", "high"],
+  [138, "Medium smooth side sweep with a long curved section behind one side.", "medium", "straight", "curved-side-sweep", "medium"],
+  [139, "Very short textured close crop with minimal height.", "very-short", "textured", "textured-buzz", "low"],
+  [140, "Short wavy or textured side-swept crop with several curved sections.", "short", "textured", "wavy-side-crop", "medium"],
+  [141, "Short side-swept textured style with compact rear coverage.", "short", "textured", "compact-textured-sweep", "medium"],
+  [142, "Long braided or loc-like hair gathered high with substantial strands falling down the back.", "long", "braided", "high-braided-ponytail", "high"],
+  [143, "Long thick braided or loc-like hair falling down one side and rear.", "long", "braided", "long-thick-side-locs", "high"],
+
+
+  // PAGE 7 - IDs 144-167
+
+  [144, "Long braided or loc-like hair gathered high with thick strands cascading down one side.", "long", "braided", "high-side-locs", "high"],
+  [145, "Short dense textured top with low tapered sides.", "short", "textured", "dense-tapered-top", "medium"],
+  [146, "Medium dense twisted or loc-like style with irregular separated sections.", "medium", "loc-like", "irregular-medium-locs", "high"],
+  [147, "Medium loc-like strands hanging around the forehead and sides with visible separation.", "medium", "loc-like", "face-framing-locs", "high"],
+  [148, "Medium rounded loc-like style with thick curved separated sections.", "medium", "loc-like", "rounded-thick-locs", "high"],
+  [149, "Medium rounded loc-like hair with several large hanging side sections.", "medium", "loc-like", "large-side-locs", "high"],
+  [150, "Medium dense rounded loc-like style with numerous short hanging sections.", "medium", "loc-like", "dense-rounded-locs", "high"],
+  [151, "Medium rounded loc-like style with a broad symmetrical silhouette.", "medium", "loc-like", "symmetrical-locs", "high"],
+
+  [152, "Medium layered loc-like hair with strands surrounding both sides of the face.", "medium", "loc-like", "layered-face-locs", "high"],
+  [153, "Medium loc-like style falling toward both sides with center facial separation.", "medium", "loc-like", "center-separated-locs", "high"],
+  [154, "Medium double-bunched or tied loc-like style with two upper side sections.", "medium", "loc-like", "double-loc-bunches", "high"],
+  [155, "Medium compact loc-like bob with rounded side and rear length.", "medium", "loc-like", "loc-bob", "medium"],
+  [156, "Medium loc-like style with several long front strands covering portions of the forehead.", "medium", "loc-like", "long-front-locs", "medium"],
+  [157, "Medium center-hanging loc-like style with long strands framing the face.", "medium", "loc-like", "center-hanging-locs", "medium"],
+  [158, "Short dense curly or coiled rounded style.", "short", "coiled", "short-rounded-coils", "high"],
+  [159, "Short curly or coiled style with prominent volume swept toward one side.", "short", "coiled", "side-curly-volume", "high"],
+
+  [160, "Short rounded textured style with closely defined curl or coil sections.", "short", "coiled", "defined-short-coils", "medium"],
+  [161, "Medium textured side-oriented style with uneven layered volume.", "medium", "textured", "layered-textured-side", "high"],
+  [162, "Short dense curly or coiled crop with a broad upper silhouette.", "short", "coiled", "broad-coiled-crop", "high"],
+  [163, "Medium rounded curly or coiled style with substantial crown volume.", "medium", "coiled", "rounded-crown-coils", "high"],
+  [164, "Medium dramatic textured spikes radiating outward around the crown.", "medium", "textured", "radiating-spikes", "high"],
+  [165, "Medium swept spiked style with long points extending strongly toward one side.", "medium", "textured", "long-side-spikes", "high"],
+  [166, "Medium angular side-swept style with a large pointed front section.", "medium", "straight", "angular-large-sweep", "high"],
+  [167, "Large rounded high-volume curly or coiled halo.", "medium", "coiled", "large-coiled-halo", "very-high"],
+
+
+  // PAGE 8 - IDs 168-170
+
+  [168, "Very short close crop with a flat clean top and tightly shaped sides.", "very-short", "straight", "clean-close-crop", "low"],
+  [169, "Short smooth side-swept crop with a broad diagonal top.", "short", "straight", "diagonal-side-sweep", "medium"],
+  [170, "Medium messy textured style with many short irregular outward points.", "medium", "textured", "messy-outward-texture", "high"]
+
+];
+
+
+HAIR_REFERENCE_DATA.forEach(
+  ([
+    id,
+    description,
+    length,
+    texture,
+    structure,
+    volume
+  ]) => {
+
+    addHairReference(
+      id,
+      {
+        description:
+          description,
+
+        tags: [
+          length,
+          texture,
+          structure,
+          volume
+        ],
+
+        length:
+          length,
+
+        texture:
+          texture,
+
+        structure:
+          structure,
+
+        volume:
+          volume
+      }
+    );
+
+  }
+);
+function validateHairCatalog() {
+
+  const missingIds = [];
+  const invalidIds = [];
+
+
+  for (
+    let id = 0;
+    id <= 170;
+    id++
+  ) {
+
+    const entry =
+      HAIR_CATALOG[id];
+
+
+    if (!entry) {
+
+      missingIds.push(
+        id
+      );
+
+      continue;
+    }
+
+
+    if (
+      entry.id !== id
+    ) {
+
+      invalidIds.push(
+        id
+      );
+    }
+  }
+
+
+  return {
+
+    valid:
+      missingIds.length === 0 &&
+      invalidIds.length === 0,
+
+    expected:
+      171,
+
+    found:
+      Object.keys(
+        HAIR_CATALOG
+      ).length,
+
+    missingIds:
+      missingIds,
+
+    invalidIds:
+      invalidIds
+
+  };
+
+}
+/*
+  HOOP LAND FACIAL HAIR REFERENCE CATALOG
+
+  IDs are the actual Hoop Land facial-hair IDs.
+  NEVER renumber them.
+
+  Page 1: 0-23
+  Page 2: 24-31
+*/
+
+const FACIAL_HAIR_CATALOG = {};
+
+
+function addFacialHairReference(
+  id,
+  description,
+  tags
+) {
+
+  if (
+    !Number.isInteger(id) ||
+    id < 0 ||
+    id > 31
+  ) {
+
+    throw new Error(
+      `Invalid Hoop Land facial hair ID: ${id}`
+    );
+  }
+
+
+  if (
+    FACIAL_HAIR_CATALOG[id]
+  ) {
+
+    throw new Error(
+      `Duplicate Hoop Land facial hair ID: ${id}`
+    );
+  }
+
+
+  FACIAL_HAIR_CATALOG[id] =
+    Object.freeze({
+
+      id:
+        id,
+
+      description:
+        description,
+
+      tags:
+        tags
+
+    });
+
+}
+
+
+/* PAGE 1 - IDs 0-23 */
+
+addFacialHairReference(
+  0,
+  "No visible facial hair.",
+  ["none", "clean-shaven"]
+);
+
+addFacialHairReference(
+  1,
+  "Small centered chin patch.",
+  ["chin", "small", "patch"]
+);
+
+addFacialHairReference(
+  2,
+  "Short narrow beard concentrated along the chin and lower jaw.",
+  ["short", "chin", "jaw"]
+);
+
+addFacialHairReference(
+  3,
+  "Medium rounded beard covering the chin and lower jaw.",
+  ["medium", "beard", "rounded"]
+);
+
+addFacialHairReference(
+  4,
+  "Large full beard with broad chin and jaw coverage.",
+  ["full", "large", "beard"]
+);
+
+addFacialHairReference(
+  5,
+  "Short mustache with a small centered chin section.",
+  ["mustache", "chin", "short"]
+);
+
+addFacialHairReference(
+  6,
+  "Narrow mustache with small chin coverage.",
+  ["mustache", "narrow", "chin"]
+);
+
+addFacialHairReference(
+  7,
+  "Short mustache-and-chin combination with separated facial coverage.",
+  ["mustache", "chin", "separated"]
+);
+
+addFacialHairReference(
+  8,
+  "Thin mustache with narrow extended chin hair.",
+  ["mustache", "thin", "long-chin"]
+);
+
+addFacialHairReference(
+  9,
+  "Mustache with a long narrow pointed goatee.",
+  ["mustache", "goatee", "pointed"]
+);
+
+addFacialHairReference(
+  10,
+  "Compact mustache and short pointed goatee.",
+  ["mustache", "goatee", "compact"]
+);
+
+addFacialHairReference(
+  11,
+  "Small centered mustache with a narrow chin patch.",
+  ["mustache", "chin-patch", "small"]
+);
+
+addFacialHairReference(
+  12,
+  "Dense rounded beard concentrated around the mouth and chin.",
+  ["dense", "rounded", "beard"]
+);
+
+addFacialHairReference(
+  13,
+  "Short mustache with connected lower-face coverage.",
+  ["mustache", "connected", "short-beard"]
+);
+
+addFacialHairReference(
+  14,
+  "Narrow mustache with small separated chin section.",
+  ["mustache", "separated", "chin"]
+);
+
+addFacialHairReference(
+  15,
+  "Thin mustache with minimal lower-lip or chin coverage.",
+  ["mustache", "thin", "minimal"]
+);
+
+addFacialHairReference(
+  16,
+  "Short dark beard covering the lower chin and jaw.",
+  ["short", "beard", "lower-jaw"]
+);
+
+addFacialHairReference(
+  17,
+  "Compact rounded beard around the chin and lower mouth.",
+  ["compact", "rounded", "beard"]
+);
+
+addFacialHairReference(
+  18,
+  "Small separated mustache and chin markings.",
+  ["mustache", "chin", "minimal"]
+);
+
+addFacialHairReference(
+  19,
+  "Medium beard with broad chin coverage and defined upper edge.",
+  ["medium", "beard", "broad-chin"]
+);
+
+addFacialHairReference(
+  20,
+  "Medium rounded full beard with strong jaw coverage.",
+  ["medium", "full-beard", "rounded"]
+);
+
+addFacialHairReference(
+  21,
+  "Medium full beard covering the jaw and chin with a flatter lower edge.",
+  ["medium", "full-beard", "jaw"]
+);
+
+addFacialHairReference(
+  22,
+  "Longer full beard extending noticeably below the chin.",
+  ["long", "full-beard", "extended"]
+);
+
+addFacialHairReference(
+  23,
+  "Long narrow beard extending downward from the chin.",
+  ["long", "narrow", "beard"]
+);
+
+
+/* PAGE 2 - IDs 24-31 */
+
+addFacialHairReference(
+  24,
+  "Large dense full beard with heavy cheek, jaw, and chin coverage.",
+  ["large", "dense", "full-beard"]
+);
+
+addFacialHairReference(
+  25,
+  "Thin angular mustache and narrow chin outline.",
+  ["thin", "mustache", "angular"]
+);
+
+addFacialHairReference(
+  26,
+  "Thin mustache connected to a narrow pointed chin section.",
+  ["thin", "mustache", "pointed-chin"]
+);
+
+addFacialHairReference(
+  27,
+  "Trimmed mustache and compact rounded chin beard.",
+  ["trimmed", "mustache", "chin-beard"]
+);
+
+addFacialHairReference(
+  28,
+  "Short rounded beard outlining the lower jaw and chin.",
+  ["short", "rounded", "jaw-beard"]
+);
+
+addFacialHairReference(
+  29,
+  "Short-to-medium full beard with even jaw and chin coverage.",
+  ["medium", "full-beard", "even"]
+);
+
+addFacialHairReference(
+  30,
+  "Medium rounded beard with broad lower-face coverage.",
+  ["medium", "rounded", "broad"]
+);
+
+addFacialHairReference(
+  31,
+  "Medium-to-large full beard with substantial cheek and chin coverage.",
+  ["large", "full-beard", "cheek"]
+);
+
+
+function getFacialHairReference(
+  id
+) {
+
+  return (
+    FACIAL_HAIR_CATALOG[id] ||
+    null
+  );
+
+}
+/*
+  HOOP LAND PRIMARY ACCESSORY REFERENCE CATALOG
+
+  IDs are the actual Hoop Land primary accessory IDs.
+  NEVER renumber them.
+
+  Page 1: 0-23
+  Page 2: 24-25
+*/
+
+const PRIMARY_ACCESSORY_CATALOG = {};
+
+
+function addPrimaryAccessoryReference(
+  id,
+  description,
+  tags
+) {
+
+  if (
+    !Number.isInteger(id) ||
+    id < 0 ||
+    id > 25
+  ) {
+
+    throw new Error(
+      `Invalid Hoop Land primary accessory ID: ${id}`
+    );
+  }
+
+
+  if (
+    PRIMARY_ACCESSORY_CATALOG[id]
+  ) {
+
+    throw new Error(
+      `Duplicate Hoop Land primary accessory ID: ${id}`
+    );
+  }
+
+
+  PRIMARY_ACCESSORY_CATALOG[id] =
+    Object.freeze({
+
+      id:
+        id,
+
+      description:
+        description,
+
+      tags:
+        tags
+
+    });
+
+}
+
+
+/* PAGE 1 - IDs 0-23 */
+
+addPrimaryAccessoryReference(
+  0,
+  "No primary head accessory.",
+  ["none"]
+);
+
+addPrimaryAccessoryReference(
+  1,
+  "Thin horizontal headband worn across the forehead.",
+  ["headband", "thin", "forehead"]
+);
+
+addPrimaryAccessoryReference(
+  2,
+  "Tied bandana-style head covering with a trailing side tie.",
+  ["bandana", "tied", "side-tail"]
+);
+
+addPrimaryAccessoryReference(
+  3,
+  "Close-fitting bandana or head wrap covering the upper head.",
+  ["bandana", "head-wrap", "covered"]
+);
+
+addPrimaryAccessoryReference(
+  4,
+  "Narrow protective eyewear or visor across the eyes.",
+  ["eyewear", "visor", "narrow"]
+);
+
+addPrimaryAccessoryReference(
+  5,
+  "Thin wraparound eye protection.",
+  ["eyewear", "wraparound", "thin"]
+);
+
+addPrimaryAccessoryReference(
+  6,
+  "Rectangular sports goggles with dark lens area.",
+  ["goggles", "rectangular", "eyewear"]
+);
+
+addPrimaryAccessoryReference(
+  7,
+  "Full protective face mask with vertical and horizontal structure.",
+  ["face-mask", "protective", "full"]
+);
+
+addPrimaryAccessoryReference(
+  8,
+  "Large protective face covering focused around the nose and upper face.",
+  ["face-mask", "nose", "protective"]
+);
+
+addPrimaryAccessoryReference(
+  9,
+  "Wide upper-head or forehead wrap.",
+  ["head-wrap", "wide", "forehead"]
+);
+
+addPrimaryAccessoryReference(
+  10,
+  "Small single-side face or eye covering.",
+  ["eye-cover", "single-side", "small"]
+);
+
+addPrimaryAccessoryReference(
+  11,
+  "Wide brim-like horizontal headband around the forehead.",
+  ["headband", "wide", "horizontal"]
+);
+
+addPrimaryAccessoryReference(
+  12,
+  "Close-fitting cap or skullcap covering the top of the head.",
+  ["cap", "skullcap", "head-covering"]
+);
+
+addPrimaryAccessoryReference(
+  13,
+  "Large over-ear protective covering or ear guards.",
+  ["ear-guards", "protective", "over-ear"]
+);
+
+addPrimaryAccessoryReference(
+  14,
+  "Wide horizontal headband positioned across the forehead.",
+  ["headband", "wide", "forehead"]
+);
+
+addPrimaryAccessoryReference(
+  15,
+  "Wide eye-covering visor or mask spanning both eyes.",
+  ["visor", "eye-mask", "wide"]
+);
+
+addPrimaryAccessoryReference(
+  16,
+  "No visible upper accessory with lower-face covering or neck-area element.",
+  ["lower-face", "covering"]
+);
+
+addPrimaryAccessoryReference(
+  17,
+  "Lower-face mask covering the mouth and nose area.",
+  ["face-mask", "lower-face", "mouth"]
+);
+
+addPrimaryAccessoryReference(
+  18,
+  "Thin horizontal forehead band with exposed crown.",
+  ["headband", "thin", "forehead"]
+);
+
+addPrimaryAccessoryReference(
+  19,
+  "Narrow fitted band around the upper forehead.",
+  ["headband", "narrow", "fitted"]
+);
+
+addPrimaryAccessoryReference(
+  20,
+  "Narrow cap-like or fitted head covering across the upper forehead.",
+  ["head-covering", "fitted", "narrow"]
+);
+
+addPrimaryAccessoryReference(
+  21,
+  "Medium-width fitted forehead band.",
+  ["headband", "medium", "forehead"]
+);
+
+addPrimaryAccessoryReference(
+  22,
+  "Rounded fitted headband extending around the sides of the head.",
+  ["headband", "rounded", "fitted"]
+);
+
+addPrimaryAccessoryReference(
+  23,
+  "Wide fitted headband covering more of the upper forehead.",
+  ["headband", "wide", "fitted"]
+);
+
+
+/* PAGE 2 - IDs 24-25 */
+
+addPrimaryAccessoryReference(
+  24,
+  "Thin wraparound protective eyewear with a narrow lens strip.",
+  ["eyewear", "protective", "wraparound"]
+);
+
+addPrimaryAccessoryReference(
+  25,
+  "Large wraparound visor covering a broad area around both eyes.",
+  ["visor", "large", "wraparound"]
+);
+
+
+function getPrimaryAccessoryReference(
+  id
+) {
+
+  return (
+    PRIMARY_ACCESSORY_CATALOG[id] ||
+    null
+  );
+
+}
+function validateAppearanceCatalogs() {
+
+  const hairMissing = [];
+  const facialMissing = [];
+  const accessoryMissing = [];
+
+
+  for (
+    let id = 0;
+    id <= 170;
+    id++
+  ) {
+
+    if (!HAIR_CATALOG[id]) {
+
+      hairMissing.push(id);
+    }
+  }
+
+
+  for (
+    let id = 0;
+    id <= 31;
+    id++
+  ) {
+
+    if (!FACIAL_HAIR_CATALOG[id]) {
+
+      facialMissing.push(id);
+    }
+  }
+
+
+  for (
+    let id = 0;
+    id <= 25;
+    id++
+  ) {
+
+    if (!PRIMARY_ACCESSORY_CATALOG[id]) {
+
+      accessoryMissing.push(id);
+    }
+  }
+
+
+  return {
+
+    valid:
+      hairMissing.length === 0 &&
+      facialMissing.length === 0 &&
+      accessoryMissing.length === 0,
+
+    hair: {
+      expected: 171,
+      found:
+        Object.keys(
+          HAIR_CATALOG
+        ).length,
+      missing:
+        hairMissing
+    },
+
+    facialHair: {
+      expected: 32,
+      found:
+        Object.keys(
+          FACIAL_HAIR_CATALOG
+        ).length,
+      missing:
+        facialMissing
+    },
+
+    primaryAccessories: {
+      expected: 26,
+      found:
+        Object.keys(
+          PRIMARY_ACCESSORY_CATALOG
+        ).length,
+      missing:
+        accessoryMissing
+    }
+
+  };
+
+}
+
 const MEN_FACIAL_HAIR=
   Array.from({length:32},(_,i)=>i)
     .filter(i=>![8,9,10,11,13,14,24].includes(i));
