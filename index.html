@@ -4350,21 +4350,152 @@ function generateAutomaticTendencies(
   };
 }
 
+function countryFromSource(value) {
 
-function makePlayer(id, tierName) {
+  const sourceCountry =
+    String(value || "")
+      .trim()
+      .toLowerCase();
 
-  const position =
-  weightedChoice([
-    [0, 14],
-    [1, 10],
-    [2, 14],
-    [3, 9],
-    [4, 13],
-    [5, 9],
-    [6, 13],
-    [7, 7],
-    [8, 11]
-  ]);
+
+  const countryMap = {
+
+    "united states": "US",
+    "usa": "US",
+    "us": "US",
+
+    "spain": "Spain",
+    "france": "France",
+    "canada": "Canada",
+    "australia": "Australia",
+    "germany": "Germany",
+    "italy": "Italy",
+    "serbia": "Serbia",
+    "croatia": "Croatia",
+    "belgium": "Belgium",
+    "slovenia": "Slovenia",
+    "sweden": "Sweden",
+    "finland": "Finland",
+    "latvia": "Latvia",
+    "lithuania": "Lithuania",
+    "poland": "Poland",
+    "greece": "Greece",
+    "turkey": "Turkey",
+    "israel": "Israel",
+    "china": "China",
+    "japan": "Japan",
+    "south korea": "South Korea",
+    "brazil": "Brazil",
+    "argentina": "Argentina",
+    "mexico": "Mexico",
+    "puerto rico": "Puerto Rico",
+    "nigeria": "Nigeria",
+    "senegal": "Senegal",
+    "mali": "Mali",
+    "cameroon": "Cameroon",
+    "kenya": "Kenya"
+
+  };
+
+
+  const mappedCountry =
+    countryMap[sourceCountry];
+
+
+  if (
+    mappedCountry &&
+    NAMES[mappedCountry]
+  ) {
+
+    return mappedCountry;
+  }
+
+
+  return "US";
+}
+
+
+function positionFromSource(value) {
+
+  const sourcePosition =
+    String(value || "")
+      .trim()
+      .toUpperCase()
+      .replace(/\s+/g, "");
+
+
+  const positionMap = {
+
+    "PG": 0,
+    "POINTGUARD": 0,
+
+    "G": 1,
+    "GUARD": 1,
+
+    "SG": 2,
+    "SHOOTINGGUARD": 2,
+
+    "G/F": 3,
+    "GF": 3,
+    "GUARD/FORWARD": 3,
+
+    "SF": 4,
+    "SMALLFORWARD": 4,
+
+    "F": 5,
+    "FORWARD": 5,
+
+    "PF": 6,
+    "POWERFORWARD": 6,
+
+    "F/C": 7,
+    "FC": 7,
+    "FORWARD/CENTER": 7,
+
+    "C": 8,
+    "CENTER": 8
+
+  };
+
+
+  return Object.prototype.hasOwnProperty.call(
+    positionMap,
+    sourcePosition
+  )
+    ? positionMap[sourcePosition]
+    : null;
+}
+
+function makePlayer(
+  id,
+  tierName,
+  sourcePlayer = null
+) {
+
+  const sourcePosition =
+  sourcePlayer
+    ? positionFromSource(
+        sourcePlayer.bioPosition ||
+        sourcePlayer.sourcePosition ||
+        sourcePlayer.position
+      )
+    : null;
+
+
+const position =
+  sourcePosition !== null
+    ? sourcePosition
+    : weightedChoice([
+        [0, 14],
+        [1, 10],
+        [2, 14],
+        [3, 9],
+        [4, 13],
+        [5, 9],
+        [6, 13],
+        [7, 7],
+        [8, 11]
+      ]);
 
   const profile =
     POS_PROFILE[position];
@@ -4423,11 +4554,28 @@ function makePlayer(id, tierName) {
   }
 
 
-  const height =
-    randomInteger(
-      minimumHeight,
-      maximumHeight
-    );
+  const sourceHeight =
+  sourcePlayer &&
+  Number.isFinite(
+    Number(sourcePlayer.height)
+  )
+    ? Math.round(
+        Number(sourcePlayer.height)
+      )
+    : null;
+
+
+const height =
+  sourceHeight !== null
+    ? clamp(
+        sourceHeight,
+        minimumHeight,
+        maximumHeight
+      )
+    : randomInteger(
+        minimumHeight,
+        maximumHeight
+      );
 
 
   const weight =
@@ -4438,9 +4586,13 @@ function makePlayer(id, tierName) {
 
 
   const country =
-    weightedChoice(
-      COUNTRIES
-    );
+  sourcePlayer
+    ? countryFromSource(
+        sourcePlayer.country
+      )
+    : weightedChoice(
+        COUNTRIES
+      );
 
 const gender =
   document.getElementById(
@@ -4481,10 +4633,17 @@ if (!Array.isArray(namePool.hometowns)) {
 }
 
 const firstName =
-  pick(firstNames);
+  sourcePlayer &&
+  String(sourcePlayer.fn || "").trim()
+    ? String(sourcePlayer.fn).trim()
+    : pick(firstNames);
+
 
 const lastName =
-  pick(namePool.last);
+  sourcePlayer &&
+  String(sourcePlayer.ln || "").trim()
+    ? String(sourcePlayer.ln).trim()
+    : pick(namePool.last);
 
 const hometown =
   pick(namePool.hometowns);
