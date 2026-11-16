@@ -4960,12 +4960,59 @@ const REAL_PLAYER_APPEARANCE_PROFILES = {};
 
   }
 
+  const finalSkinTone =
+    profile.skinC ||
+    baseAppearance.skinC;
+
+  const finalHairColor =
+    profile.hairC ||
+    baseAppearance.hairC;
+
+  const finalEyeColor =
+    profile.eyeC ||
+    baseAppearance.eyeC;
+
+  // Keep generated skin color only as fallback.
+  // Explicitly curated segment colors should win.
+  // Tattoos and accessory palette overrides should never be overwritten here.
+  finalAccessories =
+    finalAccessories.map(accessory => {
+      const next = {
+        ...accessory
+      };
+
+      const skinLikeSegments = [
+        "L_Shoulder",
+        "R_Shoulder",
+        "L_Elbow",
+        "R_Elbow",
+        "L_Wrist",
+        "R_Wrist",
+        "L_Knee",
+        "R_Knee",
+        "L_Shin",
+        "R_Shin"
+      ];
+
+      skinLikeSegments.forEach(segment => {
+        if (
+          next[segment] &&
+          String(next[segment]).toUpperCase() ===
+            String(baseAppearance.skinC || "").toUpperCase()
+        ) {
+          next[segment] = finalSkinTone;
+        }
+      });
+
+      return next;
+    });
 
   return {
-
     ...baseAppearance,
-    skinC: profile.skinC || baseAppearance.skinC,
-    
+
+    skinC:
+      finalSkinTone,
+
     eyeC:
       finalEyeColor,
 
@@ -4980,11 +5027,9 @@ const REAL_PLAYER_APPEARANCE_PROFILES = {};
       finalHairColor,
 
     /*
-      Women's real-player profiles default to no
-      facial hair unless an explicit future profile
-      for another class supplies one.
+      Women's real-player profiles default to no facial hair
+      unless an explicit future profile provides one.
     */
-
     fHair:
       gender === "1"
         ? padStyle(0)
@@ -4995,10 +5040,7 @@ const REAL_PLAYER_APPEARANCE_PROFILES = {};
 
     accessories:
       finalAccessories
-
   };
-
-}
 
 const MEN_FACIAL_HAIR=
   Array.from({length:32},(_,i)=>i)
