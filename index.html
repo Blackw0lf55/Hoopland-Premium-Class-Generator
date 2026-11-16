@@ -2323,6 +2323,8 @@ h3,
 
 </main>
 
+  const CLASS_DATA_API =
+  "https://hoopland-premium-class-generator.blackwolf5.workers.dev/api/class-data";
 
 <script>
 
@@ -5026,7 +5028,7 @@ else {
 }
 
 
-function generateClass() {
+async function generateClass() {
 
   try {
 
@@ -5051,6 +5053,24 @@ function generateClass() {
       ).value;
 
 
+    const mode =
+      document.getElementById(
+        "mode"
+      ).value;
+
+
+    const classType =
+      document.getElementById(
+        "classType"
+      ).value;
+
+
+    const gender =
+      document.getElementById(
+        "gender"
+      ).value;
+
+
     const tierPlan =
       buildTierPlan(
         strength,
@@ -5061,16 +5081,92 @@ function generateClass() {
     generated = [];
 
 
+    let realPlayers = [];
+
+
+    if (
+      mode === "real" &&
+      classType === "draft"
+    ) {
+
+      const draftYear =
+        document.getElementById(
+          "draftYear"
+        ).value;
+
+
+      setStatus(
+        `Loading ${draftYear} real draft prospects...`,
+        "ok"
+      );
+
+
+      const genderParam =
+        gender === "1"
+          ? "women"
+          : "men";
+
+
+      const apiUrl =
+        `${CLASS_DATA_API}` +
+        `?gender=${encodeURIComponent(genderParam)}` +
+        `&type=draft` +
+        `&year=${encodeURIComponent(draftYear)}`;
+
+
+      const response =
+        await fetch(
+          apiUrl
+        );
+
+
+      if (!response.ok) {
+
+        throw new Error(
+          `Real-player data request failed (${response.status}).`
+        );
+      }
+
+
+      const data =
+        await response.json();
+
+
+      if (
+        !data ||
+        !Array.isArray(data.players)
+      ) {
+
+        throw new Error(
+          "Real-player data returned an invalid player list."
+        );
+      }
+
+
+      realPlayers =
+        data.players.slice(
+          0,
+          classSize
+        );
+    }
+
+
     for (
       let index = 1;
       index <= classSize;
       index++
     ) {
 
+      const sourcePlayer =
+        realPlayers[index - 1] ||
+        null;
+
+
       generated.push(
         makePlayer(
           index,
-          tierPlan[index - 1]
+          tierPlan[index - 1],
+          sourcePlayer
         )
       );
     }
@@ -5079,10 +5175,42 @@ function generateClass() {
     renderClass();
 
 
-    setStatus(
-      `Generated ${classSize} players successfully.`,
-      "ok"
-    );
+    if (
+      mode === "real" &&
+      classType === "draft"
+    ) {
+
+      const fictionalCount =
+        classSize -
+        realPlayers.length;
+
+
+      if (
+        fictionalCount > 0
+      ) {
+
+        setStatus(
+          `Generated ${classSize} players: ${realPlayers.length} real prospects and ${fictionalCount} fictional fill players.`,
+          "ok"
+        );
+
+      }
+      else {
+
+        setStatus(
+          `Generated ${classSize} real prospects successfully.`,
+          "ok"
+        );
+      }
+
+    }
+    else {
+
+      setStatus(
+        `Generated ${classSize} players successfully.`,
+        "ok"
+      );
+    }
 
   }
   catch (error) {
@@ -5097,7 +5225,6 @@ function generateClass() {
     );
   }
 }
-
 
 function renderClass() {
 
