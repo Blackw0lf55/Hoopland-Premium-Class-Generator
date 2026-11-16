@@ -626,21 +626,21 @@ const biographyResponse =
     ? await biographyResponse.text()
     : "";
 
-    const azziIndex =
+    const physicalIndex =
   biographyText.indexOf(
-    "Azzi Fudd"
+    "5'11"
   );
 
 const biographySample =
-  azziIndex >= 0
+  physicalIndex >= 0
     ? biographyText.slice(
         Math.max(
           0,
-          azziIndex - 250
+          physicalIndex - 300
         ),
-        azziIndex + 500
+        physicalIndex + 500
       )
-    : "";
+    : "Physical marker not found";
     
     const biographies =
   biographyText
