@@ -432,6 +432,26 @@ export async function handleBart(request) {
   }
 
   try {
+    if (url.searchParams.get("debug")) {
+      const response = await fetch(seasonUrl(year), {
+        headers: { "User-Agent": "Mozilla/5.0 (compatible; HooplandClassGenerator/1.0)" }
+      });
+      const html = await response.text();
+      const rows = parseSeason(html);
+      const profiles = await bartProfiles(year, names);
+
+      return Response.json({
+        status: response.status,
+        htmlLength: html.length,
+        htmlStart: html.slice(0, 400),
+        tableRows: (html.match(/<tr/gi) || []).length,
+        parsedRows: rows.length,
+        sampleRow: rows[0] || null,
+        match: rows.find(row => names.some(name => normalizeName(name) === normalizeName(row.name))) || null,
+        profiles
+      });
+    }
+
     return Response.json(await bartProfiles(year, names));
   } catch (error) {
     return Response.json({ ok: false, error: String(error && error.message), players: {} });
