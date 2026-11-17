@@ -1,18 +1,20 @@
 # Hoopland-Premium-Class-Generator
 Create realistic accurate classes for hoopland that you can upload and use right away! Control every aspect of player generation for easy class creation!
 
-Real-player looks are estimates. Up to four distinct photos are described by
-Workers AI and compared; they come from the draft source, ESPN or an exact-name
-Wikidata basketball-player match and its Wikimedia Commons category. Commons
-category files must also contain the player's name. Photos are not guaranteed:
-the preview reports the number successfully described and warns when fewer than
-three are available. Skin and hair colors come from the descriptor's selector
-choices, not pixel sampling. Unknown or conflicting features use placeholders
-and are flagged for review. Saved descriptions override photo estimates for the
-features they specify, and preview edits are included in the export. A partial
-saved profile does not replace photo estimates for unspecified features. Awa
-Fam's source name variations are normalized before matching. Getty Images is
-not used as a photo source.
+Real-player looks are estimates. Up to four distinct photos are compared using
+Workers AI; they come from the draft source, ESPN or an exact-name Wikidata
+basketball-player match and its Wikimedia Commons category. Commons category
+files must also contain the player's name. For each photo, the browser creates
+a reference sheet showing the actual editor skin and hair swatches next to the
+photo, and the vision model describes the visible hairstyle and selects swatch
+labels. It does not sample image pixels. Photo descriptions are combined, and
+unknown or conflicting features remain placeholders. A reference photo can be
+viewed beside the editable mock-up in Class Preview. Photos may be missing,
+lighting can distort colors, and neither the model's estimates nor the mock-up
+guarantee an exact in-game appearance. Saved descriptions override estimates
+for their specified features, and preview edits are included in the export.
+Awa Fam's source name variations are normalized before matching. Getty Images
+is not used as a photo source.
 
 Draft classes also check ESPN's draft endpoint for headshots and attach them
 only when the returned year, player name, and (where provided) draft pick

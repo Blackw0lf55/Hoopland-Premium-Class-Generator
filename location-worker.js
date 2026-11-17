@@ -312,23 +312,31 @@ async function handleHometown(request) {
 }
 
 const HEADSHOT_HOSTS = ["a.espncdn.com", "cdn.nba.com", "commons.wikimedia.org", "upload.wikimedia.org"];
-const VISION_MODEL = "@cf/meta/llama-3.2-11b-vision-instruct";
-const VISION_PROMPT = "Describe only the visible features of the single primary basketball player. Use unknown if obscured or unsure; never infer skin color from race. Match the face's actual visible skin color to the nearest palette entry below, not the everyday meaning of the group name. The six-digit values are RGB hex colors, listed in exact shade order: light 1-6: F4D2C3, EEBAA9, E7B099, D9A388, CD9D7E, C69479; medium 1-6: BF8C6B, B98360, AD795C, A07053, 99694F, 8C5D4B; bronze 1-5: 835444, 7A4D3D, 734937, 6B4232, 633D2F; dark 1-6: 5A392B, 533329, 4B2D23, 44291D, 3A231A, 301D15. Output exactly these semicolon-separated fields: skin: <light|medium|bronze|dark> <valid shade number> or unknown; hair color: <blonde|brunette|red|black> <1-5> or unknown; hairstyle: <one of angular-crown, asymmetric-medium, braided-top-knot, broad-coiled-crop, buzz-cut, center-hanging-locs, clean-close-crop, compact-coils, curly-side-tail, defined-short-coils, dense-messy, dense-rounded-locs, double-buns, face-framing-locs, fluffy-rounded, gentle-side-part, hanging-locs, high-braided-ponytail, high-bun, large-coiled-halo, large-curly-halo, large-full-coils, loc-bob, long-loose, long-ponytail, long-side-braids, messy-rounded, narrow-flat-top, neat-raised-crop, raised-front-crop, rounded-braids, rounded-crop, rounded-short-locs, side-combed-front, side-parted-bob, smooth-side-part, sparse-top, tall-flat-top, tapered-top, textured-buzz, textured-coils, vertical-textured-top, wavy-side-crop, wide-rounded-crop, bald, unknown>; facial hair: <clean shaven|chin patch|mustache|goatee|short beard|full beard|long beard|unknown>; accessory: <none|headband|wide headband|goggles|glasses|bandana|visor|cap|unknown>.";
+const VISION_MODEL = "@cf/moondream/moondream3.1-9B-A2B";
+const VISION_PROMPT = "The left side is a photo of a basketball player. The right side shows labeled skin and hair color swatches. Compare the player's visible face and hair directly to the swatches, allowing for lighting and shadows. Do not infer color from race or the background. Use unknown for an obscured or uncertain feature. Describe the visible hairstyle using simple words for length, texture, braids, locs, curls, buns or ponytail. Output only these semicolon-separated fields: skin: <skin swatch code such as L1 or D4 or unknown>; hair color: <hair swatch code such as H1, T2, R1, K2 or unknown>; hairstyle: <visible description or unknown>; facial hair: <clean shaven, chin patch, mustache, goatee, short beard, full beard, long beard or unknown>; accessory: <none, headband, wide headband, goggles, glasses, bandana, visor, cap or unknown>.";
 
-async function runVision(env, dataUrl) {
-  const input = { messages: [{ role: "user", content: VISION_PROMPT }], image: dataUrl, max_tokens: 160 };
-  try {
-    return await env.AI.run(VISION_MODEL, input);
-  } catch (error) {
-    if (!/5016|agree|license/i.test(String(error && error.message))) throw error;
-    await env.AI.run(VISION_MODEL, { prompt: "agree" });
-    return await env.AI.run(VISION_MODEL, input);
+function normalizeVisionResponse(answer) {
+  const text = String(answer || "").toLowerCase().replace(/[^a-z0-9,;: -]/g, " ").replace(/\s+/g, " ").trim().slice(0, 1000);
+  const fields = [...text.matchAll(/\b(skin(?: tone)?|hair colou?r|hair\s*style|facial hair|accessory)\s*:\s*/g)];
+  const output = [], seen = new Set();
+  for (let i = 0; i < fields.length; i++) {
+    const raw = fields[i][1];
+    const name = raw.startsWith("skin") ? "skin" : /^hair colou?r$/.test(raw) ? "hair color"
+      : /^hair\s*style$/.test(raw) ? "hairstyle" : raw;
+    const value = text.slice(fields[i].index + fields[i][0].length, fields[i + 1]?.index ?? text.length)
+      .replace(/^[,; ]+|[,; ]+$/g, "");
+    if (value && !seen.has(name)) {
+      output.push(name + ": " + value);
+      seen.add(name);
+    }
   }
+  return output.join("; ");
 }
 
 async function handleDescribe(request, env, ctx) {
   const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
   if (!env.AI) return json({ ok: false, error: "AI binding missing" });
+  if (request.method !== "POST") return json({ ok: false, error: "POST required" }, 405);
   const source = new URL(request.url).searchParams.get("src") || "";
   let target;
   try {
@@ -337,21 +345,29 @@ async function handleDescribe(request, env, ctx) {
     return json({ ok: false, error: "bad src" }, 400);
   }
   if (target.protocol !== "https:" || !HEADSHOT_HOSTS.includes(target.hostname)) return json({ ok: false, error: "forbidden" }, 403);
-  const cache = caches.default;
-  const cacheKey = new Request("https://describe.local/?version=3&src=" + encodeURIComponent(target.toString()));
-  const cached = await cache.match(cacheKey);
-  if (cached) return cached;
   try {
-    const image = await fetch(target.toString());
-    if (!image.ok) return json({ ok: false, error: "image " + image.status });
-    const bytes = new Uint8Array(await image.arrayBuffer());
-    if (bytes.length > 1500000) return json({ ok: false, error: "image too large" });
+    const type = (request.headers.get("content-type") || "").split(";")[0];
+    if (type !== "image/jpeg") return json({ ok:false, error:"JPEG required" }, 415);
+    if (Number(request.headers.get("content-length")) > 1500000) return json({ ok:false, error:"image too large" }, 413);
+    const bytes = new Uint8Array(await request.arrayBuffer());
+    if (bytes.length > 1500000) return json({ ok:false, error:"image too large" }, 413);
+    if (bytes.length < 4 || bytes[0] !== 0xff || bytes[1] !== 0xd8 || bytes[2] !== 0xff) return json({ ok:false, error:"invalid JPEG" }, 400);
+    const digest = [...new Uint8Array(await crypto.subtle.digest("SHA-256", bytes))]
+      .map(value => value.toString(16).padStart(2, "0")).join("");
+    const cache = caches.default;
+    const cacheKey = new Request("https://describe.local/?version=4&src=" + encodeURIComponent(target.toString()) + "&image=" + digest);
+    const cached = await cache.match(cacheKey);
+    if (cached) return cached;
     let binary = "";
     for (let i = 0; i < bytes.length; i += 8192) binary += String.fromCharCode.apply(null, bytes.subarray(i, i + 8192));
-    const type = (image.headers.get("content-type") || "image/png").split(";")[0];
-    const result = await runVision(env, "data:" + type + ";base64," + btoa(binary));
-    const text = String((result && (result.response || result.description)) || "").toLowerCase().replace(/[^a-z0-9,;: -]/g, " ").replace(/\s+/g, " ").trim().slice(0, 300);
-    if (!text) return json({ ok: false, error: "empty" });
+    const result = await env.AI.run(VISION_MODEL, {
+      task:"query", image:"data:image/jpeg;base64," + btoa(binary),
+      question:VISION_PROMPT, reasoning:false, max_tokens:180
+    });
+    const text = normalizeVisionResponse(result?.answer);
+    if (!text || text.split("; ").every(field => /:\s*(unknown|unclear|not visible)$/.test(field))) {
+      return json({ ok: false, error: "unusable vision response" });
+    }
     const response = new Response(JSON.stringify({ ok: true, text }), { headers: { "content-type": "application/json", "cache-control": "public, max-age=2592000" } });
     ctx.waitUntil(cache.put(cacheKey, response.clone()));
     return response;
@@ -371,7 +387,18 @@ async function handleHeadshot(request) {
   if (target.protocol !== "https:" || !HEADSHOT_HOSTS.includes(target.hostname)) {
     return new Response("Forbidden", { status: 403 });
   }
-  const upstream = await fetch(target.toString());
+  let upstream;
+  for (let redirects = 0; redirects <= 3; redirects++) {
+    upstream = await fetch(target.toString(), { redirect:"manual" });
+    if (![301, 302, 303, 307, 308].includes(upstream.status)) break;
+    const location = upstream.headers.get("location");
+    if (!location || redirects === 3) return new Response("Invalid image redirect", { status:502 });
+    try { target = new URL(location, target); }
+    catch (error) { return new Response("Invalid image redirect", { status:502 }); }
+    if (target.protocol !== "https:" || !HEADSHOT_HOSTS.includes(target.hostname)) {
+      return new Response("Forbidden image redirect", { status:403 });
+    }
+  }
   if (!upstream.ok) return new Response("Not found", { status: 404 });
   return new Response(upstream.body, {
     headers: {
@@ -467,6 +494,34 @@ window.__HOOPLAND_REAL_HOMETOWN=function(sourcePlayer){
   if(known&&known.home)return known.home;
   return String(sourcePlayer&&(sourcePlayer.hometown||sourcePlayer.home)||"").trim();
 };
+window.__HOOPLAND_VISION_SHEET=async function(source){
+  const response=await fetch("/api/headshot?src="+encodeURIComponent(source));
+  if(!response.ok)throw new Error("Reference photo HTTP "+response.status);
+  const bitmap=await createImageBitmap(await response.blob());
+  try{
+    const canvas=document.createElement("canvas");
+    canvas.width=900;canvas.height=600;
+    const ctx=canvas.getContext("2d");
+    if(!ctx)throw new Error("Canvas unavailable");
+    ctx.fillStyle="#e8e8e8";ctx.fillRect(0,0,900,600);
+    const scale=Math.min(520/bitmap.width,600/bitmap.height);
+    ctx.drawImage(bitmap,(520-bitmap.width*scale)/2,(600-bitmap.height*scale)/2,bitmap.width*scale,bitmap.height*scale);
+    ctx.font="bold 20px sans-serif";ctx.textAlign="left";ctx.textBaseline="middle";
+    ctx.fillStyle="#111";ctx.fillText("SKIN",535,32);ctx.fillText("HAIR",535,310);
+    const drawRow=(colors,label,y)=>{
+      colors.forEach((color,index)=>{
+        const x=535+index*59;
+        ctx.fillStyle="#"+color;ctx.fillRect(x,y,55,42);
+        ctx.fillStyle=colorLum(color)>130?"#111":"#fff";
+        ctx.font="bold 16px sans-serif";ctx.textAlign="center";
+        ctx.fillText(label+(index+1),x+27,y+21);
+      });
+    };
+    APPEARANCE_PALETTES.forEach((group,index)=>drawRow(group.skins,["L","M","B","D"][index],54+index*51));
+    ["blonde","brunette","red","black"].forEach((group,index)=>drawRow(appearanceHairPalette(group),["H","T","R","K"][index],332+index*51));
+    return await new Promise((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(new Error("Could not encode reference sheet")),"image/jpeg",.88));
+  }finally{if(typeof bitmap.close==="function")bitmap.close();}
+};
 window.__HOOPLAND_PREPARE_REAL_PLAYERS=async function(players,gender){
   try{
     const type=document.getElementById("classType").value;
@@ -519,6 +574,7 @@ window.__HOOPLAND_PREPARE_REAL_PLAYERS=async function(players,gender){
           return true;
         }catch(e){console.warn('Invalid headshot URL for',[p.fn,p.ln].join(' '),e);return false;}
       }).slice(0,8);
+      p.referencePhotos=shots;
       if(shots.length){
         const descriptions=[];
         let attempted=0;
@@ -526,7 +582,8 @@ window.__HOOPLAND_PREPARE_REAL_PLAYERS=async function(players,gender){
           if(descriptions.length===4)break;
           attempted++;
           try{
-            const r=await fetch("/api/describe?src="+encodeURIComponent(shot));
+            const sheet=await window.__HOOPLAND_VISION_SHEET(shot);
+            const r=await fetch("/api/describe?src="+encodeURIComponent(shot),{method:"POST",headers:{"content-type":"image/jpeg"},body:sheet});
             const j=r.ok?await r.json():null;
             if(j&&j.ok&&j.text)descriptions.push(j.text);
             else console.warn('Headshot description unavailable for',[p.fn,p.ln].join(' '),j&&j.error||r.status);

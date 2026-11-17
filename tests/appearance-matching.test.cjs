@@ -124,6 +124,26 @@ test("multiple photo descriptions use agreement and flag conflicts or missing ev
   assert.deepEqual(plain(merge(["skin: dark 1","skin: dark 5"])).conflicts,["skin"]);
 });
 
+test("visual swatch codes map to selector colors and neighboring skin groups agree", () => {
+  const result=plain(merge(["skin: L6; hair color: K2; hairstyle: long braided ponytail",
+    "skin: M1; hair color: K2; hairstyle: long braided ponytail"]));
+  assert.match(result.text,/skin: medium 1/);
+  assert.match(result.text,/hair color: black 2/);
+  assert.match(result.text,/hairstyle:/);
+  assert.equal(apply(base(),result.text,"1").skinC,palette[1].skins[0]);
+  assert.equal(apply(base(),result.text,"1").hairC,"252525");
+  assert.doesNotMatch(merge(["skin: B6; hair color: R6"]).text,/skin:|hair color:/);
+});
+
+test("known hair colors survive harmonization for real-player appearances", () => {
+  const code=html.slice(html.indexOf("function colorLum("),html.indexOf("function generateAppearance(gender)"));
+  const harmonize=vm.runInContext(`${code}\nlet rng=()=>0; harmonizeFaceColors`,context);
+  const hair="7A5A40";
+  const input={skinC:"835444",hairC:hair,eyeC:"090502"};
+  assert.notEqual(harmonize(input).hairC,hair);
+  assert.equal(harmonize(input,true).hairC,hair);
+});
+
 test("real-player preparation compares up to four distinct photo descriptions", async () => {
   const {default:worker} = await import("../location-worker.js");
   const csv = fs.readFileSync(path.join(__dirname, "..", "data/location-catalog.csv"),"utf8");
@@ -158,6 +178,7 @@ test("real-player preparation compares up to four distinct photo descriptions", 
     }
   });
   vm.runInContext(script,context);
+  context.__HOOPLAND_VISION_SHEET=async()=>new Blob(["sheet"],{type:"image/jpeg"});
   const player={fn:"Awa",ln:"Fam",headshot:one,headshots:[one+"?width=200",two,three]};
   await context.__HOOPLAND_PREPARE_REAL_PLAYERS([player],"1");
   assert.deepEqual(requested,[one,two,three,four,five]);
@@ -192,6 +213,7 @@ test("a partial appearance profile still fetches and applies photo descriptions"
     }
   });
   vm.runInContext(script,c);
+  c.window.__HOOPLAND_VISION_SHEET=async()=>new Blob(["sheet"],{type:"image/jpeg"});
   const player={fn:"Azzi",ln:"Fudd"};
   await c.window.__HOOPLAND_PREPARE_REAL_PLAYERS([player],"1");
   assert.match(player.lookText,/skin: dark 4/);
@@ -243,6 +265,7 @@ test("freshman preparation uses verified roster photos and warns when only a nam
       }
     });
     vm.runInContext(script,c);
+    c.window.__HOOPLAND_VISION_SHEET=async()=>new Blob(["sheet"],{type:"image/jpeg"});
     const players=[
       {fn:"Verified",ln:"Recruit",collegeTeamId:"901",recruitYear:2025},
       {fn:"Missing",ln:"Recruit",collegeTeamId:"901",recruitYear:2025}
@@ -253,4 +276,34 @@ test("freshman preparation uses verified roster photos and warns when only a nam
     assert.ok(players[0].appearanceWarnings.some(w=>w.includes("fewer than three")));
     assert.ok(players[1].appearanceWarnings.some(w=>w.includes("No photo was found")));
   } finally { global.fetch = original; }
+});
+
+test("vision reference sheet draws the photo and actual selector swatches", async () => {
+  const {default:worker}=await import("../location-worker.js");
+  const csv=fs.readFileSync(path.join(__dirname,"..","data/location-catalog.csv"),"utf8");
+  const env={ASSETS:{fetch:async r=>new URL(r.url).pathname.endsWith(".csv")?new Response(csv):new Response(html)}};
+  const transformed=await (await worker.fetch(new Request("https://example.test/"),env)).text();
+  const script=transformed.match(/<script>\nwindow\.__HOOPLAND_LOCATION_RECORDS[\s\S]*?<\/script>/)[0].slice(8,-9);
+  const colors=[],labels=[],photos=[];
+  const canvasContext={
+    set fillStyle(value){this.color=value;},
+    fillRect(){colors.push(this.color);},
+    fillText(value){labels.push(value);},
+    drawImage(...args){photos.push(args);}
+  };
+  const c=vm.createContext({
+    window:{},URL,URLSearchParams,APPEARANCE_PALETTES:palette,
+    colorLum:hex=>[.299,.587,.114].reduce((sum,w,i)=>sum+w*parseInt(hex.slice(i*2,i*2+2),16),0),
+    appearanceHairPalette:group=>[...new Set(palette.flatMap(p=>p.hair[group]||[]))].sort((a,b)=>
+      [0,2,4].reduce((n,i)=>n+parseInt(b.slice(i,i+2),16)-parseInt(a.slice(i,i+2),16),0)),
+    fetch:async()=>new Response(new Uint8Array([1,2,3]),{headers:{"content-type":"image/png"}}),
+    createImageBitmap:async()=>({width:200,height:300,close(){}}),
+    document:{createElement:()=>({getContext:()=>canvasContext,toBlob:callback=>callback(new Blob(["jpeg"],{type:"image/jpeg"}))})}
+  });
+  vm.runInContext(script,c);
+  const image=await c.window.__HOOPLAND_VISION_SHEET("https://a.espncdn.com/example.png");
+  assert.equal(image.type,"image/jpeg");
+  assert.equal(photos.length,1);
+  for(const group of palette) for(const color of group.skins) assert.ok(colors.includes("#"+color),color);
+  assert.ok(labels.includes("L1")&&labels.includes("D6")&&labels.includes("K1"));
 });

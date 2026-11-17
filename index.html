@@ -2189,13 +2189,20 @@ html body main > section,.hl-page,.hl-page.on,.hl-q,.hl-row,.hl-reveal{animation
 html body button{transition:none!important;}
 
 .hl-hint{text-align:center;font-size:.8rem;margin:-8px 6px 10px;opacity:.85;}
+.hl-page.on > .hl-nav{position:fixed;z-index:20;bottom:0;left:50%;transform:translateX(-50%);width:min(100%,1144px);margin:0;padding:8px 14px calc(14px + env(safe-area-inset-bottom));background:var(--px-fill-dark);box-shadow:0 -4px 0 var(--px);}
+main{padding-bottom:calc(100px + env(safe-area-inset-bottom));}
 .hl-modal{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;padding:8px;}
 .hl-modal.hidden{display:none;}
-.hl-modal-card{background:var(--px-fill-dark);color:#fff;width:min(520px,100%);max-height:100%;overflow:auto;padding:12px;box-shadow:0 -3px 0 var(--px-hi),0 3px 0 var(--px-hi),-3px 0 0 var(--px-hi),3px 0 0 var(--px-hi);}
+.hl-modal-card{background:var(--px-fill-dark);color:#fff;width:min(520px,100%);max-height:calc(100dvh - 16px);display:flex;flex-direction:column;overflow:hidden;padding:12px;box-shadow:0 -3px 0 var(--px-hi),0 3px 0 var(--px-hi),-3px 0 0 var(--px-hi),3px 0 0 var(--px-hi);}
+.hl-pv-content{min-height:0;overflow:auto;overscroll-behavior:contain;}
+.hl-pv-compare{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:8px;}
+.hl-pv-reference{width:min(180px,40vw);text-align:center;font-size:.7rem;}
+.hl-pv-reference img{display:block;width:100%;max-height:210px;object-fit:contain;background:#081426;}
+.hl-pv-reference[hidden]{display:none;}
 .hl-pv-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;}
 .hl-pv-head b{font-family:"Press Start 2P",monospace;font-size:.8rem;line-height:1.5;}
 .hl-pv-meta{font-size:.8rem;opacity:.85;margin-bottom:8px;}
-.hl-pv-art{width:min(210px,60vw);margin:0 auto 8px;background:linear-gradient(#2a5da8,#1b3f78);box-shadow:0 0 0 3px var(--px);}
+.hl-pv-art{width:min(210px,45vw);margin:0;background:linear-gradient(#2a5da8,#1b3f78);box-shadow:0 0 0 3px var(--px);}
 .hl-pv-art svg{display:block;width:100%;height:auto;shape-rendering:crispEdges;}
 .hl-pv-note{font-size:.75rem;text-align:center;margin-bottom:10px;line-height:1.4;}
 .hl-pv-note.warn{color:#ffd166;}
@@ -2405,7 +2412,7 @@ html{background-color:#06143a!important;}
   </div>
   <div class="hl-page" data-page="4">
     <div class="hl-page-title" id="hlResultTitle"></div>
-    <p class="hl-hint">Tap a player to see and adjust their Hoop Land look.</p>
+    <p class="hl-hint">Select a player to verify appearance.</p>
     <div id="hlPager" class="hl-pager">
       <div class="hl-list" id="hlList"></div>
     </div>
@@ -5427,6 +5434,11 @@ const LOOK_SKIN_TONES = [
   [/medium|olive|tan\b/, 8], [/brown/, 13], [/dark|deep/, 17]
 ];
 
+function appearanceHairPalette(group) {
+  return [...new Set(APPEARANCE_PALETTES.flatMap(palette => palette.hair[group] || []))]
+    .sort((a, b) => colorLum(b) - colorLum(a));
+}
+
 function parseLookDescription(text) {
   const t = String(text || "").toLowerCase();
   const look = {};
@@ -5440,8 +5452,10 @@ function parseLookDescription(text) {
   }
   const colorField = t.match(/(?:^|;)\s*hair colou?r\s*:\s*([^;]+)/);
   const colorText = colorField ? colorField[1] : t;
-  const exactHair = colorText.match(/\b(blonde|brunette|red|black)\s*(?:hair\s*)?(?:shade\s*)?([1-5])\b/);
-  if (exactHair) look.hairExact = { group: exactHair[1], shade: +exactHair[2] };
+  const exactHair = colorText.match(/\b(blonde|brunette|red|black)\s*(?:hair\s*)?(?:shade\s*)?([1-6])\b/);
+  if (exactHair && +exactHair[2] <= appearanceHairPalette(exactHair[1]).length) {
+    look.hairExact = { group: exactHair[1], shade: +exactHair[2] };
+  }
 
   for (const [pattern, index] of exactSkin ? [] : LOOK_SKIN_TONES) {
     if (new RegExp(`(?:${pattern.source})(?:[- ]?(?:skin|skinned|complexion|toned))`).test(skinText)) {
@@ -5487,10 +5501,14 @@ function parseLookDescription(text) {
   if (/\bloc|dread/.test(hairText)) add({ texture: "loc-like" }, "loc");
   if (/twist/.test(hairText)) add({ texture: "loc-like" }, "twist");
   if (/curl|coil/.test(hairText) && !/afro/.test(hairText)) add({ texture: "coiled" }, "curl");
+  if (/wavy|waves?/.test(hairText) && !/braid|loc|curl|coil|twist/.test(hairText)) add({ texture: "textured" }, "wavy");
+  if (/straight|smooth/.test(hairText) && !/braid|loc|curl|coil|twist/.test(hairText)) add({ texture: "straight" }, "straight");
   if (/bald|shaved|buzz|fade|close[- ]crop/.test(hairText)) add({ length: "very-short" }, /bald/.test(hairText) ? "bald" : "short");
   if (/comb|slick|side[- ]part/.test(hairText)) add({ texture: "straight" }, "comb", /front/.test(hairText) ? "front" : "side");
   if (/ponytail/.test(hairText)) add({ length: "long" }, "ponytail");
   if (/\bbun|puff/.test(hairText)) add({}, "bun");
+  if (/\bbob\b/.test(hairText)) add({ length: "medium" }, "bob");
+  if (/center[- ]part|middle[- ]part/.test(hairText)) add({}, "center");
   if (/mohawk/.test(hairText)) add({}, "mohawk");
   if (/flat[- ]?top/.test(hairText)) add({}, "flat-top");
   if (/long (?:hair|braid|loc)|shoulder[- ]length/.test(hairText)) style.length = "long";
@@ -5533,13 +5551,30 @@ function mergeLookDescriptions(texts) {
       const match = section.trim().match(/^(skin|hair color|hairstyle|facial hair|accessory)\s*:\s*(.+)$/);
       if (!match) continue;
       const [, field, value] = match;
-      const v = value.trim();
+      let v = value.trim();
+      if (field === "skin") {
+        const code = v.match(/^([lmbd])\s*([1-6])$/);
+        if (code) v = ({l:"light",m:"medium",b:"bronze",d:"dark"})[code[1]] + " " + code[2];
+      }
+      if (field === "hair color") {
+        const code = v.match(/^([htrk])\s*([1-6])$/);
+        if (code) v = ({h:"blonde",t:"brunette",r:"red",k:"black"})[code[1]] + " " + code[2];
+      }
+      if (field === "hairstyle" && !allowedStyles.has(v) && v !== "unknown") {
+        const parsed = parseLookDescription("hairstyle: " + v);
+        const entry = parsed.hairId !== undefined ? getHairReference(parsed.hairId)
+          : parsed.hairStyle ? matchLookHair(parsed.hairStyle) : null;
+        if (entry) v = entry.structure;
+      }
       const valid = field === "skin" ? (() => {
         const match = v.match(/^(light|medium|bronze|dark)\s+([1-6])$/);
         const group = match && APPEARANCE_PALETTES.find(item => item.group === match[1]);
         return Boolean(group && Number(match[2]) <= group.skins.length);
       })()
-        : field === "hair color" ? /^(blonde|brunette|red|black)\s+[1-5]$/.test(v)
+        : field === "hair color" ? (() => {
+          const match = v.match(/^(blonde|brunette|red|black)\s+([1-6])$/);
+          return Boolean(match && Number(match[2]) <= appearanceHairPalette(match[1]).length);
+        })()
         : field === "hairstyle" ? allowedStyles.has(v)
         : field === "facial hair" ? /^(clean shaven|chin patch|mustache|goatee|short beard|full beard|long beard)$/.test(v)
         : /^(none|headband|wide headband|goggles|glasses|bandana|visor|cap)$/.test(v);
@@ -5556,6 +5591,21 @@ function mergeLookDescriptions(texts) {
     if (!candidates.length) continue;
     if (texts.length > 1 && candidates.length < 2) {
       unconfirmed.push(field);
+      continue;
+    }
+    if (field === "skin") {
+      const all = APPEARANCE_PALETTES.flatMap(group => group.skins.map((_, i) => group.group + " " + (i + 1)));
+      const indices = candidates.map(value => all.indexOf(value)).sort((a, b) => a - b);
+      let best = [];
+      for (const index of indices) {
+        const cluster = indices.filter(value => Math.abs(value - index) <= 1);
+        if (cluster.length > best.length) best = cluster;
+      }
+      if (best.length <= indices.length / 2) {
+        conflicts.push(field);
+        continue;
+      }
+      result.push(field + ": " + all[best[Math.floor(best.length / 2)]]);
       continue;
     }
     const color = field === "skin" || field === "hair color";
@@ -5613,7 +5663,6 @@ function applyLookDescription(baseAppearance, text, gender) {
 
   const skins = APPEARANCE_PALETTES.flatMap(group => group.skins);
   let skinGroup = APPEARANCE_PALETTES.find(group => group.skins.includes(result.skinC)) || APPEARANCE_PALETTES[0];
-  const spread = (list, shade) => list[Math.round((shade - 1) / 4 * (list.length - 1))];
   const sortedSkins = [...skins].sort((a, b) => colorLum(b) - colorLum(a));
   if (look.skin !== undefined || look.skinExact) {
     const oldSkin = result.skinC;
@@ -5638,10 +5687,9 @@ function applyLookDescription(baseAppearance, text, gender) {
 
   if (look.hairColor || look.hairExact) {
     const wanted = look.hairExact || look.hairColor;
-    let list = skinGroup.hair[wanted.group];
-    if (!list) list = APPEARANCE_PALETTES.find(group => group.hair[wanted.group])?.hair[wanted.group];
+    const list = appearanceHairPalette(wanted.group);
     const color = look.hairExact
-      ? spread(list, look.hairExact.shade)
+      ? list[look.hairExact.shade - 1]
       : list[Math.round(wanted.frac * (list.length - 1))];
     result.hairC = color;
     result.browC = color;
@@ -5720,7 +5768,7 @@ function appearanceSourceFor(sourcePlayer) {
   if (lookText) baseAppearance = applyLookDescription(baseAppearance, lookText, gender);
   if (manualText) baseAppearance = applyLookDescription(baseAppearance, manualText, gender);
 
-  if (!profile) return harmonizeFaceColors(baseAppearance);
+  if (!profile) return harmonizeFaceColors(baseAppearance, true);
 
 
   let hairId =
@@ -5894,7 +5942,7 @@ function appearanceSourceFor(sourcePlayer) {
 
     accessories:
       finalAccessories
-  });
+  }, true);
   }
   
 const MEN_FACIAL_HAIR=
@@ -7627,7 +7675,7 @@ function shadeColor(hex,factor){
   hair separates from skin, brows sit slightly darker than hair, and
   eyes are always darker than skin outside the light skin group.
 */
-function harmonizeFaceColors(a){
+function harmonizeFaceColors(a, preserveHair=false){
   const skinC=String(a.skinC||"").toUpperCase();
   const group=APPEARANCE_PALETTES.find(g=>g.skins.includes(skinC));
   if(!group)return a;
@@ -7635,7 +7683,7 @@ function harmonizeFaceColors(a){
   let hairC=String(a.hairC||"303030").toUpperCase();
   let hairL=colorLum(hairC);
 
-  if(Math.abs(hairL-skinL)<22&&skinL<130){
+  if(!preserveHair&&Math.abs(hairL-skinL)<22&&skinL<130){
     hairC=shadeColor(hairC,Math.max(.35,Math.min(1,(skinL-24)/Math.max(hairL,1))));
     hairL=colorLum(hairC);
   }
@@ -8410,6 +8458,9 @@ else {
 
     appearanceWarnings:
       (sourcePlayer && sourcePlayer.appearanceWarnings) || [],
+
+    referencePhotos:
+      (sourcePlayer && sourcePlayer.referencePhotos) || [],
 
     appearance:
   sourcePlayer
@@ -11574,9 +11625,15 @@ classSizePlus.addEventListener(
 <div id="hlPreview" class="hl-modal hidden" role="dialog" aria-modal="true" aria-labelledby="hlPvName">
   <div class="hl-modal-card">
     <div class="hl-pv-head"><b id="hlPvName"></b><button type="button" class="secondary" id="hlPvClose" aria-label="Close">✕</button></div>
+    <div class="hl-pv-content">
     <div class="hl-pv-meta" id="hlPvMeta"></div>
+    <div class="hl-pv-compare">
     <div class="hl-pv-art" id="hlPvArt"></div>
-    <div class="hl-pv-note" id="hlPvNote"></div>
+    <div class="hl-pv-reference" id="hlPvReference" hidden>
+      <img id="hlPvPhoto" alt="Player reference photo">
+      <div><button type="button" class="secondary hl-arrow" id="hlPvPhotoPrev" aria-label="Previous reference photo">◀</button><span id="hlPvPhotoCount"></span><button type="button" class="secondary hl-arrow" id="hlPvPhotoNext" aria-label="Next reference photo">▶</button></div>
+    </div>
+    </div>
     <div class="hl-pv-grid">
       <div class="hl-pv-field">Skin<div class="hl-pv-choice" data-field="skin"><button type="button" class="secondary" data-direction="-1" aria-label="Previous skin color">◀</button><output id="hlPvSkin" aria-live="polite"></output><button type="button" class="secondary" data-direction="1" aria-label="Next skin color">▶</button></div></div>
       <div class="hl-pv-field">Hair color<div class="hl-pv-choice" data-field="hairColor"><button type="button" class="secondary" data-direction="-1" aria-label="Previous hair color">◀</button><output id="hlPvHairC" aria-live="polite"></output><button type="button" class="secondary" data-direction="1" aria-label="Next hair color">▶</button></div></div>
@@ -11585,6 +11642,7 @@ classSizePlus.addEventListener(
       <div class="hl-pv-field">Head accessory<div class="hl-pv-choice" data-field="accessory"><button type="button" class="secondary" data-direction="-1" aria-label="Previous head accessory">◀</button><output id="hlPvAcc" aria-live="polite"></output><button type="button" class="secondary" data-direction="1" aria-label="Next head accessory">▶</button></div></div>
     </div>
     <div class="hl-pv-desc"><input id="hlPvDesc" type="text" placeholder="Or describe: dark 4 skin, afro, goggles"><button type="button" class="primary" id="hlPvApply">APPLY</button></div>
+    </div>
     <div class="hl-pv-nav"><button type="button" class="secondary" id="hlPvPrev">◀ PREV</button><button type="button" class="secondary" id="hlPvNext">NEXT ▶</button></div>
   </div>
 </div>
@@ -11594,7 +11652,7 @@ classSizePlus.addEventListener(
   const ns="http://www.w3.org/2000/svg";
   const hex=c=>/^[0-9a-f]{6}$/i.test(String(c||""))?"#"+c:null;
   const rect=(x,y,w,h,fill,extra="")=>`<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${fill}" ${extra}/>`;
-  let idx=0;
+  let idx=0,photoIndex=0;
 
   function hairParts(ref,color){
     const back=[],front=[];
@@ -11824,12 +11882,9 @@ classSizePlus.addEventListener(
     const hairs=[];
     const seenHairColors=new Set();
     ["blonde","brunette","red","black"].forEach(group=>{
-      const colors=[...new Set(APPEARANCE_PALETTES.flatMap(g=>g.hair[group]||[]))].sort((x,y)=>lumOf(y)-lumOf(x));
+      const colors=appearanceHairPalette(group);
       colors.forEach((c,i)=>{
-        const skinL=lumOf(a.skinC),hairL=lumOf(c);
-        const value=Math.abs(hairL-skinL)<22&&skinL<130
-          ?shadeColor(c,Math.max(.35,Math.min(1,(skinL-24)/Math.max(hairL,1))))
-          :c;
+        const value=c;
         if(!seenHairColors.has(value)){hairs.push([c,cap(group)+" "+(i+1),value,value]);seenHairColors.add(value);}
       });
     });
@@ -11859,21 +11914,15 @@ classSizePlus.addEventListener(
     setChoice("accessory","hlPvAcc",accs,acc||"none");
   }
 
-  function noteFor(player){
-    const note=$("hlPvNote");
-    note.classList.remove("warn");
-    const src=player.appearanceSource;
-    let text="Mock-up approximation — the in-game look may differ.";
-    if(src==="fictional")text="Fictional player — random look. "+text;
-    else if(src==="profile")text="A saved profile supplies some features; others may be estimated or placeholders. "+text;
-    else if(src==="manual")text="A saved description supplies some features; others may be estimated or placeholders. "+text;
-    else if(src==="ai")text='Built from the headshot description: "'+player.lookText+'". '+text;
-    else if(src==="none"){text="No headshot could be read, so this look is a random placeholder. Please adjust it below.";note.classList.add("warn");}
-    if(player.appearanceWarnings&&player.appearanceWarnings.length){
-      text=player.appearanceWarnings.join(" ")+" "+text;
-      note.classList.add("warn");
-    }
-    note.textContent=text;
+  function showPhoto(player){
+    const photos=Array.isArray(player.referencePhotos)?player.referencePhotos:[];
+    $("hlPvReference").hidden=!photos.length;
+    if(!photos.length){$("hlPvPhoto").removeAttribute("src");return;}
+    photoIndex=(photoIndex+photos.length)%photos.length;
+    $("hlPvPhoto").src="/api/headshot?src="+encodeURIComponent(photos[photoIndex]);
+    $("hlPvPhotoCount").textContent=(photoIndex+1)+"/"+photos.length;
+    $("hlPvPhotoPrev").disabled=photos.length<2;
+    $("hlPvPhotoNext").disabled=photos.length<2;
   }
 
   function show(i){
@@ -11886,7 +11935,8 @@ classSizePlus.addEventListener(
     $("hlPvArt").innerHTML=renderArt(p);
     $("hlPvDesc").value="";
     buildChoices(p);
-    noteFor(p);
+    photoIndex=0;
+    showPhoto(p);
   }
 
   function relinkSkin(a,oldSkin,newSkin){
@@ -11904,7 +11954,7 @@ classSizePlus.addEventListener(
     const p=generated[idx];
     let a={...p.appearance};
     change(a,p);
-    p.appearance=colorsChanged?harmonizeFaceColors(a):a;
+    p.appearance=colorsChanged?harmonizeFaceColors(a,true):a;
     $("hlPvArt").innerHTML=renderArt(p);
     buildChoices(p);
   }
@@ -11930,11 +11980,13 @@ classSizePlus.addEventListener(
     if(!text)return;
     const p=generated[idx];
     p.lookText=text;p.appearanceSource="manual";
-    p.appearance=harmonizeFaceColors(applyLookDescription(p.appearance,text,p.gender));
+    p.appearance=harmonizeFaceColors(applyLookDescription(p.appearance,text,p.gender),true);
     show(idx);
   });
   $("hlPvPrev").addEventListener("click",()=>show(idx-1));
   $("hlPvNext").addEventListener("click",()=>show(idx+1));
+  $("hlPvPhotoPrev").addEventListener("click",()=>{photoIndex--;showPhoto(generated[idx]);});
+  $("hlPvPhotoNext").addEventListener("click",()=>{photoIndex++;showPhoto(generated[idx]);});
   const close=()=>$("hlPreview").classList.add("hidden");
   $("hlPvClose").addEventListener("click",close);
   $("hlPreview").addEventListener("click",e=>{if(e.target===$("hlPreview"))close();});
