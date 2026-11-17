@@ -7484,6 +7484,15 @@ const position =
     : null;
 
 
+const womenClass = document.getElementById("gender").value === "1";
+  const giantOutlier =
+    sourceHeight === null &&
+    Number(position) >= 5 &&
+    maximumHeight >= (womenClass ? 76 : 78) &&
+    Math.random() < 0.08;
+  const giantMaxHeight = womenClass ? 84 : 91;
+  const giantMinHeight = Math.min(giantMaxHeight, womenClass ? 77 : 80);
+
 const height =
   sourceHeight !== null
     ? clamp(
@@ -7491,17 +7500,24 @@ const height =
         numberValue("minHt", 63),
         numberValue("maxHt", 80)
       )
-    : randomInteger(
-        minimumHeight,
-        maximumHeight
-      );
+    : giantOutlier
+      ? randomInteger(giantMinHeight, giantMaxHeight)
+      : randomInteger(
+          minimumHeight,
+          maximumHeight
+        );
 
 
   const weight =
-    randomInteger(
-      minimumWeight,
-      maximumWeight
-    );
+    giantOutlier
+      ? randomInteger(
+          Math.max(minimumWeight, womenClass ? 200 : 240),
+          Math.max(maximumWeight, womenClass ? 250 : 300)
+        )
+      : randomInteger(
+          minimumWeight,
+          maximumWeight
+        );
 
 
   const country =
