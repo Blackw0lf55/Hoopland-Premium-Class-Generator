@@ -89,7 +89,7 @@ async function fetchJSON(url) {
   }
 }
 
-async function findBirthPlace(name, gender, debug) {
+async function findAthlete(name, gender, debug) {
   const wanted = normalizeName(name);
   const leagues = ESPN_LEAGUES[gender] || ESPN_LEAGUES.men;
   const query = encodeURIComponent(name);
@@ -126,18 +126,22 @@ async function findBirthPlace(name, gender, debug) {
 
   const ids = [...new Set(found)];
   if (!ids.length) debug.push("no ESPN match");
+  let fallback = null;
   for (const id of ids) {
     for (const league of leagues) {
       const data = await fetchJSON(
         "https://site.web.api.espn.com/apis/common/v3/sports/basketball/" + league + "/athletes/" + id
       );
       const athlete = data && (data.athlete || data);
-      const place = athlete && athlete.birthPlace;
-      if (place && place.city) return place;
+      if (!athlete) continue;
+      const headshot = (athlete.headshot && athlete.headshot.href) || "";
+      const place = athlete.birthPlace && athlete.birthPlace.city ? athlete.birthPlace : null;
+      if (place) return { place, headshot };
+      if (headshot && !fallback) fallback = { place: null, headshot };
     }
     debug.push("no birthPlace for " + id);
   }
-  return null;
+  return fallback;
 }
 
 async function geocode(city, state, countryCode) {
@@ -159,8 +163,11 @@ async function geocode(city, state, countryCode) {
 
 async function resolveHometown(name, gender, countryHint) {
   const debug = [];
-  const place = await findBirthPlace(name, gender, debug);
-  if (!place) return { debug };
+  const athlete = await findAthlete(name, gender, debug);
+  if (!athlete) return { debug };
+  const place = athlete.place;
+  const headshot = athlete.headshot || undefined;
+  if (!place) return { headshot, debug };
 
   const rawCountry = String(place.country || place.countryAbbreviation || countryHint || "").trim();
   const countryCode = COUNTRY_CODES[rawCountry.toUpperCase()] ||
@@ -173,10 +180,11 @@ async function resolveHometown(name, gender, countryHint) {
 
   const home = [place.city, isUS ? stateName : rawCountry].filter(Boolean).join(", ");
   const point = await geocode(place.city, isUS ? stateName : "", countryCode);
-  if (!point) return { home, debug: ["geocode failed"] };
+  if (!point) return { home, headshot, debug: ["geocode failed"] };
 
   return {
     home,
+    headshot,
     x: Math.round(point.lat * 100),
     y: Math.round(point.lon * 100),
     countryName: isUS ? "United States" : undefined
@@ -194,8 +202,29 @@ async function handleHometown(request) {
     hometownCache.set(key, resolveHometown(name, gender, params.get("ctry")).catch(() => ({})));
   }
   const result = await hometownCache.get(key);
-  if (!result.home) hometownCache.delete(key);
+  if (!result.home && !result.headshot) hometownCache.delete(key);
   return Response.json(result, { headers: { "cache-control": "public, max-age=86400" } });
+}
+
+async function handleHeadshot(request) {
+  const source = new URL(request.url).searchParams.get("src") || "";
+  let target;
+  try {
+    target = new URL(source);
+  } catch (error) {
+    return new Response("Bad request", { status: 400 });
+  }
+  if (target.protocol !== "https:" || target.hostname !== "a.espncdn.com") {
+    return new Response("Forbidden", { status: 403 });
+  }
+  const upstream = await fetch(target.toString());
+  if (!upstream.ok) return new Response("Not found", { status: 404 });
+  return new Response(upstream.body, {
+    headers: {
+      "content-type": upstream.headers.get("content-type") || "image/png",
+      "cache-control": "public, max-age=604800"
+    }
+  });
 }
 
 function replaceOnce(source, pattern, replacement) {
@@ -284,21 +313,67 @@ window.__HOOPLAND_REAL_HOMETOWN=function(sourcePlayer){
   if(known&&known.home)return known.home;
   return String(sourcePlayer&&(sourcePlayer.hometown||sourcePlayer.home)||"").trim();
 };
+window.__HOOPLAND_SAMPLE_HEADSHOT=function(image){
+  const w=image.width,h=image.height,data=image.data;
+  const region=(x0,x1,y0,y1)=>{
+    const px=[];
+    for(let y=Math.floor(h*y0);y<Math.floor(h*y1);y++){
+      for(let x=Math.floor(w*x0);x<Math.floor(w*x1);x++){
+        const i=(y*w+x)*4;
+        if(data[i+3]<230)continue;
+        px.push([data[i],data[i+1],data[i+2]]);
+      }
+    }
+    return px;
+  };
+  const median=(px,c)=>{
+    const v=px.map(p=>p[c]).sort((a,b)=>a-b);
+    return v[Math.floor(v.length/2)];
+  };
+  const colorOf=px=>px.length>=20?[median(px,0),median(px,1),median(px,2)]:null;
+  // Cheek and forehead area; drop very dark (eyes, brows, shadow) and near-white (glare, background) pixels.
+  const skinPixels=region(0.36,0.64,0.24,0.5).filter(p=>{
+    const l=(p[0]+p[1]+p[2])/3;
+    return l>35&&l<245&&p[0]>=p[2];
+  });
+  const hairPixels=region(0.34,0.66,0.0,0.13).filter(p=>{
+    const l=(p[0]+p[1]+p[2])/3;
+    return l<235;
+  });
+  const skin=colorOf(skinPixels);
+  if(!skin)return null;
+  return {skin,hair:colorOf(hairPixels)};
+};
 window.__HOOPLAND_PREPARE_REAL_PLAYERS=async function(players,gender){
   const queue=players.slice();
+  const hasProfile=p=>typeof REAL_PLAYER_APPEARANCE_PROFILES!=="undefined"&&typeof normalizeAppearancePlayerName==="function"&&REAL_PLAYER_APPEARANCE_PROFILES[normalizeAppearancePlayerName([p.fn,p.ln].filter(Boolean).join(" "))];
+  const sampleImage=async url=>{
+    const res=await fetch("/api/headshot?src="+encodeURIComponent(url));
+    if(!res.ok)return null;
+    const bitmap=await createImageBitmap(await res.blob());
+    const canvas=document.createElement("canvas");
+    canvas.width=bitmap.width;
+    canvas.height=bitmap.height;
+    const ctx=canvas.getContext("2d",{willReadFrequently:true});
+    ctx.drawImage(bitmap,0,0);
+    return window.__HOOPLAND_SAMPLE_HEADSHOT(ctx.getImageData(0,0,canvas.width,canvas.height));
+  };
   const worker=async()=>{
     while(queue.length){
       const p=queue.shift();
-      if(window.__HOOPLAND_REAL_HOMETOWN(p))continue;
+      if(window.__HOOPLAND_REAL_HOMETOWN(p)&&hasProfile(p))continue;
       try{
         const q=new URLSearchParams({name:[p.fn,p.ln].filter(Boolean).join(" "),gender:gender==="1"?"women":"men",ctry:String(p.ctry||p.country||"")});
         const res=await fetch("/api/hometown?"+q);
         if(!res.ok)continue;
         const d=await res.json();
-        if(d&&d.home){p.hometown=d.home;}
+        if(d&&d.home&&!window.__HOOPLAND_REAL_HOMETOWN(p)){p.hometown=d.home;}
         if(d&&Number.isFinite(d.x)&&Number.isFinite(d.y)){p.homeX=d.x;p.homeY=d.y;}
         if(d&&d.countryName)p.homeCountry=d.countryName;
         if(d&&!d.home)console.warn('Hometown lookup failed for',[p.fn,p.ln].join(' '),d.debug);
+        if(d&&d.headshot&&!hasProfile(p)){
+          try{p.headshotSample=await sampleImage(d.headshot);}catch(e){console.warn('Headshot sampling failed for',[p.fn,p.ln].join(' '),e);}
+        }
       }catch(e){}
     }
   };
@@ -391,6 +466,7 @@ export default {
   async fetch(request, env, context) {
     const { pathname } = new URL(request.url);
     if (pathname === "/api/hometown") return handleHometown(request);
+    if (pathname === "/api/headshot") return handleHeadshot(request);
     if (pathname === "/" || pathname === "/index.html") {
       return addLocationAssignment(request, env);
     }
