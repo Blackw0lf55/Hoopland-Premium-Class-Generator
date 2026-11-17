@@ -4812,6 +4812,89 @@ const REAL_PLAYER_APPEARANCE_PROFILES = {};
 
 }
 
+function hexToRgb(hex) {
+  const value = parseInt(hex, 16);
+  return [(value >> 16) & 255, (value >> 8) & 255, value & 255];
+}
+
+function nearestColor(rgb, hexList) {
+  let best = hexList[0];
+  let bestDistance = Infinity;
+  hexList.forEach(hex => {
+    const c = hexToRgb(hex);
+    // Weighted RGB distance approximates perceived difference.
+    const dr = (c[0] - rgb[0]);
+    const dg = (c[1] - rgb[1]);
+    const db = (c[2] - rgb[2]);
+    const distance = 2 * dr * dr + 4 * dg * dg + 3 * db * db;
+    if (distance < bestDistance) {
+      best = hex;
+      bestDistance = distance;
+    }
+  });
+  return best;
+}
+
+/*
+  Baseline appearance for real players without a curated profile:
+  snap colors sampled from the player's headshot to the closest
+  valid Hoop Land palette colors. Hair style and facial hair keep
+  the generated fallback; curated profiles always take priority.
+*/
+function applyHeadshotSample(baseAppearance, sample) {
+
+  if (!sample || !Array.isArray(sample.skin)) {
+    return baseAppearance;
+  }
+
+  const palette = APPEARANCE_PALETTES.reduce((best, candidate) => {
+    const match = nearestColor(sample.skin, candidate.skins);
+    const distance = hexToRgb(match).reduce(
+      (sum, value, index) => sum + Math.abs(value - sample.skin[index]),
+      0
+    );
+    return !best || distance < best.distance
+      ? { palette: candidate, skin: match, distance }
+      : best;
+  }, null);
+
+  const skinC = palette.skin;
+  const hairOptions = [
+    ...new Set(
+      APPEARANCE_PALETTES.flatMap(candidate =>
+        Object.values(candidate.hair).flat()
+      )
+    )
+  ];
+  const hairC = Array.isArray(sample.hair)
+    ? nearestColor(sample.hair, hairOptions)
+    : baseAppearance.hairC;
+
+  const accessories = baseAppearance.accessories.map(accessory => {
+    const next = { ...accessory };
+    Object.keys(next).forEach(segment => {
+      if (
+        /^[LR]_(Shoulder|Elbow|Wrist|Knee|Shin)$/.test(segment) &&
+        String(next[segment]).toUpperCase() ===
+          String(baseAppearance.skinC).toUpperCase()
+      ) {
+        next[segment] = skinC;
+      }
+    });
+    return next;
+  });
+
+  return {
+    ...baseAppearance,
+    skinC,
+    eyeC: pick(palette.palette.eyes),
+    hairC,
+    browC: hairC,
+    fHairC: hairC,
+    accessories
+  };
+}
+
   function generateRealPlayerAppearance(
   sourcePlayer,
   gender
@@ -4857,7 +4940,10 @@ const REAL_PLAYER_APPEARANCE_PROFILES = {};
 
   if (!profile) {
 
-    return baseAppearance;
+    return applyHeadshotSample(
+      baseAppearance,
+      sourcePlayer && sourcePlayer.headshotSample
+    );
   }
 
 
