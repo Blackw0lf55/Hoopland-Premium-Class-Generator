@@ -1,0 +1,98 @@
+const { test } = require("node:test");
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
+const vm = require("node:vm");
+
+const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
+const section = (start, end) => html.slice(html.indexOf(start), html.indexOf(end));
+const context = vm.createContext({});
+const api = vm.runInContext(`
+  ${section("const ATTRS = ", "const POS = ")}
+  const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+  let rng = Math.random;
+  const randomInteger = (min, max) => min + Math.floor(rng() * (max - min + 1));
+  let bounds = {};
+  function attributeBounds(code, type) { return bounds[code + type] || [2, 20]; }
+  ${section("function budgetForStars(", "function starText(")}
+  ${section("function allocatePoints(", "function archetypeWeights(")}
+  ${section("const TIER_RULES = ", "function shuffle(")}
+  ${section("function randomHalfStar(", "function generateRegressionAge(")}
+  ({ budgetForStars, starsForBudget, qualityForTier, ratingStatsProfile,
+     makeAttributeRatings, isReportedWomanDunker,
+     setBounds(value) { bounds = value; } })
+`, context);
+
+const codes = ["LAY", "DNK", "INS", "MID", "TPT", "FTS", "DRB", "PAS", "ORE", "DRE", "STL", "BLK"];
+const sum = (attrs, side) => codes.reduce((total, code) => total + attrs[code][side] - 2, 0);
+const weights = codes.map(() => 1);
+const quality = (potentialStars, currentStars = 5) => ({ potentialStars, currentStars });
+
+test("potential caps and overall use the requested point scale", () => {
+  for (const [stars, cap] of [[2,60], [2.5,74], [3,88], [3.5,102], [4,116], [4.5,130], [5,144]]) {
+    assert.equal(api.budgetForStars(stars), cap);
+    assert.equal(api.starsForBudget(cap), stars);
+  }
+  assert.equal(api.starsForBudget(53), 2);
+});
+
+test("all positions and tiers honor budgets, growth, and women’s dunk default", () => {
+  const caps = [20,20,16,16,14,14,12,12,10];
+  for (const gender of ["0", "1"]) for (let position = 0; position < 9; position++) {
+    for (const stars of [2, 2.5, 3, 3.5, 4, 4.5, 5]) {
+      for (let i = 0; i < 10; i++) {
+        const result = api.makeAttributeRatings(position, gender, null, quality(stars), weights);
+        assert.equal(sum(result.attributes, 0), result.currentBudget);
+        assert.equal(sum(result.attributes, 1), result.potentialBudget);
+        assert.equal(result.potentialBudget, api.budgetForStars(stars));
+        assert.ok(result.currentBudget < result.potentialBudget);
+        assert.ok(result.attributes.DRB[1] <= caps[position]);
+        assert.ok(result.attributes.DRB[1] - result.attributes.DRB[0] >= 8);
+        for (const code of codes) {
+          const [current, potential] = result.attributes[code];
+          assert.ok(current >= 2 && current <= potential && potential <= 20, code);
+        }
+        if (gender === "1") assert.deepEqual(Array.from(result.attributes.DNK), [2, 2]);
+      }
+    }
+  }
+});
+
+test("women dunk only with a sourced name and matching school, and stay below 5", () => {
+  const watkins = { fn: "Ashlyn", ln: "Watkins", school: "South Carolina" };
+  assert.equal(api.isReportedWomanDunker(watkins), true);
+  assert.equal(api.isReportedWomanDunker({ ...watkins, school: "Stanford" }), false);
+  assert.equal(api.isReportedWomanDunker({ fn: "Abby", ln: "Meyers", school: "Maryland", bart: { shotZones: true, dunksMade: 2 } }), false);
+  for (let i = 0; i < 20; i++) {
+    const result = api.makeAttributeRatings(6, "1", watkins, quality(4, 3), weights);
+    assert.ok(result.attributes.DNK[1] <= 10);
+  }
+});
+
+test("real statistics change budgets with sample shrinkage and avoid unreliable zones", () => {
+  const attrs = Object.fromEntries(codes.map(code => [code, 20]));
+  const stats = { attrs, g: 30, mpg: 25, shotZones: false };
+  const full = api.ratingStatsProfile(stats);
+  const tiny = api.ratingStatsProfile({ ...stats, g: 1, mpg: 10 });
+  assert.ok(full.score > tiny.score && tiny.score > 0.5);
+  assert.ok(!full.codes.includes("DRB") && !full.codes.includes("DNK") && !full.codes.includes("LAY"));
+  assert.equal(api.ratingStatsProfile(null), null);
+  assert.equal(api.ratingStatsProfile({ ...stats, mpg: 0 }), null);
+  const high = api.makeAttributeRatings(0, "0", { bart: stats }, quality(5), weights);
+  assert.equal(high.currentBudget, 120);
+  assert.equal(sum(high.attributes, 0), high.currentBudget);
+  assert.equal(sum(high.attributes, 1), 144);
+  const lowAttrs = Object.fromEntries(codes.map(code => [code, 2]));
+  const low = api.makeAttributeRatings(0, "0", { bart: { ...stats, attrs: lowAttrs } }, quality(5), weights);
+  assert.equal(low.currentBudget, 40);
+});
+
+test("draft position determines potential tier and conflicting limits fail explicitly", () => {
+  assert.equal(api.qualityForTier("bad", {draftPick: 1}, "0").potentialStars, 5);
+  assert.equal(api.qualityForTier("hof", {draftPick: 60}, "0").potentialStars <= 2.5, true);
+  api.setBounds({ DNKp: [3, 20] });
+  assert.throws(() => api.makeAttributeRatings(0, "1", null, quality(3, 2), weights), /limits/);
+  api.setBounds({ LAYc: [2, 2], DNKc: [2, 2], INSc: [2, 2], MIDc: [2, 2], TPTc: [2, 2], FTSc: [2, 2], DRBc: [2, 2], PASc: [2, 2], OREc: [2, 2], DREc: [2, 2], STLc: [2, 2], BLKc: [2, 2] });
+  assert.throws(() => api.makeAttributeRatings(0, "0", null, quality(5, 4), weights), /limits/);
+  api.setBounds({});
+});

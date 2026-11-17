@@ -6378,8 +6378,8 @@ function budgetForStars(stars) {
 function starsForBudget(points) {
 
   return clamp(
-    (points - 4) / 28,
-    1,
+    Math.round(points / 14) / 2,
+    0,
     5
   );
 }
@@ -6723,6 +6723,10 @@ function allocatePoints(
 ) {
 
   const values = [...minimums];
+
+  if (minimums.some((value, index) => value > maximums[index])) {
+    return null;
+  }
 
 const basePoints =
   ATTRS.length * 2;
@@ -7226,11 +7230,20 @@ function randomHalfStar(
 
 
 function qualityForTier(
-  tierName
+  tierName,
+  sourcePlayer = null,
+  gender = "0"
 ) {
 
-  const rule =
-    TIER_RULES[tierName];
+  const pickNumber = Number(sourcePlayer && sourcePlayer.draftPick);
+  if (Number.isInteger(pickNumber) && pickNumber > 0) {
+    const cutoffs = gender === "1" ? [3, 8, 18, 30] : [3, 10, 25, 45];
+    tierName = pickNumber <= cutoffs[0] ? "hof"
+      : pickNumber <= cutoffs[1] ? "allStar"
+      : pickNumber <= cutoffs[2] ? "starter"
+      : pickNumber <= cutoffs[3] ? "role" : "bad";
+  }
+  const rule = TIER_RULES[tierName];
 
 
   let potentialStars =
@@ -7274,6 +7287,101 @@ function qualityForTier(
       )
 
   };
+}
+
+function ratingStatsProfile(bart) {
+  if (!bart || !bart.attrs) return null;
+  const codes = ["TPT", "FTS", "PAS", "ORE", "DRE", "STL", "BLK"];
+  if (bart.shotZones) codes.push("LAY", "INS", "MID");
+  const ratings = codes
+    .map(code => bart.attrs[code])
+    .filter(value => Number.isFinite(value) && value >= 2 && value <= 20);
+  if (!ratings.length) return null;
+  const minutes = Math.max(0, Number(bart.g) || 0) * Math.max(0, Number(bart.mpg) || 0);
+  if (!minutes) return null;
+  const confidence = clamp(minutes / 600, 0, 1);
+  const score = ratings.reduce((sum, value) => sum + (value - 2) / 18, 0) / ratings.length;
+  return { score: 0.5 + (score - 0.5) * confidence, confidence, codes };
+}
+
+// NCAA and ESPN reports of in-game dunks, matched with school to avoid namesakes.
+const WOMEN_DUNKERS = {
+  "georgeann wells": ["west virginia"],
+  "charlotte smith": ["north carolina"],
+  "michelle snow": ["tennessee"],
+  "sancho lyttle": ["houston"],
+  "candace parker": ["tennessee"],
+  "sylvia fowles": ["lsu", "louisiana state"],
+  "brittney griner": ["baylor"],
+  "fran belibi": ["stanford"],
+  "francesca belibi": ["stanford"],
+  "ashlyn watkins": ["south carolina"]
+};
+
+function isReportedWomanDunker(sourcePlayer) {
+  if (!sourcePlayer) return false;
+  const normalize = value => String(value || "").toLowerCase().replace(/[^a-z ]/g, " ").replace(/\s+/g, " ").trim();
+  const name = normalize([sourcePlayer.fn, sourcePlayer.ln].join(" "));
+  const school = normalize([sourcePlayer.school, sourcePlayer.bart && sourcePlayer.bart.team].filter(Boolean).join(" "));
+  return Boolean(WOMEN_DUNKERS[name] && WOMEN_DUNKERS[name].some(team => school.includes(team)));
+}
+
+function makeAttributeRatings(position, gender, sourcePlayer, quality, weights) {
+  const potentialBudget = budgetForStars(quality.potentialStars);
+  const profile = ratingStatsProfile(sourcePlayer && sourcePlayer.bart);
+  const currentBudget = Math.min(
+    potentialBudget - 8,
+    profile ? Math.round(40 + profile.score * 80) : budgetForStars(quality.currentStars)
+  );
+  const currentMinimums = [], currentMaximums = [], potentialMinimums = [], potentialMaximums = [];
+  const dribbleIndex = ATTRS.findIndex(([code]) => code === "DRB");
+  const dunkIndex = ATTRS.findIndex(([code]) => code === "DNK");
+  const dribbleCaps = [20, 20, 16, 16, 14, 14, 12, 12, 10];
+  const reportedDunk = isReportedWomanDunker(sourcePlayer);
+
+  ATTRS.forEach(([code], index) => {
+    const [currentMin, currentMax] = attributeBounds(code, "c");
+    const [potentialMin, potentialMax] = attributeBounds(code, "p");
+    currentMinimums.push(currentMin);
+    currentMaximums.push(currentMax);
+    potentialMinimums.push(potentialMin);
+    potentialMaximums.push(potentialMax);
+    if (index === dribbleIndex) potentialMaximums[index] = Math.min(potentialMax, dribbleCaps[position]);
+    if (index === dunkIndex && gender === "1") {
+      potentialMaximums[index] = Math.min(potentialMax, reportedDunk ? 10 : 2);
+      if (!reportedDunk) currentMaximums[index] = Math.min(currentMax, 2);
+    }
+    currentMaximums[index] = Math.min(currentMaximums[index], potentialMaximums[index]);
+  });
+
+  const growth = Math.max(0, Math.min(8, potentialBudget - currentBudget,
+    potentialMaximums[dribbleIndex] - currentMinimums[dribbleIndex]));
+  currentMaximums[dribbleIndex] = Math.min(
+    currentMaximums[dribbleIndex], potentialMaximums[dribbleIndex] - growth
+  );
+
+  const adjustedWeights = weights.map((weight, index) => {
+    const code = ATTRS[index][0];
+    if (!profile || !profile.codes.includes(code)) return weight;
+    const measured = sourcePlayer.bart.attrs[code];
+    if (!Number.isFinite(measured) || measured < 2 || measured > 20) return weight;
+    const multiplier = Math.pow(2, (measured - 11) / 4.5);
+    return weight * (1 + profile.confidence * (multiplier - 1));
+  });
+  const current = allocatePoints(currentBudget, currentMinimums, currentMaximums, adjustedWeights);
+  if (!current) {
+    throw new Error("Current-rating limits cannot fit the selected point budget and position/gender limits. Increase the limits or change the class settings.");
+  }
+  const requiredPotential = potentialMinimums.map((value, index) =>
+    Math.max(value, current[index] + (index === dribbleIndex ? growth : 0))
+  );
+  const potential = allocatePoints(potentialBudget, requiredPotential, potentialMaximums, adjustedWeights);
+  if (!potential) {
+    throw new Error("Potential limits cannot fit the selected point budget and position/gender limits. Increase the limits or change the class settings.");
+  }
+  const attributes = {};
+  ATTRS.forEach(([code], index) => { attributes[code] = [current[index], potential[index]]; });
+  return { attributes, currentBudget, potentialBudget, reportedDunk };
 }
 
 
@@ -8048,13 +8156,10 @@ const hometown =
 
   const quality =
     qualityForTier(
-      tierName
+      tierName,
+      sourcePlayer,
+      gender
     );
-
-
-  const currentStars =
-    quality.currentStars;
-
 
   const potentialStars =
     quality.potentialStars;
@@ -8064,199 +8169,14 @@ const hometown =
     quality.potentialRaw;
 
 
-  let currentBudget =
-    budgetForStars(
-      currentStars
-    );
-
-
-  let potentialBudget =
-    budgetForStars(
-      potentialStars
-    );
-
-
-  /*
-    An exceptionally rare HOF-tier prospect
-    can exceed the normal 144-point ceiling.
-  */
-
-  let isOutlier = false;
-
-
-  if (
-    tierName === "hof" &&
-    rng() < 0.08
-  ) {
-
-    isOutlier = true;
-
-
-    const extraPoints =
-      randomInteger(
-        1,
-        8
-      );
-
-
-    currentBudget +=
-      extraPoints;
-
-
-    potentialBudget +=
-      extraPoints;
-  }
-
-
-  potentialBudget =
-    Math.max(
-      potentialBudget,
-      currentBudget
-    );
-  
-  const currentMinimums = [];
-  const currentMaximums = [];
-
-  const potentialMinimums = [];
-  const potentialMaximums = [];
-
-
-  ATTRS.forEach(
-    ([code]) => {
-
-      const current =
-        attributeBounds(
-          code,
-          "c"
-        );
-
-
-      currentMinimums.push(
-        current[0]
-      );
-
-
-      currentMaximums.push(
-        current[1]
-      );
-
-
-      const potential =
-        attributeBounds(
-          code,
-          "p"
-        );
-
-
-      potentialMinimums.push(
-        potential[0]
-      );
-
-
-      potentialMaximums.push(
-        potential[1]
-      );
-    }
-  );
-
-
   const archetype =
     archetypeWeights(
       position
     );
 
-
-  const currentRatings =
-    allocatePoints(
-      currentBudget,
-      currentMinimums,
-      currentMaximums,
-      archetype.weights
-    );
-
-
-  if (!currentRatings) {
-
-    throw new Error(
-      "Current-rating limits cannot fit the selected point budget. Increase one or more current maximums or change the current overall range."
-    );
-  }
-
-
-  const effectivePotentialMinimums =
-    potentialMinimums.map(
-      (
-        value,
-        index
-      ) =>
-        Math.max(
-          value,
-          currentRatings[index]
-        )
-    );
-
-
-  const potentialRatings =
-    allocatePoints(
-      potentialBudget,
-      effectivePotentialMinimums,
-      potentialMaximums,
-      archetype.weights
-    );
-
-
-  if (!potentialRatings) {
-
-    throw new Error(
-      "Potential limits cannot fit the selected potential budget. Increase one or more potential maximums or lower the potential range."
-    );
-  }
-
-
-  const attributes = {};
-
-
-  ATTRS.forEach(
-    (
-      [code],
-      index
-    ) => {
-
-      attributes[code] = [
-
-        currentRatings[index],
-
-        potentialRatings[index]
-
-      ];
-    }
-  );
-
-
-  if (sourcePlayer && sourcePlayer.bart && sourcePlayer.bart.attrs) {
-    const bart = sourcePlayer.bart;
-    const weight = Math.min(1, (bart.g || 0) / 20);
-    const bonus = { Fr: 4, So: 3, Jr: 2, Sr: 1 }[bart.yr] || 1;
-
-    ATTRS.forEach(([code]) => {
-      const measured = bart.attrs[code];
-
-      if (!Number.isFinite(measured)) {
-        return;
-      }
-
-      const bounds = attributeBounds(code, "c");
-      const potentialBounds = attributeBounds(code, "p");
-      const current = Math.round(
-        Math.min(bounds[1], Math.max(bounds[0], measured * weight + attributes[code][0] * (1 - weight)))
-      );
-      const potential = Math.round(
-        Math.min(potentialBounds[1], Math.max(current, potentialBounds[0], current + bonus))
-      );
-
-      attributes[code] = [current, Math.max(current, potential)];
-    });
-  }
+  const { attributes, currentBudget, potentialBudget, reportedDunk } =
+    makeAttributeRatings(position, gender, sourcePlayer, quality, archetype.weights);
+  const currentStars = starsForBudget(currentBudget);
 
 
   const classType=document.getElementById("classType").value;
@@ -8420,11 +8340,16 @@ else {
       potentialBudget,
 
     pointsRemaining:
-      144 -
+      potentialBudget -
       currentBudget,
 
+    ratingSource:
+      sourcePlayer
+        ? (ratingStatsProfile(sourcePlayer.bart) ? "College stats estimate" : "Tier estimate (no college stats)")
+        : "Fictional tier",
+
     outlier:
-      isOutlier,
+      giantOutlier,
 
     attributes:
       attributes,
@@ -8472,6 +8397,8 @@ else {
       )
 
   };
+
+  if (gender === "1" && !reportedDunk) player.tendencies.dunk = -5;
 
 
   return player;
@@ -8714,7 +8641,7 @@ function renderClass() {
 
       const outlierText =
         player.outlier
-          ? " • Generational Outlier"
+          ? " • Height Outlier"
           : "";
 
 
@@ -8735,6 +8662,8 @@ function renderClass() {
             ${player.tierName}
             •
             ${player.arc}
+            •
+            ${player.ratingSource}
             ${outlierText}
           </span>
         </td>
@@ -8779,9 +8708,9 @@ function renderClass() {
         </td>
 
         <td>
-          ${player.attributes.DNK[0]}
+          ${player.attributes.DNK[0] / 2}
           →
-          ${player.attributes.DNK[1]}
+          ${player.attributes.DNK[1] / 2}
         </td>
 
         <td>
@@ -8868,7 +8797,7 @@ function renderClass() {
 
     <div class="metric">
       <span class="muted small">
-        Budget Outliers
+        Height Outliers
       </span>
 
       <strong>
