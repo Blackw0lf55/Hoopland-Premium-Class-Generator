@@ -184,26 +184,39 @@ function parseSeason(html) {
   return rows;
 }
 
-const BART_HEADERS = { "User-Agent": "Mozilla/5.0 (compatible; HooplandClassGenerator/1.0)" };
+const BART_HEADERS = {
+  "User-Agent":
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+  Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+  "Accept-Language": "en-US,en;q=0.9"
+};
 
-async function fetchBartHtml(url) {
+async function fetchBartHtml(url, trace) {
   let response = await fetch(url, { headers: BART_HEADERS });
   let html = await response.text();
+  let cookies = [];
 
   // Barttorvik serves a browser-check form; posting it back returns the real page.
-  if (html.includes("js_test_submitted")) {
-    const cookie = (response.headers.get("set-cookie") || "").split(";")[0];
+  for (let attempt = 0; attempt < 3 && html.includes("js_test_submitted"); attempt++) {
+    const setCookie = response.headers.get("set-cookie") || "";
+    cookies = cookies.concat(setCookie.split(/,(?=\s*[^;,]+=)/).map(part => part.split(";")[0].trim()).filter(Boolean));
 
     response = await fetch(url, {
       method: "POST",
       headers: {
         ...BART_HEADERS,
         "Content-Type": "application/x-www-form-urlencoded",
-        ...(cookie ? { Cookie: cookie } : {})
+        Origin: "https://barttorvik.com",
+        Referer: url,
+        ...(cookies.length ? { Cookie: cookies.join("; ") } : {})
       },
       body: "js_test_submitted=1"
     });
     html = await response.text();
+
+    if (trace) {
+      trace.push({ attempt, status: response.status, length: html.length, cookies: cookies.length, start: html.slice(0, 120) });
+    }
   }
 
   return { response, html };
@@ -456,11 +469,13 @@ export async function handleBart(request) {
 
   try {
     if (url.searchParams.get("debug")) {
-      const { response, html } = await fetchBartHtml(seasonUrl(year));
+      const trace = [];
+      const { response, html } = await fetchBartHtml(seasonUrl(year), trace);
       const rows = parseSeason(html);
       const profiles = await bartProfiles(year, names);
 
       return Response.json({
+        trace,
         status: response.status,
         htmlLength: html.length,
         htmlStart: html.slice(0, 400),
