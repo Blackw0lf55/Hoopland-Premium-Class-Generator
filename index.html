@@ -5364,6 +5364,171 @@ function applyHeadshotSample(baseAppearance, sample) {
   };
 }
 
+/*
+  Description-based appearance. A short text such as
+  "very light skin, afro, goggles" (hand-written or produced by the
+  vision endpoint) is parsed into skin tone, hair color, hairstyle,
+  facial hair and head accessory, then matched to the catalogs above.
+  Traits that are not mentioned are left to the headshot sampler.
+*/
+const REAL_PLAYER_DESCRIPTIONS = {
+  oliviamiles: "very light skin, black hair, afro, goggles",
+  cooperflagg: "very light skin, dark blonde hair, front comb over"
+};
+
+const LOOK_SKIN_TONES = [
+  [/very[- ]light/, 1], [/light[- ]medium/, 6], [/medium[- ]brown/, 11],
+  [/dark[- ]brown/, 16], [/very[- ]dark|ebony/, 19], [/light/, 3],
+  [/medium|olive|tan\b/, 8], [/brown/, 13], [/dark|deep/, 17]
+];
+
+function parseLookDescription(text) {
+  const t = String(text || "").toLowerCase();
+  const look = {};
+  if (!t.trim()) return look;
+
+  for (const [pattern, index] of LOOK_SKIN_TONES) {
+    if (new RegExp(`(?:${pattern.source})(?:[- ]?(?:skin|skinned|complexion|toned))`).test(t)) {
+      look.skin = index;
+      break;
+    }
+  }
+  if (look.skin === undefined) {
+    if (/african american|black (?:man|woman|player)|\bblack\b(?! ?(?:hair|blond))/.test(t)) look.skin = 14;
+    else if (/\bwhite\b|caucasian/.test(t)) look.skin = 2;
+    else if (/latino|latina|hispanic/.test(t)) look.skin = 8;
+    else if (/\basian\b/.test(t)) look.skin = 5;
+  }
+
+  const hairColors = [
+    [/dark[- ]blond/, "blonde", 0.8], [/light[- ]blond|platinum|golden[- ]blond/, "blonde", 0],
+    [/blond/, "blonde", 0.4], [/red|ginger|auburn/, "red", 0.3],
+    [/light[- ]brown hair/, "brunette", 0.1], [/dark[- ]brown hair/, "brunette", 1],
+    [/brunette|brown hair|chestnut/, "brunette", 0.5], [/black hair|jet[- ]black/, "black", 0.5]
+  ];
+  for (const [pattern, group, frac] of hairColors) {
+    if (pattern.test(t)) {
+      look.hairColor = { group, frac };
+      break;
+    }
+  }
+
+  const style = { words: [] };
+  const add = (props, ...words) => {
+    Object.assign(style, props);
+    style.words.push(...words);
+  };
+  if (/afro/.test(t)) add({ texture: "coiled", volume: "high" }, "curly or coiled", "halo");
+  if (/braid|cornrow/.test(t)) add({ texture: "braided" }, "braid");
+  if (/\bloc|dread/.test(t)) add({ texture: "loc-like" }, "loc");
+  if (/twist/.test(t)) add({ texture: "loc-like" }, "twist");
+  if (/curl|coil/.test(t) && !/afro/.test(t)) add({ texture: "coiled" }, "curl");
+  if (/bald|shaved|buzz|fade|close[- ]crop/.test(t)) add({ length: "very-short" }, /bald/.test(t) ? "bald" : "short");
+  if (/comb|slick|side[- ]part/.test(t)) add({ texture: "straight" }, "comb", /front/.test(t) ? "front" : "side");
+  if (/ponytail/.test(t)) add({ length: "long" }, "ponytail");
+  if (/\bbun|puff/.test(t)) add({}, "bun");
+  if (/mohawk/.test(t)) add({}, "mohawk");
+  if (/flat[- ]?top/.test(t)) add({}, "flat-top");
+  if (/long (?:hair|braid|loc)|shoulder[- ]length/.test(t)) style.length = "long";
+  else if (/short (?:hair|curl|braid|loc|afro)/.test(t)) style.length = style.length || "short";
+  else if (/medium[- ]length|medium hair/.test(t)) style.length = "medium";
+  if (style.words.length || style.length || style.texture) look.hairStyle = style;
+
+  if (/clean[- ]shaven|no (?:facial hair|beard)|beardless/.test(t)) look.facialHair = 0;
+  else if (/long beard/.test(t)) look.facialHair = 22;
+  else if (/full beard|big beard|thick beard/.test(t)) look.facialHair = 21;
+  else if (/short beard|stubble|trimmed beard/.test(t)) look.facialHair = 16;
+  else if (/goatee/.test(t)) look.facialHair = 9;
+  else if (/chin patch|soul patch/.test(t)) look.facialHair = 1;
+  else if (/beard/.test(t)) look.facialHair = 19;
+  else if (/m(?:o)?ustache/.test(t)) look.facialHair = 6;
+
+  if (/no (?:head )?accessor|nothing on (?:his|her) head/.test(t)) look.accessory = 0;
+  else if (/goggle/.test(t)) look.accessory = 6;
+  else if (/wide headband/.test(t)) look.accessory = 14;
+  else if (/headband/.test(t)) look.accessory = 21;
+  else if (/bandana/.test(t)) look.accessory = 2;
+  else if (/visor/.test(t)) look.accessory = 4;
+  else if (/face ?mask/.test(t)) look.accessory = 7;
+  else if (/skullcap|\bcap\b/.test(t)) look.accessory = 12;
+  else if (/glasses|eyewear/.test(t)) look.accessory = 5;
+  else if (/\bnone\b/.test(t)) look.accessory = 0;
+
+  return look;
+}
+
+function matchLookHair(style, gender) {
+  const blocked = new Set(gender === "1" ? MEN_HAIRS : WOMEN_HAIRS);
+  let best = null;
+  let bestScore = -Infinity;
+  for (let id = 0; id <= 170; id++) {
+    const entry = getHairReference(id);
+    if (!entry || blocked.has(id)) continue;
+    const text = `${entry.description} ${entry.structure}`.toLowerCase();
+    let score = hairMatchScore(entry, {
+      length: style.length,
+      texture: style.texture,
+      volume: style.volume,
+      tags: []
+    });
+    style.words.forEach(word => {
+      if (text.includes(word)) score += 10;
+    });
+    if (score > bestScore) {
+      best = entry;
+      bestScore = score;
+    }
+  }
+  return best;
+}
+
+function applyLookDescription(baseAppearance, text, gender) {
+  const look = parseLookDescription(text);
+  const result = { ...baseAppearance };
+
+  const skins = APPEARANCE_PALETTES.flatMap(group => group.skins);
+  let skinGroup = APPEARANCE_PALETTES.find(group => group.skins.includes(result.skinC)) || APPEARANCE_PALETTES[0];
+  if (look.skin !== undefined) {
+    const oldSkin = result.skinC;
+    result.skinC = skins[Math.max(0, Math.min(skins.length - 1, look.skin))];
+    skinGroup = APPEARANCE_PALETTES.find(group => group.skins.includes(result.skinC));
+    result.accessories = (result.accessories || []).map(accessory => {
+      const next = { ...accessory };
+      Object.keys(next).forEach(segment => {
+        if (/^[LR]_(Shoulder|Elbow|Wrist|Knee|Shin)$/.test(segment) && String(next[segment]).toUpperCase() === String(oldSkin).toUpperCase()) {
+          next[segment] = result.skinC;
+        }
+      });
+      return next;
+    });
+    result.eyeC = pick(skinGroup.eyes);
+  }
+
+  if (look.hairColor) {
+    const list = skinGroup.hair[look.hairColor.group] || skinGroup.hair.black;
+    const color = list[Math.round(look.hairColor.frac * (list.length - 1))];
+    result.hairC = color;
+    result.browC = color;
+    result.fHairC = color;
+  }
+
+  if (look.hairStyle) {
+    const entry = matchLookHair(look.hairStyle, gender);
+    if (entry) result.hair = padStyle(entry.id);
+  }
+
+  if (gender === "1") result.fHair = padStyle(0);
+  else if (look.facialHair !== undefined) result.fHair = padStyle(look.facialHair);
+
+  if (look.accessory !== undefined) {
+    result.accessories = (result.accessories || []).map(accessory => ({
+      ...accessory,
+      headAcc: look.accessory === 0 ? "none" : padStyle(look.accessory)
+    }));
+  }
+  return result;
+}
+
   function generateRealPlayerAppearance(
   sourcePlayer,
   gender
@@ -5409,10 +5574,18 @@ function applyHeadshotSample(baseAppearance, sample) {
 
   if (!profile) {
 
-    return applyHeadshotSample(
+    const sampled = applyHeadshotSample(
       baseAppearance,
       sourcePlayer && sourcePlayer.headshotSample
     );
+    const lookText =
+      REAL_PLAYER_DESCRIPTIONS[nameKey] ||
+      (sourcePlayer && sourcePlayer.lookText) ||
+      "";
+
+    return lookText
+      ? applyLookDescription(sampled, lookText, gender)
+      : sampled;
   }
 
 
