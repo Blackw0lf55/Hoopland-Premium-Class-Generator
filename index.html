@@ -3210,7 +3210,7 @@ const NAMES = {
 };
 
 const APPEARANCE_PALETTES = [
-  {group:"light",skins:["F4D2C3","EEBAA9","E7B099","D9A388","CD9D7E","C69479"],hair:{blonde:["C9A070","BB9766","AC8C5A","A08050","906F4C"],brunette:["7A5A40","704A33","604A23","4A2D1D","3C2514"],red:["905742","804937","6D3A29"],black:["303030","252525","202020"]},eyes:["2060B0","134890","0C3A70","505045","394035","293029","393029","312923","2D2320","261C1A","131009","090502"],tattoos:["7A6358","594338"]},
+  {group:"light",skins:["F4D2C3","EEBAA9","E7B099","D9A388","CD9D7E","C69479"],hair:{blonde:["D5A07D","C9A070","BB9766","AC8C5A","A08050","906F4C"],brunette:["7A5A40","704A33","604A23","4A2D1D","3C2514"],red:["905742","804937","6D3A29"],black:["303030","252525","202020"]},eyes:["2060B0","134890","0C3A70","505045","394035","293029","393029","312923","2D2320","261C1A","131009","090502"],tattoos:["7A6358","594338"]},
   {group:"medium",skins:["BF8C6B","B98360","AD795C","A07053","99694F","8C5D4B"],hair:{blonde:["C9A070","BB9766","AC8C5A","A08050","906F4C"],brunette:["7A5A40","704A33","604A23","4A2D1D","3C2514"],red:["905742","804937","6D3A29"],black:["303030","252525","202020"]},eyes:["505045","394035","293029","393029","312923","2D2320","261C1A","131009","090502"],tattoos:["605043","403025"]},
   {group:"bronze",skins:["835444","7A4D3D","734937","6B4232","633D2F"],hair:{brunette:["7A5A40","704A33","604A23","4A2D1D","3C2514"],black:["303030","252525","202020","151515"]},eyes:["393029","312923","2D2320","261C1A","131009","090502"],tattoos:["433029","2A201A"]},
   {group:"dark",skins:["5A392B","533329","4B2D23","44291D","3A231A","301D15"],hair:{black:["303030","252525","202020","151515","101010"],brunette:["4A2D1D","3C2514"]},eyes:["393029","312923","2D2320","261C1A","131009","090502"],tattoos:["2A201A","1C1816"]}
@@ -5406,97 +5406,19 @@ function canonicalizeRealPlayer(player) {
 
 }
 
-function hexToRgb(hex) {
-  const value = parseInt(hex, 16);
-  return [(value >> 16) & 255, (value >> 8) & 255, value & 255];
-}
-
-function nearestColor(rgb, hexList) {
-  let best = hexList[0];
-  let bestDistance = Infinity;
-  hexList.forEach(hex => {
-    const c = hexToRgb(hex);
-    // Weighted RGB distance approximates perceived difference.
-    const dr = (c[0] - rgb[0]);
-    const dg = (c[1] - rgb[1]);
-    const db = (c[2] - rgb[2]);
-    const distance = 2 * dr * dr + 4 * dg * dg + 3 * db * db;
-    if (distance < bestDistance) {
-      best = hex;
-      bestDistance = distance;
-    }
-  });
-  return best;
-}
-
-/*
-  Baseline appearance for real players without a curated profile:
-  snap colors sampled from the player's headshot to the closest
-  valid Hoop Land palette colors. Hair style and facial hair keep
-  the generated fallback; curated profiles always take priority.
-*/
-function applyHeadshotSample(baseAppearance, sample) {
-
-  if (!sample || !Array.isArray(sample.skin)) {
-    return baseAppearance;
-  }
-
-  const palette = APPEARANCE_PALETTES.reduce((best, candidate) => {
-    const match = nearestColor(sample.skin, candidate.skins);
-    const distance = hexToRgb(match).reduce(
-      (sum, value, index) => sum + Math.abs(value - sample.skin[index]),
-      0
-    );
-    return !best || distance < best.distance
-      ? { palette: candidate, skin: match, distance }
-      : best;
-  }, null);
-
-  const skinC = palette.skin;
-  const hairOptions = [
-    ...new Set(Object.values(palette.palette.hair).flat())
-  ];
-  const hairC = Array.isArray(sample.hair)
-    ? nearestColor(sample.hair, hairOptions)
-    : baseAppearance.hairC;
-
-  const accessories = baseAppearance.accessories.map(accessory => {
-    const next = { ...accessory };
-    Object.keys(next).forEach(segment => {
-      if (
-        /^[LR]_(Shoulder|Elbow|Wrist|Knee|Shin)$/.test(segment) &&
-        String(next[segment]).toUpperCase() ===
-          String(baseAppearance.skinC).toUpperCase()
-      ) {
-        next[segment] = skinC;
-      }
-    });
-    return next;
-  });
-
-  return {
-    ...baseAppearance,
-    skinC,
-    eyeC: pick(palette.palette.eyes),
-    hairC,
-    browC: hairC,
-    fHairC: hairC,
-    accessories
-  };
-}
-
 /*
   Description-based appearance. A short text such as
   "very light skin, afro, goggles" (hand-written or produced by the
   vision endpoint) is parsed into skin tone, hair color, hairstyle,
   facial hair and head accessory, then matched to the catalogs above.
-  Traits that are not mentioned are left to the headshot sampler.
+  Traits not identified by a description remain placeholders.
 */
 const REAL_PLAYER_DESCRIPTIONS = {
   oliviamiles: "very light skin, black hair, afro, goggles",
   cooperflagg: "very light skin, dark blonde hair, front comb over",
   awafam: "dark 4 skin",
-  laurenbetts: "bronze 3 skin"
+  laurenbetts: "bronze 3 skin",
+  friedabuhner: "skin: light 1; hair color: blonde 1"
 };
 
 const LOOK_SKIN_TONES = [
@@ -5753,7 +5675,6 @@ function appearanceSourceFor(sourcePlayer) {
   if (REAL_PLAYER_APPEARANCE_PROFILES[key]) return "profile";
   if (REAL_PLAYER_DESCRIPTIONS[key]) return "manual";
   if (sourcePlayer.lookText) return "ai";
-  if (sourcePlayer.headshotSample) return "photo";
   return "none";
 }
 
@@ -5794,7 +5715,6 @@ function appearanceSourceFor(sourcePlayer) {
     ];
 
 
-  baseAppearance = applyHeadshotSample(baseAppearance, sourcePlayer && sourcePlayer.headshotSample);
   const lookText = (sourcePlayer && sourcePlayer.lookText) || "";
   const manualText = REAL_PLAYER_DESCRIPTIONS[nameKey] || "";
   if (lookText) baseAppearance = applyLookDescription(baseAppearance, lookText, gender);
@@ -11859,7 +11779,6 @@ classSizePlus.addEventListener(
     else if(src==="profile")text="A saved profile supplies some features; others may be estimated or placeholders. "+text;
     else if(src==="manual")text="A saved description supplies some features; others may be estimated or placeholders. "+text;
     else if(src==="ai")text='Built from the headshot description: "'+player.lookText+'". '+text;
-    else if(src==="photo")text="Colors were sampled from the headshot; hair style is a guess. Please check it. "+text;
     else if(src==="none"){text="No headshot could be read, so this look is a random placeholder. Please adjust it below.";note.classList.add("warn");}
     if(player.appearanceWarnings&&player.appearanceWarnings.length){
       text=player.appearanceWarnings.join(" ")+" "+text;

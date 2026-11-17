@@ -1,6 +1,6 @@
 import existingWorker from "./worker.js";
 import { handleClassData } from "./class-sources.js";
-import { wikidataProfile } from "./enrich.js";
+import { wikidataProfile, wikidataPhotos } from "./enrich.js";
 import { handleStats } from "./college-stats.js";
 
 function normalizeName(value) {
@@ -137,6 +137,7 @@ async function findAthlete(name, gender, debug) {
       );
       const athlete = data && (data.athlete || data);
       if (!athlete) continue;
+      if (normalizeName(athlete.displayName || athlete.fullName || athlete.name) !== wanted) continue;
       const headshot = (athlete.headshot && athlete.headshot.href) || "";
       const place = athlete.birthPlace && athlete.birthPlace.city ? athlete.birthPlace : null;
       if (place) return { place, headshot };
@@ -173,7 +174,7 @@ async function resolveHometown(name, gender, countryHint) {
       if (!wiki) return { headshot, debug };
       return {
         home: wiki.home || undefined,
-        headshot: headshot || wiki.headshot,
+        headshot,
         x: Number.isFinite(wiki.lat) ? Math.round(wiki.lat * 100) : undefined,
         y: Number.isFinite(wiki.lon) ? Math.round(wiki.lon * 100) : undefined,
         countryName: wiki.country === "United States of America" ? "United States" : undefined,
@@ -221,10 +222,21 @@ async function handleHometown(request) {
 
   const key = gender + ":" + normalizeName(name);
   if (!hometownCache.has(key)) {
-    hometownCache.set(key, resolveHometown(name, gender, params.get("ctry")).catch(() => ({})));
+    hometownCache.set(key, (async () => {
+      const [hometown, photos] = await Promise.allSettled([
+        resolveHometown(name, gender, params.get("ctry")),
+        wikidataPhotos(name)
+      ]);
+      if (hometown.status === "rejected") console.warn("Hometown lookup failed", name, hometown.reason);
+      if (photos.status === "rejected") console.warn("Wikimedia photo lookup failed", name, photos.reason);
+      return {
+        ...(hometown.status === "fulfilled" ? hometown.value : {}),
+        headshots: photos.status === "fulfilled" ? photos.value : []
+      };
+    })());
   }
   const result = await hometownCache.get(key);
-  if (!result.home && !result.headshot) hometownCache.delete(key);
+  if (!result.home && !result.headshot && !result.headshots.length) hometownCache.delete(key);
   return Response.json(result, { headers: { "cache-control": "public, max-age=86400" } });
 }
 
@@ -384,49 +396,6 @@ window.__HOOPLAND_REAL_HOMETOWN=function(sourcePlayer){
   if(known&&known.home)return known.home;
   return String(sourcePlayer&&(sourcePlayer.hometown||sourcePlayer.home)||"").trim();
 };
-window.__HOOPLAND_SAMPLE_HEADSHOT=function(image){
-  const w=image.width,h=image.height,data=image.data;
-  const region=(x0,x1,y0,y1)=>{
-    const px=[];
-    for(let y=Math.floor(h*y0);y<Math.floor(h*y1);y++){
-      for(let x=Math.floor(w*x0);x<Math.floor(w*x1);x++){
-        const i=(y*w+x)*4;
-        if(data[i+3]<230)continue;
-        px.push([data[i],data[i+1],data[i+2]]);
-      }
-    }
-    return px;
-  };
-  const median=(px,c)=>{
-    const v=px.map(p=>p[c]).sort((a,b)=>a-b);
-    return v[Math.floor(v.length/2)];
-  };
-  const colorOf=px=>px.length>=20?[median(px,0),median(px,1),median(px,2)]:null;
-  // Skin-chroma mask over the face area; use mid-brightness pixels so shadows and glare do not skew the tone.
-  const isSkin=p=>{
-    const cb=128-0.168736*p[0]-0.331264*p[1]+0.5*p[2];
-    const cr=128+0.5*p[0]-0.418688*p[1]-0.081312*p[2];
-    const l=0.299*p[0]+0.587*p[1]+0.114*p[2];
-    return l>20&&l<240&&cb>=75&&cb<=130&&cr>=132&&cr<=175&&p[0]>=p[2];
-  };
-  const lum=p=>0.299*p[0]+0.587*p[1]+0.114*p[2];
-  let skinPixels=region(0.25,0.75,0.08,0.6).filter(isSkin).sort((a,b)=>lum(a)-lum(b));
-  if(skinPixels.length>=60){
-    skinPixels=skinPixels.slice(Math.floor(skinPixels.length*0.35),Math.floor(skinPixels.length*0.8));
-  }else{
-    skinPixels=region(0.36,0.64,0.24,0.5).filter(p=>{
-      const l=(p[0]+p[1]+p[2])/3;
-      return l>35&&l<245&&p[0]>=p[2];
-    });
-  }
-  const hairPixels=region(0.34,0.66,0.0,0.13).filter(p=>{
-    const l=(p[0]+p[1]+p[2])/3;
-    return l<235;
-  });
-  const skin=colorOf(skinPixels);
-  if(!skin)return null;
-  return {skin,hair:colorOf(hairPixels)};
-};
 window.__HOOPLAND_PREPARE_REAL_PLAYERS=async function(players,gender){
   try{
     const type=document.getElementById("classType").value;
@@ -441,26 +410,15 @@ window.__HOOPLAND_PREPARE_REAL_PLAYERS=async function(players,gender){
     }
   }catch(e){console.warn("College stats lookup failed",e);}
   const queue=players.slice();
-  const sampleImage=async url=>{
-    const res=await fetch("/api/headshot?src="+encodeURIComponent(url));
-    if(!res.ok)return null;
-    const bitmap=await createImageBitmap(await res.blob());
-    const canvas=document.createElement("canvas");
-    canvas.width=bitmap.width;
-    canvas.height=bitmap.height;
-    const ctx=canvas.getContext("2d",{willReadFrequently:true});
-    ctx.drawImage(bitmap,0,0);
-    return window.__HOOPLAND_SAMPLE_HEADSHOT(ctx.getImageData(0,0,canvas.width,canvas.height));
-  };
   const worker=async()=>{
     while(queue.length){
       const p=queue.shift();
       let d=null;
       try{
-        const q=new URLSearchParams({name:[p.fn,p.ln].filter(Boolean).join(" "),gender:gender==="1"?"women":"men",ctry:String(p.ctry||p.country||"")});
+        const q=new URLSearchParams({name:[p.fn,p.ln].filter(Boolean).join(" "),gender:gender==="1"?"women":"men",ctry:String(p.ctry||p.country||""),v:"2"});
         const res=await fetch("/api/hometown?"+q);
         d=res.ok?await res.json():null;
-      }catch(e){}
+      }catch(e){console.warn('Hometown and photo lookup failed for',[p.fn,p.ln].join(' '),e);}
       if(d){
         if(d.home&&!window.__HOOPLAND_REAL_HOMETOWN(p)){p.hometown=d.home;}
         if(Number.isFinite(d.x)&&Number.isFinite(d.y)){p.homeX=d.x;p.homeY=d.y;}
@@ -469,24 +427,28 @@ window.__HOOPLAND_PREPARE_REAL_PLAYERS=async function(players,gender){
       }
       const extraShots=Array.isArray(p.headshots)?p.headshots:[];
       const seenShots=new Set();
-      const shots=[p.headshot,...extraShots,d&&d.headshot].filter(url=>{
+      const discoveredShots=d&&Array.isArray(d.headshots)?d.headshots:[];
+      const shots=[p.headshot,...extraShots,d&&d.headshot,...discoveredShots].filter(url=>{
         if(typeof url!=="string"||!url)return false;
         try{
           const parsed=new URL(url);
-          const key=parsed.origin+parsed.pathname;
+          let key=parsed.origin+parsed.pathname;
+          if(parsed.hostname==="commons.wikimedia.org"||parsed.hostname==="upload.wikimedia.org"){
+            const parts=parsed.pathname.split("/");
+            const filename=parsed.pathname.includes("/thumb/")?parts[parts.length-2]:parts[parts.length-1];
+            key="commons:"+decodeURIComponent(filename).replace(/ /g,"_");
+          }
           if(seenShots.has(key))return false;
           seenShots.add(key);
           return true;
         }catch(e){console.warn('Invalid headshot URL for',[p.fn,p.ln].join(' '),e);return false;}
-      }).slice(0,3);
+      }).slice(0,8);
       if(shots.length){
-        const samples=[],descriptions=[];
+        const descriptions=[];
+        let attempted=0;
         for(const shot of shots){
-          try{
-            const sample=await sampleImage(shot);
-            if(sample)samples.push(sample);
-            else console.warn('Headshot sampling returned no face colors for',[p.fn,p.ln].join(' '));
-          }catch(e){console.warn('Headshot sampling failed for',[p.fn,p.ln].join(' '),e);}
+          if(descriptions.length===4)break;
+          attempted++;
           try{
             const r=await fetch("/api/describe?src="+encodeURIComponent(shot));
             const j=r.ok?await r.json():null;
@@ -496,7 +458,7 @@ window.__HOOPLAND_PREPARE_REAL_PLAYERS=async function(players,gender){
         }
         const combined=mergeLookDescriptions(descriptions);
         p.lookText=combined.text;
-        p.appearanceWarnings=[];
+        p.appearanceWarnings=[descriptions.length+' of '+attempted+' attempted photos described'+(descriptions.length<3?'; fewer than three photos, so please review the match.':'.')];
         if(combined.conflicts.length){
           p.appearanceWarnings.push('Photos disagree on '+combined.conflicts.join(', ')+'; please review those features.');
         }
@@ -504,7 +466,7 @@ window.__HOOPLAND_PREPARE_REAL_PLAYERS=async function(players,gender){
           p.appearanceWarnings.push('Only one photo identified '+combined.unconfirmed.join(', ')+'; those features need review.');
         }
         if(descriptions.length<2){
-          p.appearanceWarnings.push(descriptions.length===1?'Only one photo description was available; please verify the match.':'Photo description unavailable; colors may be estimates and hair style is a placeholder.');
+          if(!descriptions.length)p.appearanceWarnings.push('Photo descriptions unavailable; unsaved features are placeholders.');
         }
         const parsed=parseLookDescription(combined.text);
         const saved=REAL_PLAYER_DESCRIPTIONS[normalizeAppearancePlayerName([p.fn,p.ln].filter(Boolean).join(" "))]||"";
@@ -518,12 +480,7 @@ window.__HOOPLAND_PREPARE_REAL_PLAYERS=async function(players,gender){
         if(parsed.hairId===undefined&&!parsed.hairStyle&&savedLook.hairId===undefined&&!savedLook.hairStyle){
           p.appearanceWarnings.push('Hair style was not identified and is a placeholder.');
         }
-        const uncertain=field=>combined.conflicts.includes(field)||combined.unconfirmed.includes(field);
-        if(samples.length&&!uncertain('skin')){
-          p.headshotSample={...samples[0]};
-          if(uncertain('hair color'))delete p.headshotSample.hair;
-        }
-        if(uncertain('skin')){
+        if(combined.conflicts.includes('skin')||combined.unconfirmed.includes('skin')){
           p.appearanceWarnings.push('No photo skin tone was selected; check the saved tone or placeholder.');
         }
       }else{

@@ -1,16 +1,18 @@
 # Hoopland-Premium-Class-Generator
 Create realistic accurate classes for hoopland that you can upload and use right away! Control every aspect of player generation for easy class creation!
 
-Real-player looks are estimates. When available, up to three distinct permitted
-photo URLs are compared; unknown or conflicting features are flagged in the
-player preview rather than treated as confirmed. Often only one photo is
-available. Saved descriptions override photo estimates for the features they
-specify, and preview edits are included in the exported class. A partial saved
-profile does not replace photo estimates for its unspecified features. Skin
-shade numbers in descriptions correspond to the editor's numbered palette;
-missing or conflicting photo evidence is flagged for review. Awa Fam's source
-name variations are normalized before matching. Getty Images is not used as a
-photo source.
+Real-player looks are estimates. Up to four distinct photos are described by
+Workers AI and compared; they come from the draft source, ESPN or an exact-name
+Wikidata basketball-player match and its Wikimedia Commons category. Commons
+category files must also contain the player's name. Photos are not guaranteed:
+the preview reports the number successfully described and warns when fewer than
+three are available. Skin and hair colors come from the descriptor's selector
+choices, not pixel sampling. Unknown or conflicting features use placeholders
+and are flagged for review. Saved descriptions override photo estimates for the
+features they specify, and preview edits are included in the export. A partial
+saved profile does not replace photo estimates for unspecified features. Awa
+Fam's source name variations are normalized before matching. Getty Images is
+not used as a photo source.
 
 Ratings are estimates, not measured pro-level ability. Each of the 12 core
 attributes starts at 1 (export value 2), and added points use the export's

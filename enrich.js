@@ -12,6 +12,60 @@ async function wd(params) {
 const claimId = (entity, property) =>
   entity?.claims?.[property]?.[0]?.mainsnak?.datavalue?.value?.id;
 
+function photoNameKey(value) {
+  return String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+export async function wikidataPhotos(name) {
+  const wanted = photoNameKey(name);
+  if (!wanted) return [];
+  const search = await wd({ action: "wbsearchentities", search: name, language: "en", limit: "10" });
+  const candidates = (search?.search || []).filter(item =>
+    /basketball/i.test(item.description || "") &&
+    [item.label, item.match?.text, ...(item.aliases || [])].some(value => photoNameKey(value) === wanted)
+  );
+  if (candidates.length !== 1) return [];
+  const result = await wd({ action: "wbgetentities", ids: candidates[0].id, props: "claims|sitelinks" });
+  const person = result?.entities?.[candidates[0].id];
+  if (!person) return [];
+  const image = person.claims?.P18?.[0]?.mainsnak?.datavalue?.value;
+  const category = person.claims?.P373?.[0]?.mainsnak?.datavalue?.value ||
+    (person.sitelinks?.commonswiki?.title || "").replace(/^Category:/i, "");
+  const seenFiles = new Set(image ? [photoNameKey(image)] : []);
+  const urls = image
+    ? [`https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(image)}?width=600`]
+    : [];
+  if (category) {
+    try {
+      const params = new URLSearchParams({
+        action: "query", format: "json", generator: "categorymembers",
+        gcmtitle: `Category:${category}`, gcmtype: "file", gcmlimit: "50",
+        prop: "imageinfo", iiprop: "url", iiurlwidth: "600"
+      });
+      const response = await fetch(`https://commons.wikimedia.org/w/api.php?${params}`, {
+        headers: { "User-Agent": "Hoopland-Class-Generator/1.0" }
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+      for (const page of Object.values(data?.query?.pages || {})) {
+        const file = String(page.title || "").replace(/^File:/i, "");
+        const info = page.imageinfo?.[0];
+        const url = info?.thumburl || info?.url;
+        const key = photoNameKey(file);
+        if (/\.(jpe?g|png|webp)$/i.test(file) && key.includes(wanted) && !seenFiles.has(key) &&
+            typeof url === "string" && /^https:\/\/upload\.wikimedia\.org\//.test(url)) {
+          seenFiles.add(key);
+          urls.push(url);
+        }
+      }
+    } catch (error) {
+      console.warn("Wikimedia Commons category lookup failed", name, error);
+    }
+  }
+  return [...new Set(urls)].slice(0, 4);
+}
+
 export async function wikidataProfile(name) {
   const search = await wd({
     action: "wbsearchentities",

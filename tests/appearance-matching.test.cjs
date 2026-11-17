@@ -98,6 +98,9 @@ test("explicit hair descriptions are not randomly discarded for dark skin or gen
   assert.equal(apply(base(), "hairstyle: large-coiled-halo", "0").hair, "0167");
   assert.equal(parse(saved.cooperflagg).hairColor.group,"blonde");
   assert.equal(parse(saved.oliviamiles).accessory,6);
+  const frieda = apply(base(), saved.friedabuhner, "1");
+  assert.equal(frieda.skinC, "F4D2C3");
+  assert.equal(frieda.hairC, "D5A07D");
 });
 
 test("multiple photo descriptions use agreement and flag conflicts or missing evidence", () => {
@@ -121,13 +124,16 @@ test("multiple photo descriptions use agreement and flag conflicts or missing ev
   assert.deepEqual(plain(merge(["skin: dark 1","skin: dark 5"])).conflicts,["skin"]);
 });
 
-test("real-player preparation compares distinct photos and excludes disputed skin samples", async () => {
+test("real-player preparation compares up to four distinct photo descriptions", async () => {
   const {default:worker} = await import("../location-worker.js");
   const csv = fs.readFileSync(path.join(__dirname, "..", "data/location-catalog.csv"),"utf8");
   const env = {ASSETS:{fetch:async r=>new URL(r.url).pathname.endsWith(".csv")?new Response(csv):new Response(html)}};
   const transformed = await (await worker.fetch(new Request("https://example.test/"),env)).text();
   const script=transformed.match(/<script>\nwindow\.__HOOPLAND_LOCATION_RECORDS[\s\S]*?<\/script>/)[0].slice(8,-9);
   const one="https://a.espncdn.com/one.png",two="https://a.espncdn.com/two.png";
+  const three="https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Frieda.jpg/600px-Frieda.jpg";
+  const duplicate="https://commons.wikimedia.org/wiki/Special:FilePath/Frieda.jpg?width=400";
+  const four="https://a.espncdn.com/four.png",five="https://a.espncdn.com/five.png";
   const requested=[];
   Object.assign(context,{
     window:context,URL,URLSearchParams,REAL_PLAYER_APPEARANCE_PROFILES:{},
@@ -139,12 +145,12 @@ test("real-player preparation compares distinct photos and excludes disputed ski
     },
     createImageBitmap:async()=>({width:100,height:100}),
     fetch:async url=>{
-      if(String(url).startsWith("/api/hometown"))return Response.json({headshot:one});
-      if(String(url).startsWith("/api/headshot"))return new Response("photo");
+      if(String(url).startsWith("/api/hometown"))return Response.json({headshot:one,headshots:[duplicate,four,five]});
       if(String(url).startsWith("/api/describe")){
         const src=new URL(String(url),"https://example.test").searchParams.get("src");
         requested.push(src);
-        return Response.json({ok:true,text:src===one
+        if(src===two)return Response.json({ok:false,error:"unavailable"});
+        return Response.json({ok:true,text:src===one||src===three
           ?"skin: dark 4; hair color: black 2; hairstyle: high-bun"
           :"skin: light 1; hair color: black 2; hairstyle: high-bun"});
       }
@@ -152,11 +158,11 @@ test("real-player preparation compares distinct photos and excludes disputed ski
     }
   });
   vm.runInContext(script,context);
-  context.__HOOPLAND_SAMPLE_HEADSHOT=()=>({skin:[48,29,21],hair:[20,20,20]});
-  const player={fn:"Awa",ln:"Fam",headshot:one,headshots:[one+"?width=200",two]};
+  const player={fn:"Awa",ln:"Fam",headshot:one,headshots:[one+"?width=200",two,three]};
   await context.__HOOPLAND_PREPARE_REAL_PLAYERS([player],"1");
-  assert.deepEqual(requested,[one,two]);
+  assert.deepEqual(requested,[one,two,three,four,five]);
   assert.equal(player.headshotSample,undefined);
+  assert.ok(player.appearanceWarnings.some(w=>w.includes("4 of 5 attempted photos")));
   assert.doesNotMatch(player.lookText,/skin:/);
   assert.match(player.lookText,/hairstyle: high-bun/);
   assert.ok(player.appearanceWarnings.some(w=>w.includes("Photos disagree on skin")));
@@ -181,14 +187,14 @@ test("a partial appearance profile still fetches and applies photo descriptions"
     createImageBitmap:async()=>({width:100,height:100}),
     fetch:async url=>{
       if(String(url).startsWith("/api/hometown"))return Response.json({headshot:"https://a.espncdn.com/azzi.png"});
-      if(String(url).startsWith("/api/headshot"))return new Response("photo");
       if(String(url).startsWith("/api/describe"))return Response.json({ok:true,text:"skin: dark 4; hairstyle: bald"});
       throw new Error("Unexpected request "+url);
     }
   });
   vm.runInContext(script,c);
-  c.window.__HOOPLAND_SAMPLE_HEADSHOT=()=>({skin:[48,29,21]});
   const player={fn:"Azzi",ln:"Fudd"};
   await c.window.__HOOPLAND_PREPARE_REAL_PLAYERS([player],"1");
   assert.match(player.lookText,/skin: dark 4/);
+  assert.ok(player.appearanceWarnings.some(w=>w.includes("1 of 1 attempted photos")));
+  assert.ok(player.appearanceWarnings.some(w=>w.includes("fewer than three")));
 });

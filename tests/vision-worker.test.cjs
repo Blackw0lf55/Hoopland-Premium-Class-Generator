@@ -41,7 +41,7 @@ test("vision endpoint sends the image in the documented field and invalidates ol
   }
 });
 
-test("dark skin pixels are not rejected by the headshot sampler", async () => {
+test("worker transforms retain location and player export fields", async () => {
   const { default: worker } = await import("../location-worker.js");
   const root = path.join(__dirname,"..");
   const html = fs.readFileSync(path.join(root,"index.html"),"utf8");
@@ -50,12 +50,5 @@ test("dark skin pixels are not rejected by the headshot sampler", async () => {
   const transformed = await (await worker.fetch(new Request("https://example.test/"),env)).text();
   for (const text of ["__HOOPLAND_RESOLVE_LOCATION(player)","assignedLocation.loc","isReal: Boolean"])assert.ok(transformed.includes(text),text);
   assert.match(transformed,/STR:\s*\[0, 0\]/);
-  const match=transformed.match(/<script>\nwindow\.__HOOPLAND_LOCATION_RECORDS[\s\S]*?<\/script>/);
-  assert.ok(match);
-  const context=vm.createContext({window:{}});
-  vm.runInContext(match[0].slice(8,-9),context);
-  const data = new Uint8ClampedArray(100*100*4);
-  for(let i=0;i<100*100;i++){data[i*4]=48;data[i*4+1]=29;data[i*4+2]=21;data[i*4+3]=255;}
-  const sampled=context.window.__HOOPLAND_SAMPLE_HEADSHOT({width:100,height:100,data});
-  assert.deepEqual(Array.from(sampled.skin),[48,29,21]);
+  assert.ok(!transformed.includes("__HOOPLAND_SAMPLE_HEADSHOT"));
 });
