@@ -1,0 +1,317 @@
+const UA = "Mozilla/5.0 (compatible; Hoopland-Class-Generator/1.0)";
+
+const decode = text =>
+  String(text || "")
+    .replace(/&nbsp;|&#160;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&#x27;|&#39;/g, "'")
+    .replace(/&quot;/g, "\"")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)));
+
+const stripTags = html =>
+  decode(
+    String(html || "")
+      .replace(/<sup[\s\S]*?<\/sup>/gi, " ")
+      .replace(/<style[\s\S]*?<\/style>/gi, " ")
+      .replace(/<[^>]*>/g, " ")
+  )
+    .replace(/\s+/g, " ")
+    .trim();
+
+function parseTables(html) {
+  const tables = [];
+  const tablePattern = /<table[\s\S]*?<\/table>/gi;
+  let tableMatch;
+
+  while ((tableMatch = tablePattern.exec(html))) {
+    const rows = [];
+    const rowPattern = /<tr[\s\S]*?<\/tr>/gi;
+    let rowMatch;
+
+    while ((rowMatch = rowPattern.exec(tableMatch[0]))) {
+      const cells = [];
+      const cellPattern = /<t([hd])([^>]*)>([\s\S]*?)<\/t[hd]>/gi;
+      let cellMatch;
+
+      while ((cellMatch = cellPattern.exec(rowMatch[0]))) {
+        const raw = cellMatch[3];
+        const titles = [...raw.matchAll(/title="([^"]+)"/gi)].map(m => decode(m[1]));
+
+        cells.push({
+          header: cellMatch[1].toLowerCase() === "h",
+          html: raw,
+          text: stripTags(raw),
+          titles
+        });
+      }
+
+      if (cells.length) {
+        rows.push(cells);
+      }
+    }
+
+    tables.push(rows);
+  }
+
+  return tables;
+}
+
+function splitName(fullName) {
+  const name = fullName
+    .replace(/\[[^\]]*\]/g, "")
+    .replace(/\([^)]*\)/g, "")
+    .replace(/[†‡*^~#§¶∗]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const suffix = /^(jr\.?|sr\.?|ii|iii|iv|v)$/i;
+  const parts = name.split(" ");
+
+  if (parts.length < 2) {
+    return null;
+  }
+
+  let last = parts.pop();
+
+  if (suffix.test(last) && parts.length > 1) {
+    last = `${parts.pop()} ${last}`;
+  }
+
+  return { fn: parts.join(" "), ln: last };
+}
+
+function heightInches(text) {
+  const match = String(text || "").match(/(\d)\s*(?:-|'|ft)\s*(\d{1,2})/);
+
+  return match
+    ? Number(match[1]) * 12 + Number(match[2])
+    : null;
+}
+
+function normalizeCountry(cell) {
+  if (!cell) {
+    return "United States";
+  }
+
+  const candidate = cell.text || cell.titles[0] || "";
+
+  return candidate || "United States";
+}
+
+async function fetchText(url) {
+  const response = await fetch(url, {
+    headers: { "User-Agent": UA, Accept: "text/html,application/json" }
+  });
+
+  return {
+    ok: response.ok,
+    status: response.status,
+    text: response.ok ? await response.text() : ""
+  };
+}
+
+async function loadWikipediaDraft(gender, year) {
+  const league = gender === "women" ? "WNBA" : "NBA";
+  const page = `${year}_${league}_draft`;
+  const url =
+    "https://en.wikipedia.org/w/api.php?action=parse&format=json&formatversion=2" +
+    `&prop=text&redirects=1&page=${encodeURIComponent(page)}`;
+
+  const result = await fetchText(url);
+
+  if (!result.ok) {
+    return { players: [], diagnostics: { page, status: result.status } };
+  }
+
+  let html = "";
+
+  try {
+    html = JSON.parse(result.text).parse.text || "";
+  }
+  catch {
+    return { players: [], diagnostics: { page, error: "bad json" } };
+  }
+
+  const players = [];
+  const seen = new Set();
+  let roundNumber = 0;
+
+  for (const rows of parseTables(html)) {
+    const headerRow = rows.find(row => row.some(cell => cell.header));
+
+    if (!headerRow) {
+      continue;
+    }
+
+    const headers = headerRow.map(cell => cell.text.toLowerCase());
+    const column = pattern => headers.findIndex(header => pattern.test(header));
+    const pickColumn = column(/^pick|^no\.|^#/);
+    const playerColumn = column(/^player/);
+
+    if (pickColumn < 0 || playerColumn < 0) {
+      continue;
+    }
+
+    roundNumber += 1;
+
+    const roundColumn = column(/^rd|^round/);
+    const positionColumn = column(/^pos/);
+    const nationalityColumn = column(/^nationality|^country/);
+    const teamColumn = column(/^(team|nba team|wnba team)/);
+    const schoolColumn = column(/^school|^college|^club/);
+
+    for (const row of rows) {
+      if (row === headerRow || row.length < headers.length - 1) {
+        continue;
+      }
+
+      const pick = Number(String(row[pickColumn]?.text || "").replace(/\D/g, ""));
+      const name = row[playerColumn] ? splitName(row[playerColumn].text) : null;
+
+      if (!pick || !name || seen.has(pick)) {
+        continue;
+      }
+
+      seen.add(pick);
+
+      const round = roundColumn >= 0
+        ? Number(String(row[roundColumn]?.text || "").replace(/\D/g, "")) || roundNumber
+        : roundNumber;
+
+      players.push({
+        ...name,
+        position: positionColumn >= 0 ? row[positionColumn]?.text || "" : "",
+        team: teamColumn >= 0 ? row[teamColumn]?.text || "" : "",
+        school: schoolColumn >= 0 ? row[schoolColumn]?.text || "" : "",
+        country: normalizeCountry(nationalityColumn >= 0 ? row[nationalityColumn] : null),
+        draftPick: pick,
+        draftRound: round
+      });
+    }
+  }
+
+  return { players, diagnostics: { page, status: result.status, parsed: players.length } };
+}
+
+function espnRankingUrls(gender, year) {
+  if (gender === "women") {
+    return [
+      `https://www.espn.com/college-sports/womens-basketball/recruiting/rankings/scnext300girls/_/class/${year}`,
+      `https://www.espn.com/college-sports/womens-basketball/recruiting/rankings/scnext100girls/_/class/${year}`,
+      `https://www.espn.com/college-sports/womens-basketball/recruiting/rankings/scnext300/_/class/${year}`
+    ];
+  }
+
+  return [
+    `https://www.espn.com/college-sports/basketball/recruiting/rankings/scnext300boys/_/class/${year}`,
+    `https://www.espn.com/college-sports/basketball/recruiting/rankings/scnext100boys/_/class/${year}`,
+    `https://www.espn.com/college-sports/basketball/recruiting/rankings/scnext300/_/class/${year}`
+  ];
+}
+
+function parseEspnRecruits(html) {
+  const players = [];
+  const seen = new Set();
+
+  for (const rows of parseTables(html)) {
+    for (const row of rows) {
+      if (row.some(cell => cell.header)) {
+        continue;
+      }
+
+      const nameCell = row.find(cell => /recruiting\/player|\/player\//i.test(cell.html));
+
+      if (!nameCell) {
+        continue;
+      }
+
+      const name = splitName(nameCell.text);
+      const rank = Number((row[0]?.text || "").replace(/\D/g, ""));
+
+      if (!name || !rank || seen.has(rank)) {
+        continue;
+      }
+
+      seen.add(rank);
+
+      const texts = row.map(cell => cell.text);
+      const heightCell = texts.find(text => /^\d\s*-\s*\d{1,2}$/.test(text));
+      const positionCell = texts.find(text => /^(PG|SG|SF|PF|C|G|F|CG|G\/F|F\/C)$/i.test(text));
+      const gradeCell = texts.find(text => /^\d{2,3}$/.test(text) && Number(text) >= 60 && Number(text) <= 100 && text !== String(rank));
+      const starMatches = row.reduce((total, cell) => total + (cell.html.match(/star/gi) || []).length, 0);
+
+      players.push({
+        ...name,
+        rank,
+        position: positionCell || "",
+        height: heightCell ? heightInches(heightCell) : null,
+        stars: gradeCell ? Number(gradeCell) : (starMatches > 0 ? Math.min(5, starMatches) : null),
+        school: "",
+        country: "United States"
+      });
+    }
+  }
+
+  return players;
+}
+
+async function loadFreshmen(gender, year) {
+  const attempts = [];
+
+  for (const url of espnRankingUrls(gender, year)) {
+    const result = await fetchText(url);
+    const players = result.ok ? parseEspnRecruits(result.text) : [];
+
+    attempts.push({ url, status: result.status, parsed: players.length });
+
+    if (players.length) {
+      players.sort((a, b) => a.rank - b.rank);
+      players.forEach((player, index) => { player.sourceOrder = index; });
+
+      return { players, diagnostics: { attempts } };
+    }
+  }
+
+  return { players: [], diagnostics: { attempts } };
+}
+
+export async function handleClassData(request) {
+  const url = new URL(request.url);
+  const gender = url.searchParams.get("gender") === "women" ? "women" : "men";
+  const type = url.searchParams.get("type") === "freshman" ? "freshman" : "draft";
+  const year = Number(url.searchParams.get("year"));
+
+  if (!Number.isInteger(year) || year < 1980 || year > 2100) {
+    return Response.json({ ok: false, error: "Invalid year." }, { status: 400 });
+  }
+
+  const loaded = type === "draft"
+    ? await loadWikipediaDraft(gender, year)
+    : await loadFreshmen(gender, year);
+
+  if (!loaded.players.length) {
+    return Response.json(
+      {
+        ok: false,
+        error: `No ${year} ${gender} ${type} class could be loaded.`,
+        diagnostics: loaded.diagnostics
+      },
+      { status: 502 }
+    );
+  }
+
+  const players = type === "draft"
+    ? loaded.players.slice().sort((a, b) => a.draftPick - b.draftPick)
+    : loaded.players;
+
+  return Response.json({
+    ok: true,
+    request: { gender, type, year: String(year) },
+    source: loaded.diagnostics,
+    players
+  });
+}
+
+export { parseTables, parseEspnRecruits };
