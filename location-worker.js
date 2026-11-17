@@ -1,4 +1,5 @@
 import existingWorker from "./worker.js";
+import { handleClassData } from "./class-sources.js";
 
 function normalizeName(value) {
   return String(value || "")
@@ -465,6 +466,17 @@ async function addLocationAssignment(request, env) {
 export default {
   async fetch(request, env, context) {
     const { pathname } = new URL(request.url);
+    if (pathname === "/api/class-data") {
+      const params = new URL(request.url).searchParams;
+      const curated =
+        params.get("gender") === "women" &&
+        params.get("type") === "draft" &&
+        params.get("year") === "2026";
+
+      if (!curated) {
+        return handleClassData(request);
+      }
+    }
     if (pathname === "/api/hometown") return handleHometown(request);
     if (pathname === "/api/headshot") return handleHeadshot(request);
     if (pathname === "/" || pathname === "/index.html") {
