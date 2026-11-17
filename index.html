@@ -11577,44 +11577,109 @@ classSizePlus.addEventListener(
 
   function hairParts(ref,color){
     const back=[],front=[];
-    if(!ref)return{back:"",front:rect(20,12,24,8,color)};
-    const text=((ref.description||"")+" "+(ref.structure||"")).toLowerCase();
-    const vol={low:0,medium:1,high:2,"very-high":3}[ref.volume]??1;
-    const len=ref.length||"short";
-    const tex=ref.texture||"straight";
-    const bald=/bald|mostly exposed/.test(text);
-    const buzz=len==="very-short"||/buzz|shaved|close-crop/.test(text);
-    const top=Math.max(4,14-vol*2-(len==="long"?0:0));
-    if(ref.id===0)return{back:"",front:""};
-    if(bald){
-      if(/tail/.test(text))back.push(rect(15,25,5,21,color));
-      return{back:back.join(""),front:rect(19,22,3,7,color)+rect(42,22,3,7,color)};
-    }
-    const halo=(tex==="coiled"||/halo|fluffy|full-coils|large-curly/.test(text))&&vol>=2;
-    if(halo){
-      back.push(`<ellipse cx="32" cy="22" rx="${18+vol*2}" ry="${15+vol*2}" fill="${color}"/>`);
-      for(const x of [15,20,25,30,35,40,45])front.push(rect(x,12+(x%3),4,4,color,'rx="2"'));
-      front.push(rect(21,15,22,4,color,'rx="2"'));
+    if(!ref||ref.id===0)return{back:"",front:""};
+    const shape=ref.structure||"";
+    const text=(shape+" "+(ref.description||"")).toLowerCase();
+    const len=ref.length||"short", texture=ref.texture||"straight";
+    const volume={low:0,medium:1,high:2,"very-high":3}[ref.volume]??1;
+    const outline="#11101a";
+    const path=(d,extra="")=>`<path d="${d}" fill="${color}" stroke="${outline}" stroke-width="1" stroke-linejoin="round" ${extra}/>`;
+    const highlight=(d,opacity=.19)=>`<path d="${d}" fill="none" stroke="#fff" stroke-opacity="${opacity}" stroke-width="1" stroke-linecap="square"/>`;
+    const tied=/bun|knot|puff|ponytail|tail|gathered|bunch/.test(text);
+    const braided=texture==="braided"||texture==="loc-like"||/braid|locs|twist/.test(shape);
+    const coiled=texture==="coiled";
+    const side=/side|asymmetr/.test(shape);
+    const top=volume>=2?6:volume===1?10:14;
+
+    if(/balding|mostly exposed|mostly bald/.test(text)){
+      if(/tail/.test(text))back.push(path("M19 23 L23 24 L22 41 L17 47 L14 45 L17 35 Z"));
+      front.push(rect(19,24,3,7,color),rect(42,24,3,7,color));
+      if(/sparse.top/.test(shape))front.push(rect(29,14,6,2,color));
       return{back:back.join(""),front:front.join("")};
     }
-    if(/flat-top|flat top/.test(text))front.push(rect(20,vol>=2?5:10,24,14,color));
-    else if(/crest|mohawk|narrow-upright/.test(text))front.push(`<path d="M27 19 L28 8 L32 3 L36 8 L37 19 Z" fill="${color}"/>`);
-    else if(/spik|pointed|upright/.test(text))front.push(`<path d="M19 19 L19 12 L22 14 L23 8 L26 12 L29 6 L32 11 L36 7 L38 12 L42 9 L45 19 Z" fill="${color}"/>`);
-    else if(buzz)front.push(rect(20,15,24,4,color));
-    else front.push(`<path d="M19 20 L19 15 Q20 ${top} 32 ${top} Q44 ${top} 45 15 L45 20 Z" fill="${color}"/>`);
-    if(/sweep|fringe|side-part|combed/.test(text))front.push(`<path d="M19 17 Q31 13 44 17 L44 20 Q33 20 24 24 L20 22 Z" fill="${color}"/>`);
-    if(!/crest|mohawk/.test(text)){front.push(rect(20,19,2,6,color));front.push(rect(42,19,2,6,color));}
-    if(len==="medium"&&!buzz){back.push(rect(17,16,5,18,color));back.push(rect(42,16,5,18,color));}
-    if(len==="long"){back.push(rect(15,16,7,34,color));back.push(rect(42,16,7,34,color));}
-    if(/loc|braid|twist/.test(text)||tex==="loc-like"||tex==="braided"){
-      const to=len==="long"?44:len==="medium"?36:28;
-      for(const x of[17,21,25,35,39,43])back.push(rect(x,16,3,to-16,color));
-      for(const x of [22,27,34,39])front.push(rect(x,top+3,3,len==="very-short"?5:10,color,'rx="1"'));
-      const shine=hex(shadeColor(color.slice(1),1.25))||color;
-      for(const x of [23,28,35,40])front.push(rect(x,top+4,1,4,shine));
+
+    if(/double|two/.test(shape)&&/bun|puff|bunch|section/.test(text)){
+      back.push(path("M20 14 L15 12 L14 7 L17 3 L23 3 L26 7 L25 13 Z"));
+      back.push(path("M44 14 L49 12 L50 7 L47 3 L41 3 L38 7 L39 13 Z"));
+      back.push(highlight("M17 7 L20 5 M44 5 L47 7"));
+    }else if(/bun|knot/.test(text)){
+      const x=side?42:32;
+      back.push(path(`M${x-6} 12 L${x-6} 6 L${x-3} 3 L${x+3} 3 L${x+6} 6 L${x+6} 12 Z`));
+      back.push(highlight(`M${x-4} 7 L${x-1} 5 L${x+3} 6`));
     }
-    if(/bun|knot|puffs/.test(text))back.push(`<circle cx="${/double|two/.test(text)?20:32}" cy="8" r="6" fill="${color}"/>`+(/double|two/.test(text)?`<circle cx="44" cy="8" r="6" fill="${color}"/>`:""));
-    if(/ponytail|tail/.test(text))back.push(`<path d="M43 13 Q53 13 51 24 L48 42 L42 40 L44 23 Z" fill="${color}"/>`);
+    if(/ponytail|tail|gathered/.test(text)){
+      back.push(path("M42 14 L47 15 L50 21 L49 31 L46 40 L41 42 L42 29 Z"));
+      back.push(highlight("M46 19 L47 26 L45 35"));
+    }
+
+    if(!tied&&len==="long"){
+      back.push(path("M20 15 L24 17 L23 37 L22 49 L15 50 L14 32 L15 20 Z"));
+      back.push(path("M44 15 L40 17 L41 37 L42 49 L49 50 L50 32 L49 20 Z"));
+      back.push(highlight("M17 23 L17 43 M47 23 L47 43",.14));
+    }else if(!tied&&len==="medium"){
+      back.push(path("M20 16 L24 19 L22 34 L18 37 L16 29 L16 21 Z"));
+      back.push(path("M44 16 L40 19 L42 34 L46 37 L48 29 L48 21 Z"));
+    }
+
+    if(coiled){
+      const big=/large|halo|full|broad/.test(shape);
+      const left=big?10:16, right=64-left, upper=big?3:volume===1?10:7, bottom=big?31:24;
+      const cap=`M${left} 20 L${left+2} 13 L${left+5} 13 L${left+5} 9 L${left+10} 9 L${left+10} ${upper+2} L27 ${upper+2} L30 ${upper} L36 ${upper} L39 ${upper+2} L${right-10} ${upper+2} L${right-10} 9 L${right-5} 9 L${right-5} 13 L${right-2} 13 L${right} 20 L${right} ${bottom} L${right-5} ${bottom+2} L${right-5} 21 L${left+5} 21 L${left+5} ${bottom+2} L${left} ${bottom} Z`;
+      back.push(path(cap));
+      for(let y=upper+3;y<20;y+=4){
+        for(let x=left+5+((y/4|0)%2)*2;x<right-3;x+=5){
+          back.push(rect(x,y,2,2,outline,'opacity=".65"'),rect(x+1,y,1,1,"#fff",'opacity=".22"'));
+        }
+      }
+      front.push(path("M20 20 L20 17 L23 17 L23 15 L27 15 L29 17 L33 15 L36 17 L40 15 L44 18 L44 21 L41 20 L38 21 L35 20 L32 22 L29 20 L26 21 L23 20 Z"));
+    }else if(braided){
+      back.push(path(`M18 21 L18 15 L22 ${top+2} L27 ${top} L37 ${top} L42 ${top+2} L46 15 L46 24 L43 26 L21 26 Z`));
+      const end=len==="long"?45:len==="medium"?34:27;
+      const strand=(x,y,n,target)=>{
+        target.push(path(`M${x} ${y} L${x+3} ${y-1} L${x+4} ${y+3} L${x+4} ${n-2} L${x+2} ${n} L${x} ${n-1} Z`));
+        for(let sy=y+3;sy<n-2;sy+=4)target.push(highlight(`M${x+1} ${sy} L${x+3} ${sy+1}`,.28));
+      };
+      if(!tied){strand(16,18,end,back);strand(19,16,end-2,back);strand(41,16,end-2,back);strand(44,18,end,back);}
+      if(/tail|ponytail|knot/.test(text)){strand(43,15,43,back);strand(46,17,40,back);}
+      const frontEnd=/front|hanging|face-framing|center/.test(shape)?27:23;
+      const strands=/center|symmetrical/.test(shape)?[20,24,27,34,37,41]:[20,24,28,33,37,41];
+      for(const x of strands)strand(x,top+4,frontEnd+(x%3),front);
+    }else if(/flat-top|flat-crop|square/.test(shape)){
+      const y=volume>=2?5:volume===1?9:13;
+      front.push(path(`M19 22 L19 ${y+2} L21 ${y} L43 ${y} L45 ${y+2} L45 22 L42 21 L22 21 Z`));
+      front.push(highlight(`M22 ${y+3} L42 ${y+3} M21 ${y+6} L43 ${y+6}`,.12));
+    }else if(/crest|mohawk|central-strip|narrow-upright/.test(shape)){
+      front.push(path(`M27 20 L28 ${top+3} L31 ${Math.max(3,top-3)} L34 ${top} L37 ${top+4} L37 20 Z`));
+      front.push(highlight(`M31 ${top+1} L30 17`));
+    }else if(/spik|pointed|upright|tousled/.test(shape)||(/messy/.test(shape)&&/spik|point/.test(text))){
+      front.push(path(`M18 22 L17 16 L20 17 L19 11 L23 13 L23 ${top+1} L27 ${top+4} L30 ${Math.max(3,top-2)} L33 ${top+3} L38 ${top} L39 ${top+5} L44 ${top+3} L43 15 L47 14 L46 22 L42 23 L39 20 L36 22 L33 20 L30 22 L27 20 L23 23 Z`));
+      front.push(highlight(`M22 17 L24 14 M28 16 L30 ${top+4} M36 16 L39 13 M42 18 L44 16`));
+    }else{
+      const y=len==="very-short"?14:top;
+      if(/bob|shag|loose|layered/.test(shape)&&len==="medium"){
+        back.push(highlight("M18 23 L19 32 M46 23 L45 32",.16));
+      }
+      front.push(path(`M19 23 L19 17 L21 13 L24 ${y} L40 ${y} L43 13 L45 17 L45 23 L42 22 L41 20 L23 20 L22 23 Z`));
+      if(/bowl/.test(shape)){
+        front.push(path("M19 18 L21 13 L26 11 L38 11 L43 14 L45 19 L44 22 L40 21 L36 22 L32 21 L28 22 L24 21 L20 22 Z"));
+        front.push(highlight("M23 15 L28 13 L37 13 L41 15"));
+      }else if(/center|curtain|separated/.test(shape)){
+        front.push(path("M20 17 L31 15 L31 19 L27 20 L24 24 L20 23 Z"));
+        front.push(path("M33 15 L44 17 L44 23 L40 24 L37 20 L33 19 Z"));
+        front.push(highlight("M29 16 L25 19 M35 16 L39 19"));
+      }else if(/sweep|swept|fringe|part|combed|angular/.test(text)){
+        front.push(path("M19 17 L22 13 L34 12 L43 15 L45 19 L40 19 L36 20 L32 22 L27 23 L22 25 L19 23 Z"));
+        front.push(highlight("M23 16 L30 14 L39 15 M25 19 L31 17 L40 17"));
+      }else{
+        front.push(highlight(`M23 ${y+3} L28 ${y+1} L36 ${y+1} L41 ${y+3}`,.16));
+      }
+      if(texture==="textured"||/buzz|crop/.test(shape)){
+        for(const x of [23,27,31,35,39])front.push(rect(x,y+5,2,1,"#fff",'opacity=".16"'));
+      }
+      if(/wavy|layered|messy|shag/.test(text)){
+        front.push(highlight("M22 18 L25 16 L28 17 M32 16 L35 15 L39 17",.2));
+      }
+    }
     return{back:back.join(""),front:front.join("")};
   }
 
@@ -11658,8 +11723,9 @@ classSizePlus.addEventListener(
     return `<svg viewBox="0 0 64 64" role="img" aria-label="Appearance mock-up">
       ${parts.back}
       ${rect(27,40,10,9,skinD)}
-      <polygon points="4,64 8,52 22,47 42,47 56,52 60,64" fill="#d93a3a"/>
-      <polygon points="26,47 38,47 32,54" fill="${skinD}"/>
+      <polygon points="4,64 8,53 20,48 25,47 39,47 44,48 56,53 60,64" fill="${skin}"/>
+      <path d="M18 49 L25 47 L32 53 L39 47 L46 49 L50 64 L14 64 Z" fill="#17171d" stroke="#08080b" stroke-width="1"/>
+      <path d="M24 47 L32 54 L40 47 M18 49 L21 58 M46 49 L43 58" fill="none" stroke="#fff" stroke-width="2"/>
       <path d="M32 13 C24 13 20 18 20 25 L20 30 C20 38 25 44 32 46 C39 44 44 38 44 30 L44 25 C44 18 40 13 32 13 Z" fill="${skin}"/>
       ${rect(18,27,2,6,skinD)}${rect(44,27,2,6,skinD)}
       ${facialSvg(Number(a.fHair),hex(a.fHairC)||hair)}
@@ -11736,7 +11802,7 @@ classSizePlus.addEventListener(
     const note=$("hlPvNote");
     note.classList.remove("warn");
     const src=player.appearanceSource;
-    let text="Mock-up approximation — the in-game look may differ slightly.";
+    let text="Mock-up approximation — the in-game look may differ.";
     if(src==="fictional")text="Fictional player — random look. "+text;
     else if(src==="profile")text="Hand-built appearance profile. "+text;
     else if(src==="manual")text="Built from a saved description. "+text;
