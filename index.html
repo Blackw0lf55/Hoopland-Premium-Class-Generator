@@ -5175,6 +5175,11 @@ function chooseHairStyle(
   return pick([...MEN_HAIRS,...SHARED_HAIRS]);
 }
 
+function shoeColorsEnabled(){
+  const checkbox=document.getElementById("shoes");
+  return !checkbox||checkbox.checked;
+}
+
 function buildAccessories(skinC,tattooColor,gender,shoeC){
 const hasTattoos = rng() < 0.12;
 const usesAccessories = rng() < 0.28;
@@ -5207,6 +5212,12 @@ const base = {
   laceC: "FFFFFF",
   soleC: "FFFFFF"
 };
+
+  if(shoeColorsEnabled()){
+    const others=SHOE_COLORS.filter(color=>color!==shoeC);
+    base.laceC=rng()<.6?"FFFFFF":pick(others);
+    base.soleC=rng()<.7?"FFFFFF":pick(others);
+  }
   
   if(hasTattoos)shuffled(BODY_SEGMENTS).slice(0,randomInteger(1,2)).forEach(segment=>base[segment]=tattooColor);
 
@@ -6553,7 +6564,9 @@ function generateAppearance(gender) {
     );
 
   const shoeC =
-    pick(SHOE_COLORS);
+    shoeColorsEnabled()
+      ? pick(SHOE_COLORS)
+      : "FFFFFF";
 
   let facialHair = 0;
   if(gender==="0"&&rng()<.26)facialHair=pick(MEN_FACIAL_HAIR.filter(id=>id!==0));
