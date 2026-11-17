@@ -1,5 +1,5 @@
 import existingWorker from "./worker.js";
-import { handleClassData } from "./class-sources.js";
+import { handleClassData, loadEspnDraftPhotos, attachEspnDraftPhotos } from "./class-sources.js";
 import { wikidataProfile, wikidataPhotos } from "./enrich.js";
 import { handleStats } from "./college-stats.js";
 
@@ -488,8 +488,8 @@ window.__HOOPLAND_PREPARE_REAL_PLAYERS=async function(players,gender){
         const saved=parseLookDescription(REAL_PLAYER_DESCRIPTIONS[key]||"");
         const profile=REAL_PLAYER_APPEARANCE_PROFILES[key];
         p.appearanceWarnings=[saved.skinExact||saved.skin!==undefined||(profile&&profile.skinC)
-          ? 'No photo was available; features not covered by the saved profile are placeholders.'
-          : 'No photo was available; skin tone and other unsaved features are placeholders.'];
+          ? 'No photo was found in the configured sources; features not covered by the saved profile are placeholders.'
+          : 'No photo was found in the configured sources; skin tone and other unsaved features are placeholders.'];
       }
     }
   };
@@ -591,6 +591,19 @@ export default {
       if (!curated) {
         return handleClassData(request);
       }
+      const [response, espn] = await Promise.all([
+        existingWorker.fetch(request, env, context),
+        loadEspnDraftPhotos("women", 2026)
+      ]);
+      if (!response.ok) return response;
+      const body = await response.json();
+      if (!Array.isArray(body.players)) return Response.json(body);
+      body.players = attachEspnDraftPhotos(body.players, espn.players);
+      body.source = { ...body.source, espnPhotos: { status: espn.status, parsed: espn.players.length } };
+      const headers = new Headers(response.headers);
+      headers.delete("content-length");
+      headers.delete("content-encoding");
+      return Response.json(body, { status: response.status, headers });
     }
     if (pathname === "/api/stats") return handleStats(request, env);
     if (pathname === "/api/hometown") return handleHometown(request);

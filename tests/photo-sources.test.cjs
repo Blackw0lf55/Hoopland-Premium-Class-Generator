@@ -3,6 +3,72 @@ const assert = require("node:assert/strict");
 
 const claim = value => [{ mainsnak: { datavalue: { value } } }];
 
+const espnDraft = {
+  displayName: "2026 Women's National Basketball Association Draft",
+  picks: [
+    { overall: 1, status: "SELECTION_MADE", athlete: {
+      displayName: "Azzi Fudd",
+      headshot: { href: "https://a.espncdn.com/i/headshots/womens-college-basketball/players/full/4433790.png" }
+    } },
+    { overall: 2, status: "SELECTION_MADE", athlete: {
+      displayName: "Frieda Bühner",
+      headshot: { href: "https://a.espncdn.com/i/headshots/womens-college-basketball/players/full/1.png" }
+    } },
+    { overall: 3, status: "PENDING", athlete: {
+      displayName: "Other Player", headshot: { href: "https://a.espncdn.com/other.png" }
+    } }
+  ]
+};
+
+test("ESPN draft portraits are matched by year, name, and pick", async () => {
+  const { espnDraftPhotos, attachEspnDraftPhotos } = await import("../class-sources.js");
+  const photos = espnDraftPhotos(espnDraft, 2026);
+  assert.equal(photos.length, 2);
+  assert.deepEqual(espnDraftPhotos(espnDraft, 2025), []);
+  const people = [
+    {fn:"Azzi",ln:"Fudd",draftPick:1},
+    {fn:"Frieda",ln:"Buhner",draftPick:2},
+    {fn:"Different",ln:"Player",draftPick:1},
+    {fn:"Azzi",ln:"Fudd",draftPick:7}
+  ];
+  const result = attachEspnDraftPhotos(people, photos);
+  assert.match(result[0].headshots[0], /4433790/);
+  assert.match(result[1].headshots[0], /\/1\.png/);
+  assert.equal(result[2].headshots, undefined);
+  assert.equal(result[3].headshots, undefined);
+  const fam = attachEspnDraftPhotos([{fn:"Awa",ln:"Thiam",draftPick:3}],
+    [{fn:"Awa",ln:"Fam",draftPick:3,headshot:"https://a.espncdn.com/fam.png"}]);
+  assert.equal(fam[0].headshots[0], "https://a.espncdn.com/fam.png");
+  assert.equal(attachEspnDraftPhotos([people[0]],[photos[0],photos[0]])[0].headshots, undefined);
+  const unsafe = { ...espnDraft, picks:[{...espnDraft.picks[0], athlete:{...espnDraft.picks[0].athlete,headshot:{href:"https://evil.example/x"}}}] };
+  assert.deepEqual(espnDraftPhotos(unsafe,2026), []);
+});
+
+test("the curated 2026 WNBA route also attaches ESPN draft photos", async () => {
+  const { default: worker } = await import("../location-worker.js");
+  const { default: existingWorker } = await import("../worker.js");
+  const oldFetch = global.fetch, oldWorkerFetch = existingWorker.fetch;
+  try {
+    existingWorker.fetch = async () => Response.json({
+      players:[{fn:"Azzi",ln:"Fudd",draftPick:1}], source:{name:"WNBA board"}
+    });
+    global.fetch = async url => {
+      const request = new URL(url);
+      assert.equal(request.pathname,"/apis/site/v2/sports/basketball/wnba/draft");
+      assert.equal(request.searchParams.get("season"),"2026");
+      return Response.json(espnDraft);
+    };
+    const response = await worker.fetch(new Request("https://example.test/api/class-data?gender=women&type=draft&year=2026"),{});
+    const body = await response.json();
+    assert.match(body.players[0].headshots[0],/4433790/);
+    assert.equal(body.source.espnPhotos.parsed,2);
+    assert.equal(body.source.name,"WNBA board");
+  } finally {
+    global.fetch = oldFetch;
+    existingWorker.fetch = oldWorkerFetch;
+  }
+});
+
 test("Wikimedia photos require an unambiguous exact player and matching filenames", async () => {
   const { wikidataPhotos } = await import("../enrich.js");
   const original = global.fetch;

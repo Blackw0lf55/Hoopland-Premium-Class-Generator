@@ -14,6 +14,11 @@ saved profile does not replace photo estimates for unspecified features. Awa
 Fam's source name variations are normalized before matching. Getty Images is
 not used as a photo source.
 
+Draft classes also check ESPN's draft endpoint for headshots and attach them
+only when the returned year, player name, and (where provided) draft pick
+match. This includes the separately sourced 2026 women's class. If ESPN returns
+another year or a source fails, no photo is substituted from that response.
+
 Ratings are estimates, not measured pro-level ability. Each of the 12 core
 attributes starts at 1 (export value 2), and added points use the export's
 2–20 scale. Potential tiers of 2, 2.5, 3, 3.5, 4, 4.5 and 5 stars cap added
