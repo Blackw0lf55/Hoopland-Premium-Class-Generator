@@ -674,92 +674,255 @@ function mergeProspectPoolWithDraftBoard(
   draftBoardPlayers
 ) {
 
+  const fullNameKey =
+    player =>
+      normalizePlayerName(
+        [
+          player.fn,
+          player.ln
+        ]
+          .filter(Boolean)
+          .join(" ")
+      );
+
   const draftBoardMap =
     new Map();
 
-
   draftBoardPlayers.forEach(
-    player => {
-
-      const key =
-        normalizePlayerName(
-          [
-            player.fn,
-            player.ln
-          ]
-            .filter(Boolean)
-            .join(" ")
-        );
-
+    (player, boardRank) => {
 
       draftBoardMap.set(
-        key,
-        player
+        fullNameKey(player),
+        {
+          player,
+          boardRank
+        }
       );
-
     }
   );
 
+  const merged =
+    prospects.map(
+      (prospect, sourceOrder) => {
 
-  return prospects.map(
-    prospect => {
+        const match =
+          draftBoardMap.get(
+            fullNameKey(prospect)
+          );
 
-      const key =
-        normalizePlayerName(
-          [
-            prospect.fn,
-            prospect.ln
-          ]
-            .filter(Boolean)
-            .join(" ")
-        );
+        if (!match) {
 
+          return {
+            ...prospect,
+            sourceOrder,
+            draftBoardMatched:
+              false
+          };
+        }
 
-      const boardPlayer =
-        draftBoardMap.get(
-          key
-        );
-
-
-      if (!boardPlayer) {
+        const boardPlayer =
+          match.player;
 
         return {
+
           ...prospect,
 
-          draftBoardMatched:
-            false
-        };
+          position:
+            prospect.position ||
+            boardPlayer.position,
 
+          team:
+            prospect.team ||
+            boardPlayer.team,
+
+          country:
+            prospect.country ||
+            boardPlayer.country,
+
+          stats:
+            boardPlayer.stats,
+
+          sourceOrder,
+
+          boardRank:
+            match.boardRank,
+
+          draftBoardMatched:
+            true
+        };
+      }
+    );
+
+  const prospectKeys =
+    new Set(
+      prospects.map(fullNameKey)
+    );
+
+  // Board players missing from the prospect index must not be dropped.
+  draftBoardPlayers.forEach(
+    (player, boardRank) => {
+
+      if (
+        prospectKeys.has(
+          fullNameKey(player)
+        )
+      ) {
+
+        return;
       }
 
-
-      return {
-
-        ...prospect,
-
-        position:
-          prospect.position ||
-          boardPlayer.position,
-
-        team:
-          prospect.team ||
-          boardPlayer.team,
-
-        country:
-          prospect.country ||
-          boardPlayer.country,
-
-        stats:
-          boardPlayer.stats,
-
+      merged.push({
+        ...player,
+        sourceOrder:
+          prospects.length + boardRank,
+        boardRank,
         draftBoardMatched:
           true
-
-      };
-
+      });
     }
   );
 
+  return merged;
+}
+
+/*
+  Orders real players so a class that is cut off at its size
+  always contains the most important players.
+
+  Draft classes: actual overall pick (or round and pick), then
+  the draft board's projected order, then source order.
+  Freshman classes: highest stars/rating, then highest
+  potential/max prep value, then source order.
+*/
+function rankRealPlayers(
+  players,
+  type
+) {
+
+  const numberOr =
+    (value, fallback) =>
+      value != null &&
+      value !== "" &&
+      Number.isFinite(Number(value))
+        ? Number(value)
+        : fallback;
+
+  const firstNumber =
+    (player, fields, fallback) => {
+
+      for (const field of fields) {
+
+        const value =
+          numberOr(
+            player[field],
+            null
+          );
+
+        if (value !== null) {
+
+          return value;
+        }
+      }
+
+      return fallback;
+    };
+
+  if (type === "freshman") {
+
+    const descending =
+      (player, fields) =>
+        -firstNumber(
+          player,
+          fields,
+          -Infinity
+        );
+
+    return players
+      .slice()
+      .sort(
+        (a, b) =>
+          descending(a, ["stars", "starRating", "rating", "ovr"]) -
+            descending(b, ["stars", "starRating", "rating", "ovr"]) ||
+          descending(a, ["pot", "potential", "maxPrep", "prepMax"]) -
+            descending(b, ["pot", "potential", "maxPrep", "prepMax"]) ||
+          firstNumber(a, ["rank", "sourceOrder"], Infinity) -
+            firstNumber(b, ["rank", "sourceOrder"], Infinity)
+      );
+  }
+
+  const roundOneSize =
+    Math.max(
+      0,
+      ...players
+        .filter(
+          player =>
+            Number(player.draftRound) === 1
+        )
+        .map(
+          player =>
+            numberOr(
+              player.roundPick,
+              0
+            )
+        )
+    );
+
+  const overall =
+    player => {
+
+      const pick =
+        numberOr(
+          player.draftPick,
+          null
+        );
+
+      if (pick !== null) {
+
+        return pick;
+      }
+
+      const round =
+        numberOr(
+          player.draftRound,
+          null
+        );
+
+      const roundPick =
+        numberOr(
+          player.roundPick,
+          null
+        );
+
+      return round !== null &&
+        roundPick !== null &&
+        roundOneSize > 0
+        ? (round - 1) * roundOneSize + roundPick
+        : Infinity;
+    };
+
+  return players
+    .slice()
+    .sort(
+      (a, b) => {
+
+        const pickA = overall(a);
+        const pickB = overall(b);
+
+        if (pickA !== pickB) {
+
+          return pickA < pickB
+            ? -1
+            : 1;
+        }
+
+        return (
+          firstNumber(a, ["projectedPick", "mockPick", "boardRank"], Infinity) -
+            firstNumber(b, ["projectedPick", "mockPick", "boardRank"], Infinity)
+          || firstNumber(a, ["sourceOrder"], Infinity) -
+            firstNumber(b, ["sourceOrder"], Infinity)
+        );
+      }
+    );
 }
 
 function cleanBiographyText(
@@ -1244,40 +1407,13 @@ const biographies =
     : [];
 
 const players =
-  mergeDraftBiographies(
-    draftPlayers,
-    biographies
-  )
-    .sort(
-      (a, b) => {
-
-        const aPick =
-  a.draftPick != null &&
-  Number.isFinite(
-    Number(a.draftPick)
-  )
-    ? Number(a.draftPick)
-    : Infinity;
-
-        const bPick =
-  b.draftPick != null &&
-  Number.isFinite(
-    Number(b.draftPick)
-  )
-    ? Number(b.draftPick)
-    : Infinity;
-
-        if (
-          aPick !== bPick
-        ) {
-
-          return aPick - bPick;
-        }
-
-
-        return 0;
-      }
-    );
+  rankRealPlayers(
+    mergeDraftBiographies(
+      draftPlayers,
+      biographies
+    ),
+    type
+  );
 
     return Response.json({
 
