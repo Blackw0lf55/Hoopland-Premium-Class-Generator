@@ -113,7 +113,7 @@ async function fetchText(url) {
 }
 
 async function loadWikipediaDraft(gender, year) {
-  const league = gender === "women" ? "WNBA" : "NBA";
+  const league = gender === "women" ? "WNBA" : year <= 1949 ? "BAA" : "NBA";
   const page = `${year}_${league}_draft`;
   const url =
     "https://en.wikipedia.org/w/api.php?action=parse&format=json&formatversion=2" +
@@ -195,6 +195,147 @@ async function loadWikipediaDraft(gender, year) {
   return { players, diagnostics: { page, status: result.status, parsed: players.length } };
 }
 
+async function loadNbaComDraft(gender, year) {
+  const leagueId = gender === "women" ? "10" : "00";
+  const season = gender === "women" ? String(year) : String(year);
+  const url =
+    `https://stats.nba.com/stats/drafthistory?LeagueID=${leagueId}&Season=${season}`;
+
+  try {
+    const response = await fetch(url, {
+      headers: {
+        "User-Agent": UA,
+        Referer: "https://www.nba.com/",
+        Origin: "https://www.nba.com",
+        Accept: "application/json"
+      }
+    });
+
+    if (!response.ok) {
+      return { players: [], status: response.status };
+    }
+
+    const data = await response.json();
+    const set = (data.resultSets || [])[0];
+
+    if (!set) {
+      return { players: [], status: 200 };
+    }
+
+    const column = name => set.headers.indexOf(name);
+    const players = [];
+
+    for (const row of set.rowSet || []) {
+      const name = splitName(String(row[column("PLAYER_NAME")] || ""));
+      const pick = Number(row[column("OVERALL_PICK")]);
+
+      if (!name || !pick) {
+        continue;
+      }
+
+      const personId = row[column("PERSON_ID")];
+
+      players.push({
+        ...name,
+        draftPick: pick,
+        draftRound: Number(row[column("ROUND_NUMBER")]) || 1,
+        roundPick: Number(row[column("ROUND_PICK")]) || null,
+        team: [row[column("TEAM_CITY")], row[column("TEAM_NAME")]].filter(Boolean).join(" "),
+        school: row[column("ORGANIZATION")] || "",
+        headshot: personId
+          ? `https://cdn.nba.com/headshots/${gender === "women" ? "wnba" : "nba"}/latest/1040x760/${personId}.png`
+          : undefined,
+        country: "United States"
+      });
+    }
+
+    return { players, status: 200 };
+  }
+  catch (error) {
+    return { players: [], status: 0 };
+  }
+}
+
+function mergeDraftSources(wikipedia, nba) {
+  const byPick = new Map(wikipedia.map(player => [player.draftPick, player]));
+  const merged = [];
+
+  for (const player of nba) {
+    const other = byPick.get(player.draftPick);
+
+    byPick.delete(player.draftPick);
+    merged.push(other
+      ? { ...other, ...Object.fromEntries(Object.entries(player).filter(([, value]) => value)), position: other.position, country: other.country }
+      : player);
+  }
+
+  return merged.concat([...byPick.values()]).sort((a, b) => a.draftPick - b.draftPick);
+}
+
+async function loadMcDonaldsRoster(gender, year) {
+  const side = gender === "women" ? "Girls" : "Boys";
+  const page = `${year}_McDonald's_All-American_${side}_Game`;
+  const url =
+    "https://en.wikipedia.org/w/api.php?action=parse&format=json&formatversion=2" +
+    `&prop=text&redirects=1&page=${encodeURIComponent(page)}`;
+  const result = await fetchText(url);
+
+  if (!result.ok) {
+    return [];
+  }
+
+  let html = "";
+
+  try {
+    html = JSON.parse(result.text).parse.text || "";
+  }
+  catch {
+    return [];
+  }
+
+  const players = [];
+  const seen = new Set();
+
+  for (const rows of parseTables(html)) {
+    const headerRow = rows.find(row => row.some(cell => cell.header)) || rows[0];
+    const headers = headerRow.map(cell => cell.text.toLowerCase());
+    const column = pattern => headers.findIndex(header => pattern.test(header));
+    const nameColumn = column(/^(player|name)/);
+
+    if (nameColumn < 0) {
+      continue;
+    }
+
+    const positionColumn = column(/^pos/);
+    const heightColumn = column(/^(ht|height)/);
+    const schoolColumn = column(/^(school|high school)/);
+
+    for (const row of rows) {
+      if (row === headerRow) {
+        continue;
+      }
+
+      const name = row[nameColumn] ? splitName(row[nameColumn].text) : null;
+      const key = name ? `${name.fn} ${name.ln}`.toLowerCase() : "";
+
+      if (!name || seen.has(key)) {
+        continue;
+      }
+
+      seen.add(key);
+      players.push({
+        ...name,
+        position: positionColumn >= 0 ? row[positionColumn]?.text || "" : "",
+        height: heightColumn >= 0 ? heightInches(row[heightColumn]?.text) : null,
+        school: schoolColumn >= 0 ? row[schoolColumn]?.text || "" : "",
+        country: "United States"
+      });
+    }
+  }
+
+  return players;
+}
+
 function espnRankingUrls(gender, year) {
   if (gender === "women") {
     return [
@@ -274,7 +415,15 @@ async function loadFreshmen(gender, year) {
     }
   }
 
-  return { players: [], diagnostics: { attempts } };
+  const roster = await loadMcDonaldsRoster(gender, year);
+
+  attempts.push({ source: "McDonald's All-American", parsed: roster.length });
+  roster.forEach((player, index) => {
+    player.rank = index + 1;
+    player.sourceOrder = index;
+  });
+
+  return { players: roster, diagnostics: { attempts } };
 }
 
 async function loadProjectedDraft(gender, year) {
@@ -317,7 +466,7 @@ export async function handleClassData(request) {
   const type = url.searchParams.get("type") === "freshman" ? "freshman" : "draft";
   const year = Number(url.searchParams.get("year"));
 
-  if (!Number.isInteger(year) || year < 1980 || year > 2100) {
+  if (!Number.isInteger(year) || year < 1900 || year > 2100) {
     return Response.json({ ok: false, error: "Invalid year." }, { status: 400 });
   }
 
@@ -326,7 +475,15 @@ export async function handleClassData(request) {
   if (type === "draft") {
     loaded = await loadWikipediaDraft(gender, year);
 
-    if (!loaded.players.length) {
+    const nba = await loadNbaComDraft(gender, year);
+
+    loaded.diagnostics.nbaCom = { status: nba.status, parsed: nba.players.length };
+
+    if (nba.players.length) {
+      loaded.players = mergeDraftSources(loaded.players, nba.players);
+    }
+
+    if (!loaded.players.length && year >= new Date().getFullYear()) {
       loaded = await loadProjectedDraft(gender, year);
     }
   }
