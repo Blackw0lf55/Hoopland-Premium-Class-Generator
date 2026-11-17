@@ -230,10 +230,10 @@ async function handleHometown(request) {
 
 const HEADSHOT_HOSTS = ["a.espncdn.com", "cdn.nba.com", "commons.wikimedia.org", "upload.wikimedia.org"];
 const VISION_MODEL = "@cf/meta/llama-3.2-11b-vision-instruct";
-const VISION_PROMPT = "Describe only the visible appearance of the basketball player in this photo using exactly this format, separated by semicolons: skin: <light|medium|bronze|dark> <shade 1-5, 1 lightest and 5 darkest within that group; use dark 1-5 for very deep brown skin, bronze for deep brown, medium for tan to light brown, light for fair skin>; hair color: <blonde|brunette|red|black> <shade 1-5, 1 lightest, 5 darkest>; hairstyle: <one of: angular-crown, asymmetric-medium, braided-top-knot, broad-coiled-crop, buzz-cut, center-hanging-locs, clean-close-crop, compact-coils, curly-side-tail, defined-short-coils, dense-messy, dense-rounded-locs, double-buns, face-framing-locs, fluffy-rounded, gentle-side-part, hanging-locs, high-braided-ponytail, high-bun, large-coiled-halo, large-curly-halo, large-full-coils, loc-bob, long-loose, long-ponytail, long-side-braids, messy-rounded, narrow-flat-top, neat-raised-crop, raised-front-crop, rounded-braids, rounded-crop, rounded-short-locs, short-rounded-coils, side-combed-front, side-parted-bob, smooth-side-part, sparse-top, tall-flat-top, tapered-top, textured-buzz, textured-coils, vertical-textured-top, wavy-side-crop, wide-rounded-crop, or bald>; facial hair: <clean shaven|chin patch|mustache|goatee|short beard|full beard|long beard>; accessory: <none|headband|wide headband|goggles|glasses|bandana|visor|cap>. Output only that line.";
+const VISION_PROMPT = "Describe only visible features of the single primary basketball player in this photo. If a feature is obscured, the player is not clear, or you are unsure, use unknown; do not infer skin tone from race. Output exactly these semicolon-separated fields: skin: <light|medium|bronze|dark> <1-5> or unknown; hair color: <blonde|brunette|red|black> <1-5> or unknown; hairstyle: <one of angular-crown, asymmetric-medium, braided-top-knot, broad-coiled-crop, buzz-cut, center-hanging-locs, clean-close-crop, compact-coils, curly-side-tail, defined-short-coils, dense-messy, dense-rounded-locs, double-buns, face-framing-locs, fluffy-rounded, gentle-side-part, hanging-locs, high-braided-ponytail, high-bun, large-coiled-halo, large-curly-halo, large-full-coils, loc-bob, long-loose, long-ponytail, long-side-braids, messy-rounded, narrow-flat-top, neat-raised-crop, raised-front-crop, rounded-braids, rounded-crop, rounded-short-locs, short-rounded-coils, side-combed-front, side-parted-bob, smooth-side-part, sparse-top, tall-flat-top, tapered-top, textured-buzz, textured-coils, vertical-textured-top, wavy-side-crop, wide-rounded-crop, bald, unknown>; facial hair: <clean shaven|chin patch|mustache|goatee|short beard|full beard|long beard|unknown>; accessory: <none|headband|wide headband|goggles|glasses|bandana|visor|cap|unknown>. For skin and hair shades, 1 is lightest and 5 darkest within the group.";
 
 async function runVision(env, dataUrl) {
-  const input = { messages: [{ role: "user", content: [{ type: "text", text: VISION_PROMPT }, { type: "image_url", image_url: { url: dataUrl } }] }], max_tokens: 80 };
+  const input = { messages: [{ role: "user", content: VISION_PROMPT }], image: dataUrl, max_tokens: 160 };
   try {
     return await env.AI.run(VISION_MODEL, input);
   } catch (error) {
@@ -255,7 +255,7 @@ async function handleDescribe(request, env, ctx) {
   }
   if (target.protocol !== "https:" || !HEADSHOT_HOSTS.includes(target.hostname)) return json({ ok: false, error: "forbidden" }, 403);
   const cache = caches.default;
-  const cacheKey = new Request("https://describe.local/?src=" + encodeURIComponent(target.toString()));
+  const cacheKey = new Request("https://describe.local/?version=2&src=" + encodeURIComponent(target.toString()));
   const cached = await cache.match(cacheKey);
   if (cached) return cached;
   try {
@@ -407,7 +407,7 @@ window.__HOOPLAND_SAMPLE_HEADSHOT=function(image){
     const cb=128-0.168736*p[0]-0.331264*p[1]+0.5*p[2];
     const cr=128+0.5*p[0]-0.418688*p[1]-0.081312*p[2];
     const l=0.299*p[0]+0.587*p[1]+0.114*p[2];
-    return l>40&&l<240&&cb>=75&&cb<=130&&cr>=132&&cr<=175&&p[0]>=p[2];
+    return l>20&&l<240&&cb>=75&&cb<=130&&cr>=132&&cr<=175&&p[0]>=p[2];
   };
   const lum=p=>0.299*p[0]+0.587*p[1]+0.114*p[2];
   let skinPixels=region(0.25,0.75,0.08,0.6).filter(isSkin).sort((a,b)=>lum(a)-lum(b));
@@ -453,7 +453,6 @@ window.__HOOPLAND_PREPARE_REAL_PLAYERS=async function(players,gender){
     ctx.drawImage(bitmap,0,0);
     return window.__HOOPLAND_SAMPLE_HEADSHOT(ctx.getImageData(0,0,canvas.width,canvas.height));
   };
-  const hasManualLook=p=>{try{return !!REAL_PLAYER_DESCRIPTIONS[normalizeAppearancePlayerName([p.fn,p.ln].filter(Boolean).join(" "))];}catch(e){return false;}};
   const worker=async()=>{
     while(queue.length){
       const p=queue.shift();
@@ -470,16 +469,64 @@ window.__HOOPLAND_PREPARE_REAL_PLAYERS=async function(players,gender){
         if(d.countryName)p.homeCountry=d.countryName;
         if(!d.home)console.warn('Hometown lookup failed for',[p.fn,p.ln].join(' '),d.debug);
       }
-      const shots=[...new Set([d&&d.headshot,p.headshot].filter(Boolean))];
+      const extraShots=Array.isArray(p.headshots)?p.headshots:[];
+      const seenShots=new Set();
+      const shots=[d&&d.headshot,p.headshot,...extraShots].filter(url=>{
+        if(typeof url!=="string"||!url)return false;
+        try{
+          const parsed=new URL(url);
+          const key=parsed.origin+parsed.pathname;
+          if(seenShots.has(key))return false;
+          seenShots.add(key);
+          return true;
+        }catch(e){console.warn('Invalid headshot URL for',[p.fn,p.ln].join(' '),e);return false;}
+      }).slice(0,3);
       if(shots.length&&!hasProfile(p)){
+        const samples=[],descriptions=[];
         for(const shot of shots){
-          try{p.headshotSample=await sampleImage(shot);}catch(e){console.warn('Headshot sampling failed for',[p.fn,p.ln].join(' '),e);}
-          if(p.headshotSample)break;
+          try{
+            const sample=await sampleImage(shot);
+            if(sample)samples.push(sample);
+            else console.warn('Headshot sampling returned no face colors for',[p.fn,p.ln].join(' '));
+          }catch(e){console.warn('Headshot sampling failed for',[p.fn,p.ln].join(' '),e);}
+          try{
+            const r=await fetch("/api/describe?src="+encodeURIComponent(shot));
+            const j=r.ok?await r.json():null;
+            if(j&&j.ok&&j.text)descriptions.push(j.text);
+            else console.warn('Headshot description unavailable for',[p.fn,p.ln].join(' '),j&&j.error||r.status);
+          }catch(e){console.warn('Headshot description failed for',[p.fn,p.ln].join(' '),e);}
         }
-        if(!hasManualLook(p)){
-          for(const shot of shots){
-            try{const r=await fetch("/api/describe?src="+encodeURIComponent(shot));const j=r.ok?await r.json():null;if(j&&j.ok&&j.text){p.lookText=j.text;break;}}catch(e){}
-          }
+        const combined=mergeLookDescriptions(descriptions);
+        p.lookText=combined.text;
+        p.appearanceWarnings=[];
+        if(combined.conflicts.length){
+          p.appearanceWarnings.push('Photos disagree on '+combined.conflicts.join(', ')+'; please review those features.');
+        }
+        if(combined.unconfirmed.length){
+          p.appearanceWarnings.push('Only one photo identified '+combined.unconfirmed.join(', ')+'; those features need review.');
+        }
+        if(descriptions.length<2){
+          p.appearanceWarnings.push(descriptions.length===1?'Only one photo description was available; please verify the match.':'Photo description unavailable; colors may be estimates and hair style is a placeholder.');
+        }
+        const parsed=parseLookDescription(combined.text);
+        const saved=REAL_PLAYER_DESCRIPTIONS[normalizeAppearancePlayerName([p.fn,p.ln].filter(Boolean).join(" "))]||"";
+        const savedLook=parseLookDescription(saved);
+        if(descriptions.length&&!parsed.skinExact&&!savedLook.skinExact&&savedLook.skin===undefined){
+          p.appearanceWarnings.push('Skin tone could not be confirmed from the photo descriptions.');
+        }
+        if(descriptions.length&&!parsed.hairExact&&!parsed.hairColor&&!savedLook.hairExact&&!savedLook.hairColor){
+          p.appearanceWarnings.push('Hair color was not confirmed; the color may be an estimate or placeholder.');
+        }
+        if(parsed.hairId===undefined&&!parsed.hairStyle&&savedLook.hairId===undefined&&!savedLook.hairStyle){
+          p.appearanceWarnings.push('Hair style was not identified and is a placeholder.');
+        }
+        const uncertain=field=>combined.conflicts.includes(field)||combined.unconfirmed.includes(field);
+        if(samples.length&&!uncertain('skin')){
+          p.headshotSample={...samples[0]};
+          if(uncertain('hair color'))delete p.headshotSample.hair;
+        }
+        if(uncertain('skin')){
+          p.appearanceWarnings.push('No photo skin tone was selected; check the saved tone or placeholder.');
         }
       }
     }

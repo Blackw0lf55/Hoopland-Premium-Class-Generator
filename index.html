@@ -5486,7 +5486,9 @@ function applyHeadshotSample(baseAppearance, sample) {
 */
 const REAL_PLAYER_DESCRIPTIONS = {
   oliviamiles: "very light skin, black hair, afro, goggles",
-  cooperflagg: "very light skin, dark blonde hair, front comb over"
+  cooperflagg: "very light skin, dark blonde hair, front comb over",
+  awafam: "dark 4 skin",
+  laurenbetts: "bronze 3 skin"
 };
 
 const LOOK_SKIN_TONES = [
@@ -5500,40 +5502,41 @@ function parseLookDescription(text) {
   const look = {};
   if (!t.trim()) return look;
 
-  const exactSkin = t.match(/\b(light|medium|bronze|dark)\s*(?:skin\s*)?(?:tone\s*|shade\s*)?([1-5])\b/);
+  const skinField = t.match(/(?:^|;)\s*skin\s*:\s*([^;]+)/);
+  const skinText = skinField ? skinField[1] : t.replace(/(?:hair color|hair colour)\s*:\s*[^;]+/g, "");
+  const exactSkin = skinText.match(/\b(light|medium|bronze|dark)\s*(?:skin\s*)?(?:tone\s*|shade\s*)?([1-5])\b/);
   if (exactSkin) look.skinExact = { group: exactSkin[1], shade: +exactSkin[2] };
-  const exactHair = t.match(/\b(blonde|brunette|red|black)\s*(?:hair\s*)?(?:shade\s*)?([1-5])\b/);
+  const colorField = t.match(/(?:^|;)\s*hair colou?r\s*:\s*([^;]+)/);
+  const colorText = colorField ? colorField[1] : t;
+  const exactHair = colorText.match(/\b(blonde|brunette|red|black)\s*(?:hair\s*)?(?:shade\s*)?([1-5])\b/);
   if (exactHair) look.hairExact = { group: exactHair[1], shade: +exactHair[2] };
 
   for (const [pattern, index] of exactSkin ? [] : LOOK_SKIN_TONES) {
-    if (new RegExp(`(?:${pattern.source})(?:[- ]?(?:skin|skinned|complexion|toned))`).test(t)) {
+    if (new RegExp(`(?:${pattern.source})(?:[- ]?(?:skin|skinned|complexion|toned))`).test(skinText)) {
       look.skin = index;
       break;
     }
   }
-  if (look.skin === undefined && !exactSkin) {
-    if (/african american|black (?:man|woman|player)|\bblack\b(?! ?(?:hair|blond))/.test(t)) look.skin = 14;
-    else if (/\bwhite\b|caucasian/.test(t)) look.skin = 2;
-    else if (/latino|latina|hispanic/.test(t)) look.skin = 8;
-    else if (/\basian\b/.test(t)) look.skin = 5;
-  }
 
   const hairColors = [
     [/dark[- ]blond/, "blonde", 0.8], [/light[- ]blond|platinum|golden[- ]blond/, "blonde", 0],
-    [/blond/, "blonde", 0.4], [/red|ginger|auburn/, "red", 0.3],
+    [/blond/, "blonde", 0.4], [/\bred\b|ginger|auburn/, "red", 0.3],
     [/light[- ]brown hair/, "brunette", 0.1], [/dark[- ]brown hair/, "brunette", 1],
     [/brunette|brown hair|chestnut/, "brunette", 0.5], [/black hair|jet[- ]black/, "black", 0.5]
   ];
   for (const [pattern, group, frac] of exactHair ? [] : hairColors) {
-    if (pattern.test(t)) {
+    if (pattern.test(colorText)) {
       look.hairColor = { group, frac };
       break;
     }
   }
 
+  const hairField = t.match(/(?:^|;)\s*hairstyle\s*:\s*([^;]+)/);
+  const hairText = hairField ? hairField[1] : t.replace(/\bclean[- ]shaven\b/g, "");
+  if (/\bbald\b/.test(hairText)) look.hairId = 0;
   for (let id = 0, bestLen = 0; id <= 170; id++) {
     const entry = getHairReference(id);
-    if (entry && entry.structure.length > bestLen && t.includes(entry.structure)) {
+    if (entry && entry.structure.length > bestLen && hairText.includes(entry.structure)) {
       look.hairId = id;
       bestLen = entry.structure.length;
     }
@@ -5544,23 +5547,23 @@ function parseLookDescription(text) {
     Object.assign(style, props);
     style.words.push(...words);
   };
-  if (/very-short/.test(t)) style.length = "very-short";
-  else if (/length (short|medium|long)/.test(t)) style.length = t.match(/length (short|medium|long)/)[1];
-  if (/loc-like/.test(t)) add({ texture: "loc-like" }, "loc");
-  if (/afro/.test(t)) add({ texture: "coiled", volume: "high" }, "curly or coiled", "halo");
-  if (/braid|cornrow/.test(t)) add({ texture: "braided" }, "braid");
-  if (/\bloc|dread/.test(t)) add({ texture: "loc-like" }, "loc");
-  if (/twist/.test(t)) add({ texture: "loc-like" }, "twist");
-  if (/curl|coil/.test(t) && !/afro/.test(t)) add({ texture: "coiled" }, "curl");
-  if (/bald|shaved|buzz|fade|close[- ]crop/.test(t)) add({ length: "very-short" }, /bald/.test(t) ? "bald" : "short");
-  if (/comb|slick|side[- ]part/.test(t)) add({ texture: "straight" }, "comb", /front/.test(t) ? "front" : "side");
-  if (/ponytail/.test(t)) add({ length: "long" }, "ponytail");
-  if (/\bbun|puff/.test(t)) add({}, "bun");
-  if (/mohawk/.test(t)) add({}, "mohawk");
-  if (/flat[- ]?top/.test(t)) add({}, "flat-top");
-  if (/long (?:hair|braid|loc)|shoulder[- ]length/.test(t)) style.length = "long";
-  else if (/short (?:hair|curl|braid|loc|afro)/.test(t)) style.length = style.length || "short";
-  else if (/medium[- ]length|medium hair/.test(t)) style.length = "medium";
+  if (/very-short/.test(hairText)) style.length = "very-short";
+  else if (/length (short|medium|long)/.test(hairText)) style.length = hairText.match(/length (short|medium|long)/)[1];
+  if (/loc-like/.test(hairText)) add({ texture: "loc-like" }, "loc");
+  if (/afro/.test(hairText)) add({ texture: "coiled", volume: "high" }, "curly or coiled", "halo");
+  if (/braid|cornrow/.test(hairText)) add({ texture: "braided" }, "braid");
+  if (/\bloc|dread/.test(hairText)) add({ texture: "loc-like" }, "loc");
+  if (/twist/.test(hairText)) add({ texture: "loc-like" }, "twist");
+  if (/curl|coil/.test(hairText) && !/afro/.test(hairText)) add({ texture: "coiled" }, "curl");
+  if (/bald|shaved|buzz|fade|close[- ]crop/.test(hairText)) add({ length: "very-short" }, /bald/.test(hairText) ? "bald" : "short");
+  if (/comb|slick|side[- ]part/.test(hairText)) add({ texture: "straight" }, "comb", /front/.test(hairText) ? "front" : "side");
+  if (/ponytail/.test(hairText)) add({ length: "long" }, "ponytail");
+  if (/\bbun|puff/.test(hairText)) add({}, "bun");
+  if (/mohawk/.test(hairText)) add({}, "mohawk");
+  if (/flat[- ]?top/.test(hairText)) add({}, "flat-top");
+  if (/long (?:hair|braid|loc)|shoulder[- ]length/.test(hairText)) style.length = "long";
+  else if (/short (?:hair|curl|braid|loc|afro)/.test(hairText)) style.length = style.length || "short";
+  else if (/medium[- ]length|medium hair/.test(hairText)) style.length = "medium";
   if (style.words.length || style.length || style.texture) look.hairStyle = style;
 
   if (/clean[- ]shaven|no (?:facial hair|beard)|beardless/.test(t)) look.facialHair = 0;
@@ -5581,18 +5584,75 @@ function parseLookDescription(text) {
   else if (/face ?mask/.test(t)) look.accessory = 7;
   else if (/skullcap|\bcap\b/.test(t)) look.accessory = 12;
   else if (/glasses|eyewear/.test(t)) look.accessory = 5;
-  else if (/\bnone\b/.test(t)) look.accessory = 0;
+  else if (/(?:^|;)\s*accessory\s*:\s*none\b/.test(t)) look.accessory = 0;
 
   return look;
 }
 
-function matchLookHair(style, gender) {
-  const blocked = new Set(gender === "1" ? MEN_HAIRS : WOMEN_HAIRS);
+function mergeLookDescriptions(texts) {
+  const fields = ["skin", "hair color", "hairstyle", "facial hair", "accessory"];
+  const allowedStyles = new Set(
+    Array.from({length: 171}, (_, id) => getHairReference(id)?.structure).filter(Boolean).concat("bald")
+  );
+  const values = Object.fromEntries(fields.map(field => [field, []]));
+  for (const text of texts) {
+    const seen = new Set();
+    for (const section of String(text).toLowerCase().split(";")) {
+      const match = section.trim().match(/^(skin|hair color|hairstyle|facial hair|accessory)\s*:\s*(.+)$/);
+      if (!match) continue;
+      const [, field, value] = match;
+      const v = value.trim();
+      const valid = field === "skin" ? /^(light|medium|bronze|dark)\s+[1-5]$/.test(v)
+        : field === "hair color" ? /^(blonde|brunette|red|black)\s+[1-5]$/.test(v)
+        : field === "hairstyle" ? allowedStyles.has(v)
+        : field === "facial hair" ? /^(clean shaven|chin patch|mustache|goatee|short beard|full beard|long beard)$/.test(v)
+        : /^(none|headband|wide headband|goggles|glasses|bandana|visor|cap)$/.test(v);
+      if (valid && !seen.has(field)) {
+        values[field].push(v);
+        seen.add(field);
+      }
+    }
+  }
+
+  const result = [], conflicts = [], unconfirmed = [];
+  for (const field of fields) {
+    const candidates = values[field];
+    if (!candidates.length) continue;
+    if (texts.length > 1 && candidates.length < 2) {
+      unconfirmed.push(field);
+      continue;
+    }
+    const color = field === "skin" || field === "hair color";
+    const counts = new Map();
+    for (const value of candidates) {
+      const key = color ? value.split(" ")[0] : value;
+      counts.set(key, (counts.get(key) || 0) + 1);
+    }
+    const [winner, count] = [...counts].sort((a, b) => b[1] - a[1])[0];
+    if (count <= candidates.length / 2) {
+      conflicts.push(field);
+      continue;
+    }
+    let value = winner;
+    if (color) {
+      const shades = candidates.filter(v => v.startsWith(winner + " ")).map(v => Number(v.split(" ")[1])).sort((a, b) => a - b);
+      if (shades[shades.length - 1] - shades[0] > 2) {
+        conflicts.push(field);
+        continue;
+      }
+      value += " " + shades[Math.floor(shades.length / 2)];
+    }
+    result.push(field + ": " + value);
+  }
+  return { text: result.join("; "), conflicts, unconfirmed };
+}
+
+function matchLookHair(style) {
   let best = null;
   let bestScore = -Infinity;
   for (let id = 0; id <= 170; id++) {
     const entry = getHairReference(id);
-    if (!entry || blocked.has(id)) continue;
+    if (!entry) continue;
     const text = `${entry.description} ${entry.structure}`.toLowerCase();
     let score = hairMatchScore(entry, {
       length: style.length,
@@ -5642,10 +5702,8 @@ function applyLookDescription(baseAppearance, text, gender) {
 
   if (look.hairColor || look.hairExact) {
     const wanted = look.hairExact || look.hairColor;
-    const deep = skinGroup.group === "dark" || skinGroup.group === "bronze";
     let list = skinGroup.hair[wanted.group];
-    // Dyed or light hair on deep skin tones is intentionally rare.
-    if (!list) list = deep && rng() < 0.15 ? APPEARANCE_PALETTES[0].hair[wanted.group] : skinGroup.hair.black;
+    if (!list) list = APPEARANCE_PALETTES.find(group => group.hair[wanted.group])?.hair[wanted.group];
     const color = look.hairExact
       ? spread(list, look.hairExact.shade)
       : list[Math.round(wanted.frac * (list.length - 1))];
@@ -5654,12 +5712,10 @@ function applyLookDescription(baseAppearance, text, gender) {
     result.fHairC = color;
   }
 
-  const exactAllowed = look.hairId !== undefined &&
-    !(gender === "1" ? MEN_HAIRS : WOMEN_HAIRS).includes(look.hairId);
-  if (exactAllowed) {
+  if (look.hairId !== undefined) {
     result.hair = padStyle(look.hairId);
   } else if (look.hairStyle) {
-    const entry = matchLookHair(look.hairStyle, gender);
+    const entry = matchLookHair(look.hairStyle);
     if (entry) result.hair = padStyle(entry.id);
   }
 
@@ -5736,15 +5792,12 @@ function appearanceSourceFor(sourcePlayer) {
       baseAppearance,
       sourcePlayer && sourcePlayer.headshotSample
     );
-    const lookText =
-      REAL_PLAYER_DESCRIPTIONS[nameKey] ||
-      (sourcePlayer && sourcePlayer.lookText) ||
-      "";
+    const lookText = (sourcePlayer && sourcePlayer.lookText) || "";
+    const manualText = REAL_PLAYER_DESCRIPTIONS[nameKey] || "";
+    const described = lookText ? applyLookDescription(sampled, lookText, gender) : sampled;
 
     return harmonizeFaceColors(
-      lookText
-        ? applyLookDescription(sampled, lookText, gender)
-        : sampled
+      manualText ? applyLookDescription(described, manualText, gender) : described
     );
   }
 
@@ -8404,6 +8457,9 @@ else {
 
     lookText:
       (sourcePlayer && sourcePlayer.lookText) || "",
+
+    appearanceWarnings:
+      (sourcePlayer && sourcePlayer.appearanceWarnings) || [],
 
     appearance:
   sourcePlayer
@@ -11845,10 +11901,14 @@ classSizePlus.addEventListener(
     let text="Mock-up approximation — the in-game look may differ.";
     if(src==="fictional")text="Fictional player — random look. "+text;
     else if(src==="profile")text="Hand-built appearance profile. "+text;
-    else if(src==="manual")text="Built from a saved description. "+text;
+    else if(src==="manual")text="A saved description supplies some features; others may be estimated or placeholders. "+text;
     else if(src==="ai")text='Built from the headshot description: "'+player.lookText+'". '+text;
     else if(src==="photo")text="Colors were sampled from the headshot; hair style is a guess. Please check it. "+text;
     else if(src==="none"){text="No headshot could be read, so this look is a random placeholder. Please adjust it below.";note.classList.add("warn");}
+    if(player.appearanceWarnings&&player.appearanceWarnings.length){
+      text=player.appearanceWarnings.join(" ")+" "+text;
+      note.classList.add("warn");
+    }
     note.textContent=text;
   }
 
