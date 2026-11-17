@@ -67,19 +67,23 @@ function splitName(fullName) {
     .trim();
 
   const suffix = /^(jr\.?|sr\.?|ii|iii|iv|v)$/i;
-  const parts = name.split(" ");
+  const parts = name.split(" ").filter(Boolean);
+
+  while (parts.length > 2 && suffix.test(parts[parts.length - 1])) {
+    parts.pop();
+  }
 
   if (parts.length < 2) {
     return null;
   }
 
-  let last = parts.pop();
+  let i = parts.length - 1;
 
-  if (suffix.test(last) && parts.length > 1) {
-    last = `${parts.pop()} ${last}`;
+  while (i > 1 && /^(van|von|de|del|della|di|da|la|le|st\.?|bin|al|el)$/i.test(parts[i - 1])) {
+    i--;
   }
 
-  return { fn: parts.join(" "), ln: last };
+  return { fn: parts[0], ln: parts.slice(i).join(" ") };
 }
 
 function heightInches(text) {
@@ -426,6 +430,10 @@ async function loadFreshmen(gender, year) {
   return { players: roster, diagnostics: { attempts } };
 }
 
+function nameKey(player) {
+  return `${player.fn} ${player.ln}`.toLowerCase().replace(/[^a-z ]/g, "").replace(/\s+/g, " ").trim();
+}
+
 async function loadProjectedDraft(gender, year) {
   const weights = { 1: 1, 2: 1.5, 3: 2, 4: 2.5 };
   const pool = [];
@@ -441,8 +449,32 @@ async function loadProjectedDraft(gender, year) {
     }
   }
 
+  const drafted = new Set();
+  const nowYear = new Date().getFullYear();
+  const draftYears = [];
+
+  for (let y = Math.max(1947, year - 7); y <= Math.min(year - 1, nowYear); y++) {
+    draftYears.push(y);
+  }
+
+  const pastDrafts = await Promise.all(
+    draftYears.map(async y => {
+      const [wiki, nba] = await Promise.all([loadWikipediaDraft(gender, y), loadNbaComDraft(gender, y)]);
+      return [...wiki.players, ...nba.players];
+    })
+  );
+
+  for (const list of pastDrafts) {
+    for (const player of list) {
+      drafted.add(nameKey(player));
+    }
+  }
+
+  diagnostics.push({ excludedAlreadyDrafted: drafted.size });
+
   const seen = new Set();
   const players = pool
+    .filter(player => !drafted.has(nameKey(player)))
     .sort((a, b) => a.projectedScore - b.projectedScore)
     .filter(player => {
       const key = `${player.fn} ${player.ln}`.toLowerCase();
