@@ -235,7 +235,7 @@ async function handleHeadshot(request) {
   } catch (error) {
     return new Response("Bad request", { status: 400 });
   }
-  if (target.protocol !== "https:" || !["a.espncdn.com", "commons.wikimedia.org", "upload.wikimedia.org"].includes(target.hostname)) {
+  if (target.protocol !== "https:" || !["a.espncdn.com", "cdn.nba.com", "commons.wikimedia.org", "upload.wikimedia.org"].includes(target.hostname)) {
     return new Response("Forbidden", { status: 403 });
   }
   const upstream = await fetch(target.toString());
@@ -386,14 +386,16 @@ window.__HOOPLAND_PREPARE_REAL_PLAYERS=async function(players,gender){
       try{
         const q=new URLSearchParams({name:[p.fn,p.ln].filter(Boolean).join(" "),gender:gender==="1"?"women":"men",ctry:String(p.ctry||p.country||"")});
         const res=await fetch("/api/hometown?"+q);
-        if(!res.ok)continue;
-        const d=await res.json();
+        const d=res.ok?await res.json():null;
+        if(!d&&p.headshot&&!hasProfile(p)){try{p.headshotSample=await sampleImage(p.headshot);}catch(e){}}
+        if(!d)continue;
         if(d&&d.home&&!window.__HOOPLAND_REAL_HOMETOWN(p)){p.hometown=d.home;}
         if(d&&Number.isFinite(d.x)&&Number.isFinite(d.y)){p.homeX=d.x;p.homeY=d.y;}
         if(d&&d.countryName)p.homeCountry=d.countryName;
         if(d&&!d.home)console.warn('Hometown lookup failed for',[p.fn,p.ln].join(' '),d.debug);
-        if(d&&d.headshot&&!hasProfile(p)){
-          try{p.headshotSample=await sampleImage(d.headshot);}catch(e){console.warn('Headshot sampling failed for',[p.fn,p.ln].join(' '),e);}
+        const shot=(d&&d.headshot)||p.headshot;
+        if(shot&&!hasProfile(p)){
+          try{p.headshotSample=await sampleImage(shot);}catch(e){console.warn('Headshot sampling failed for',[p.fn,p.ln].join(' '),e);}
         }
       }catch(e){}
     }
