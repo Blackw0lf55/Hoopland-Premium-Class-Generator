@@ -3094,10 +3094,10 @@ const NAMES = {
 };
 
 const APPEARANCE_PALETTES = [
-  {group:"light",skins:["EEBAA9","E7B099","D9A388","CD9D7E","C69479"],hair:{blonde:["C9A070","BB9766","AC8C5A","A08050","906F4C"],brunette:["7A5A40","704A33","604A23","4A2D1D","3C2514"],red:["905742","804937","6D3A29"],black:["303030","252525","202020"]},eyes:["2060B0","134890","0C3A70","505045","394035","293029","393029","312923","2D2320","261C1A","131009","090502"],tattoos:["7A6358","594338"]},
-  {group:"medium",skins:["B98360","AD795C","A07053","99694F","8C5D4B"],hair:{blonde:["C9A070","BB9766","AC8C5A","A08050","906F4C"],brunette:["7A5A40","704A33","604A23","4A2D1D","3C2514"],red:["905742","804937","6D3A29"],black:["303030","252525","202020"]},eyes:["505045","394035","293029","393029","312923","2D2320","261C1A","131009","090502"],tattoos:["605043","403025"]},
-  {group:"bronze",skins:["835444","7A4D3D","734937","6B4232","633D2F"],hair:{brunette:["7A5A40","704A33","604A23","4A2D1D","3C2514"],black:["303030","252525","202020"]},eyes:["393029","312923","2D2320","261C1A","131009","090502"],tattoos:["433029","2A201A"]},
-  {group:"dark",skins:["5A392B","533329","4B2D23","44291D","3A231A"],hair:{black:["303030","252525","202020"],brunette:["4A2D1D","3C2514"]},eyes:["393029","312923","2D2320","261C1A","131009","090502"],tattoos:["2A201A","1C1816"]}
+  {group:"light",skins:["F4D2C3","EEBAA9","E7B099","D9A388","CD9D7E","C69479"],hair:{blonde:["C9A070","BB9766","AC8C5A","A08050","906F4C"],brunette:["7A5A40","704A33","604A23","4A2D1D","3C2514"],red:["905742","804937","6D3A29"],black:["303030","252525","202020"]},eyes:["2060B0","134890","0C3A70","505045","394035","293029","393029","312923","2D2320","261C1A","131009","090502"],tattoos:["7A6358","594338"]},
+  {group:"medium",skins:["BF8C6B","B98360","AD795C","A07053","99694F","8C5D4B"],hair:{blonde:["C9A070","BB9766","AC8C5A","A08050","906F4C"],brunette:["7A5A40","704A33","604A23","4A2D1D","3C2514"],red:["905742","804937","6D3A29"],black:["303030","252525","202020"]},eyes:["505045","394035","293029","393029","312923","2D2320","261C1A","131009","090502"],tattoos:["605043","403025"]},
+  {group:"bronze",skins:["835444","7A4D3D","734937","6B4232","633D2F"],hair:{brunette:["7A5A40","704A33","604A23","4A2D1D","3C2514"],black:["303030","252525","202020","151515"]},eyes:["393029","312923","2D2320","261C1A","131009","090502"],tattoos:["433029","2A201A"]},
+  {group:"dark",skins:["5A392B","533329","4B2D23","44291D","3A231A","301D15"],hair:{black:["303030","252525","202020","151515","101010"],brunette:["4A2D1D","3C2514"]},eyes:["393029","312923","2D2320","261C1A","131009","090502"],tattoos:["2A201A","1C1816"]}
 ];
 
 const MEN_HAIRS=[
@@ -5387,13 +5387,18 @@ function parseLookDescription(text) {
   const look = {};
   if (!t.trim()) return look;
 
-  for (const [pattern, index] of LOOK_SKIN_TONES) {
+  const exactSkin = t.match(/\b(light|medium|bronze|dark)\s*(?:skin\s*)?(?:tone\s*|shade\s*)?([1-5])\b/);
+  if (exactSkin) look.skinExact = { group: exactSkin[1], shade: +exactSkin[2] };
+  const exactHair = t.match(/\b(blonde|brunette|red|black)\s*(?:hair\s*)?(?:shade\s*)?([1-5])\b/);
+  if (exactHair) look.hairExact = { group: exactHair[1], shade: +exactHair[2] };
+
+  for (const [pattern, index] of exactSkin ? [] : LOOK_SKIN_TONES) {
     if (new RegExp(`(?:${pattern.source})(?:[- ]?(?:skin|skinned|complexion|toned))`).test(t)) {
       look.skin = index;
       break;
     }
   }
-  if (look.skin === undefined) {
+  if (look.skin === undefined && !exactSkin) {
     if (/african american|black (?:man|woman|player)|\bblack\b(?! ?(?:hair|blond))/.test(t)) look.skin = 14;
     else if (/\bwhite\b|caucasian/.test(t)) look.skin = 2;
     else if (/latino|latina|hispanic/.test(t)) look.skin = 8;
@@ -5406,10 +5411,18 @@ function parseLookDescription(text) {
     [/light[- ]brown hair/, "brunette", 0.1], [/dark[- ]brown hair/, "brunette", 1],
     [/brunette|brown hair|chestnut/, "brunette", 0.5], [/black hair|jet[- ]black/, "black", 0.5]
   ];
-  for (const [pattern, group, frac] of hairColors) {
+  for (const [pattern, group, frac] of exactHair ? [] : hairColors) {
     if (pattern.test(t)) {
       look.hairColor = { group, frac };
       break;
+    }
+  }
+
+  for (let id = 0, bestLen = 0; id <= 170; id++) {
+    const entry = getHairReference(id);
+    if (entry && entry.structure.length > bestLen && t.includes(entry.structure)) {
+      look.hairId = id;
+      bestLen = entry.structure.length;
     }
   }
 
@@ -5418,6 +5431,9 @@ function parseLookDescription(text) {
     Object.assign(style, props);
     style.words.push(...words);
   };
+  if (/very-short/.test(t)) style.length = "very-short";
+  else if (/length (short|medium|long)/.test(t)) style.length = t.match(/length (short|medium|long)/)[1];
+  if (/loc-like/.test(t)) add({ texture: "loc-like" }, "loc");
   if (/afro/.test(t)) add({ texture: "coiled", volume: "high" }, "curly or coiled", "halo");
   if (/braid|cornrow/.test(t)) add({ texture: "braided" }, "braid");
   if (/\bloc|dread/.test(t)) add({ texture: "loc-like" }, "loc");
@@ -5488,9 +5504,16 @@ function applyLookDescription(baseAppearance, text, gender) {
 
   const skins = APPEARANCE_PALETTES.flatMap(group => group.skins);
   let skinGroup = APPEARANCE_PALETTES.find(group => group.skins.includes(result.skinC)) || APPEARANCE_PALETTES[0];
-  if (look.skin !== undefined) {
+  const spread = (list, shade) => list[Math.round((shade - 1) / 4 * (list.length - 1))];
+  const sortedSkins = [...skins].sort((a, b) => colorLum(b) - colorLum(a));
+  if (look.skin !== undefined || look.skinExact) {
     const oldSkin = result.skinC;
-    result.skinC = skins[Math.max(0, Math.min(skins.length - 1, look.skin))];
+    if (look.skinExact) {
+      const exact = APPEARANCE_PALETTES.find(group => group.group === look.skinExact.group);
+      result.skinC = spread(exact.skins, look.skinExact.shade);
+    } else {
+      result.skinC = sortedSkins[Math.round(look.skin / 19 * (sortedSkins.length - 1))];
+    }
     skinGroup = APPEARANCE_PALETTES.find(group => group.skins.includes(result.skinC));
     result.accessories = (result.accessories || []).map(accessory => {
       const next = { ...accessory };
@@ -5504,15 +5527,25 @@ function applyLookDescription(baseAppearance, text, gender) {
     result.eyeC = pick(skinGroup.eyes);
   }
 
-  if (look.hairColor) {
-    const list = skinGroup.hair[look.hairColor.group] || skinGroup.hair.black;
-    const color = list[Math.round(look.hairColor.frac * (list.length - 1))];
+  if (look.hairColor || look.hairExact) {
+    const wanted = look.hairExact || look.hairColor;
+    const deep = skinGroup.group === "dark" || skinGroup.group === "bronze";
+    let list = skinGroup.hair[wanted.group];
+    // Dyed or light hair on deep skin tones is intentionally rare.
+    if (!list) list = deep && rng() < 0.15 ? APPEARANCE_PALETTES[0].hair[wanted.group] : skinGroup.hair.black;
+    const color = look.hairExact
+      ? spread(list, look.hairExact.shade)
+      : list[Math.round(wanted.frac * (list.length - 1))];
     result.hairC = color;
     result.browC = color;
     result.fHairC = color;
   }
 
-  if (look.hairStyle) {
+  const exactAllowed = look.hairId !== undefined &&
+    !(gender === "1" ? MEN_HAIRS : WOMEN_HAIRS).includes(look.hairId);
+  if (exactAllowed) {
+    result.hair = padStyle(look.hairId);
+  } else if (look.hairStyle) {
     const entry = matchLookHair(look.hairStyle, gender);
     if (entry) result.hair = padStyle(entry.id);
   }
@@ -5583,9 +5616,11 @@ function applyLookDescription(baseAppearance, text, gender) {
       (sourcePlayer && sourcePlayer.lookText) ||
       "";
 
-    return lookText
-      ? applyLookDescription(sampled, lookText, gender)
-      : sampled;
+    return harmonizeFaceColors(
+      lookText
+        ? applyLookDescription(sampled, lookText, gender)
+        : sampled
+    );
   }
 
 
@@ -5850,7 +5885,12 @@ function shuffled(items){
   return out
 }
 
-function chooseHairColor(palette){
+function chooseHairColor(palette,gender){
+  const deep=palette.group==="dark"||palette.group==="bronze";
+  if(deep&&gender==="0"&&rng()<.03){
+    const dyed=pick(["blonde","red"]);
+    return{group:dyed,color:pick(APPEARANCE_PALETTES[0].hair[dyed])}
+  }
   const groups=
     Object.keys(
       palette.hair
@@ -5866,8 +5906,8 @@ function chooseHairColor(palette){
             :group==="brunette"
               ?4
               :group==="blonde"
-                ?2
-                :1
+                ?(palette.group==="medium"?.5:2)
+                :palette.group==="medium"?.3:1
         ]
       )
     );
@@ -7266,7 +7306,53 @@ function generatePhysicalRatings(
 }
 
 
-function generateAppearance(gender) {
+function colorLum(hex){
+  const c=[0,2,4].map(i=>parseInt(hex.slice(i,i+2),16));
+  return .299*c[0]+.587*c[1]+.114*c[2];
+}
+
+function shadeColor(hex,factor){
+  return[0,2,4].map(i=>
+    Math.max(0,Math.min(255,Math.round(parseInt(hex.slice(i,i+2),16)*factor)))
+      .toString(16).padStart(2,"0")
+  ).join("").toUpperCase();
+}
+
+/*
+  Keeps skin, hair, brows and eyes from collapsing into one color:
+  hair separates from skin, brows sit slightly darker than hair, and
+  eyes are always darker than skin outside the light skin group.
+*/
+function harmonizeFaceColors(a){
+  const skinC=String(a.skinC||"").toUpperCase();
+  const group=APPEARANCE_PALETTES.find(g=>g.skins.includes(skinC));
+  if(!group)return a;
+  const skinL=colorLum(skinC);
+  let hairC=String(a.hairC||"303030").toUpperCase();
+  let hairL=colorLum(hairC);
+
+  if(Math.abs(hairL-skinL)<22&&skinL<130){
+    hairC=shadeColor(hairC,Math.max(.35,Math.min(1,(skinL-24)/Math.max(hairL,1))));
+    hairL=colorLum(hairC);
+  }
+
+  let eyeC=String(a.eyeC||group.eyes[0]).toUpperCase();
+  if(group.group!=="light"&&colorLum(eyeC)>skinL-18){
+    const darker=group.eyes.filter(e=>colorLum(e)<=skinL-18);
+    eyeC=darker.length
+      ?darker[Math.floor(rng()*darker.length)]
+      :shadeColor(group.eyes[group.eyes.length-1],Math.min(1,(skinL*.4)/Math.max(colorLum(group.eyes[group.eyes.length-1]),1)));
+  }
+
+  const browC=shadeColor(hairC,.78);
+  return{...a,hairC,fHairC:hairC,browC,eyeC};
+}
+
+function generateAppearance(gender){
+  return harmonizeFaceColors(generateAppearanceRaw(gender));
+}
+
+function generateAppearanceRaw(gender) {
 
   const palette =
     pick(APPEARANCE_PALETTES);
@@ -7275,7 +7361,7 @@ function generateAppearance(gender) {
     pick(palette.skins);
 
   const hairChoice =
-    chooseHairColor(palette);
+    chooseHairColor(palette,gender);
 
   const hairC =
     hairChoice.color;
