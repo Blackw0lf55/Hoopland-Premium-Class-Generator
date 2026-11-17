@@ -147,3 +147,117 @@ test("a Commons category error does not discard the Wikidata portrait", async ()
     console.warn = oldWarn;
   }
 });
+
+test("freshman ranking commitments retain college IDs or explicit college names", async () => {
+  const { parseEspnRecruits, handleClassData } = await import("../class-sources.js");
+  const html = `<table><tr><th>Rank</th><th>Player</th><th>High School</th><th>College</th></tr>
+    <tr><td>1</td><td><a href="/recruiting/player/1">First Recruit</a></td><td>Central High</td><td><a href="/recruiting/school/_/id/30">USC</a></td></tr>
+    <tr><td>2</td><td><a href="/recruiting/player/2">Second Recruit</a></td><td>East High</td><td>Example College</td></tr>
+    <tr><td>3</td><td><a href="/recruiting/player/3">Third Recruit</a></td><td>West High</td><td><a href="/recruiting/school/_/id/30">USC</a><a href="/recruiting/school/_/id/99">Other</a></td></tr></table>`;
+  const players = parseEspnRecruits(html);
+  assert.equal(players[0].collegeTeamId, "30");
+  assert.equal(players[0].committedCollege, "USC");
+  assert.equal(players[1].committedCollege, "Example College");
+  assert.equal(players[1].collegeTeamId, undefined);
+  assert.equal(players[2].committedCollege, "");
+  assert.equal(players[2].collegeTeamId, undefined);
+  const noCollege = parseEspnRecruits(`<table><tr><th>Rank</th><th>Player</th><th>School</th></tr>
+    <tr><td>1</td><td><a href="/recruiting/player/1">First Recruit</a></td><td>Central High</td></tr></table>`);
+  assert.equal(noCollege[0].committedCollege, "");
+
+  const original = global.fetch;
+  try {
+    global.fetch = async () => new Response(html);
+    for (const gender of ["men", "women"]) {
+      const response = await handleClassData(new Request(`https://example.test/api/class-data?type=freshman&year=2025&gender=${gender}`));
+      const result = await response.json();
+      assert.equal(result.players[0].recruitYear, 2025);
+      assert.equal(result.players[0].collegeTeamId, "30");
+    }
+  } finally { global.fetch = original; }
+});
+
+test("college roster portraits require correct gender, team, season, exact unique name and athlete URL", async () => {
+  const { collegeRosterHeadshot } = await import("../location-worker.js");
+  const original = global.fetch;
+  const image = (league, id) => `https://a.espncdn.com/i/headshots/${league}/players/full/${id}.png`;
+  const athlete = (league, name = "First Recruit", id = "17") => ({id, displayName:name, headshot:{href:image(league,id)}});
+  const responses = {
+    101:{team:{id:"101"},season:{year:2026},athletes:[athlete("womens-college-basketball")]},
+    102:{team:{id:"102"},season:{year:2026},athletes:[athlete("mens-college-basketball")]},
+    103:{team:{id:"999"},season:{year:2026},athletes:[athlete("mens-college-basketball")]},
+    104:{team:{id:"104"},season:{year:2035},athletes:[athlete("mens-college-basketball")]},
+    105:{team:{id:"105"},season:{year:2026},athletes:[athlete("mens-college-basketball","First Recruit Jr")]},
+    106:{team:{id:"106"},season:{year:2026},athletes:[athlete("mens-college-basketball"),athlete("mens-college-basketball","First Recruit","18")]},
+    107:{team:{id:"107"},season:{year:2026},athletes:[{id:"17",displayName:"First Recruit"}]},
+    108:{team:{id:"108"},season:{year:2026},athletes:[{id:"17",displayName:"First Recruit",headshot:{href:image("mens-college-basketball","18")}}]},
+    109:{team:{id:"109"},season:{year:2026},athletes:[{id:"17",displayName:"First Recruit",headshot:{href:"https://evil.example/17.png"}}]},
+    110:{team:{id:"110"},athletes:[athlete("mens-college-basketball")]},
+    111:{team:{id:"111"},season:{year:2024},athletes:[athlete("mens-college-basketball")]},
+  };
+  const calls = [];
+  try {
+    global.fetch = async url => {
+      const path = new URL(url).pathname;
+      calls.push(path);
+      const id = path.match(/\/teams\/(\d+)\/roster$/)?.[1];
+      assert.ok(id && responses[id], path);
+      return Response.json(responses[id]);
+    };
+    assert.equal(await collegeRosterHeadshot("First Recruit","women","101",2025),image("womens-college-basketball","17"));
+    assert.equal(await collegeRosterHeadshot("First Recruit","men","102",2025),image("mens-college-basketball","17"));
+    for (const id of ["103","104","105","106","107","108","109","110","111"]) {
+      assert.equal(await collegeRosterHeadshot("First Recruit","men",id,2025),"",id);
+    }
+    assert.equal(await collegeRosterHeadshot("First Recruit","men","102",2010),"");
+    assert.equal(await collegeRosterHeadshot("First Recruit","men","102",2025),image("mens-college-basketball","17"));
+    assert.equal(calls.filter(path => path.includes("/102/")).length,1);
+    assert.ok(calls.some(path => path.includes("womens-college-basketball")));
+    assert.ok(calls.some(path => path.includes("mens-college-basketball")));
+  } finally { global.fetch = original; }
+});
+
+test("the McDonald's fallback distinguishes college commitments from high schools", async () => {
+  const { handleClassData } = await import("../class-sources.js");
+  const original = global.fetch;
+  const html = `<table><tr><th>Player</th><th>High School</th><th>College</th></tr>
+    <tr><td>First Recruit</td><td>Central High</td><td>Unique University</td></tr></table>`;
+  try {
+    global.fetch = async url => new URL(url).hostname === "en.wikipedia.org"
+      ? Response.json({parse:{text:html}}) : new Response("",{status:503});
+    for (const gender of ["men","women"]) {
+      const response = await handleClassData(new Request(`https://example.test/api/class-data?type=freshman&year=2025&gender=${gender}`));
+      const { players } = await response.json();
+      assert.equal(players[0].school,"Central High");
+      assert.equal(players[0].committedCollege,"Unique University");
+      assert.equal(players[0].recruitYear,2025);
+    }
+  } finally { global.fetch = original; }
+});
+
+test("school names must identify one ESPN team, and failed roster requests can be retried", async () => {
+  const { collegeRosterHeadshot } = await import("../location-worker.js");
+  const original = global.fetch;
+  let rosterCalls = 0;
+  try {
+    global.fetch = async url => {
+      const path = new URL(url).pathname;
+      if (path.endsWith("/teams")) return Response.json({sports:[{leagues:[{teams:[
+        {team:{id:"201",location:"Unique University",displayName:"Unique University Tigers"}},
+        {team:{id:"202",location:"Shared College"}},
+        {team:{id:"203",location:"Shared College"}}
+      ]}]}]});
+      assert.match(path,/\/201\/roster$/);
+      rosterCalls++;
+      if (rosterCalls === 1) return new Response("",{status:503});
+      return Response.json({team:{id:"201"},season:{year:2026},athletes:[{
+        id:"42",displayName:"First Recruit",
+        headshot:{href:"https://a.espncdn.com/i/headshots/womens-college-basketball/players/full/42.png"}
+      }]});
+    };
+    assert.equal(await collegeRosterHeadshot("First Recruit","women","",2025,"Shared College"),"");
+    await assert.rejects(collegeRosterHeadshot("First Recruit","women","",2025,"Unique University"),/503/);
+    assert.match(await collegeRosterHeadshot("First Recruit","women","",2025,"Unique University"),/42\.png$/);
+    assert.equal(rosterCalls,2);
+  } finally { global.fetch = original; }
+});

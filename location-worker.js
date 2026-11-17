@@ -81,6 +81,63 @@ const ESPN_LEAGUES = {
 };
 
 const hometownCache = new Map();
+const collegeRosterCache = new Map();
+const collegeTeamsCache = new Map();
+
+function normalizePersonName(value) {
+  return String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[’']/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+async function cachedCollegeData(cache, key, url) {
+  const entry = cache.get(key);
+  if (entry && entry.expires > Date.now()) return entry.data;
+  const response = await fetch(url, { headers: { accept: "application/json" } });
+  if (!response.ok) throw new Error(`ESPN college data HTTP ${response.status}`);
+  const data = await response.json();
+  cache.set(key, { data, expires: Date.now() + 60 * 60 * 1000 });
+  return data;
+}
+
+async function findCollegeTeamId(league, school) {
+  if (!normalizePersonName(school)) return "";
+  const data = await cachedCollegeData(collegeTeamsCache, league,
+    `https://site.api.espn.com/apis/site/v2/sports/basketball/${league}/teams?limit=500`);
+  const teams = data?.sports?.flatMap(sport => sport.leagues || [])
+    .flatMap(item => item.teams || []).map(item => item.team).filter(Boolean) || [];
+  const wanted = normalizePersonName(school);
+  const matches = teams.filter(team =>
+    [team.location, team.displayName, team.shortDisplayName].some(value => normalizePersonName(value) === wanted));
+  return matches.length === 1 && /^\d{1,8}$/.test(String(matches[0].id)) ? String(matches[0].id) : "";
+}
+
+export async function collegeRosterHeadshot(name, gender, teamId, recruitYear, school = "") {
+  if (!Number.isInteger(recruitYear) || recruitYear < 1900 || recruitYear > 2100) return "";
+  const league = gender === "women" ? "womens-college-basketball" : "mens-college-basketball";
+  if (!teamId) teamId = await findCollegeTeamId(league, school);
+  if (!/^\d{1,8}$/.test(String(teamId))) return "";
+  const key = `${league}:${teamId}`;
+  const roster = await cachedCollegeData(collegeRosterCache, key,
+    `https://site.api.espn.com/apis/site/v2/sports/basketball/${league}/teams/${teamId}/roster`);
+  const season = Number(roster?.season?.year);
+  if (String(roster?.team?.id) !== String(teamId) || !Number.isInteger(season) ||
+      season < recruitYear || season > recruitYear + 6 || !Array.isArray(roster.athletes)) return "";
+  const athletes = roster.athletes.flatMap(item => Array.isArray(item?.items) ? item.items : [item]).filter(Boolean);
+  const matches = athletes.filter(athlete => normalizePersonName(athlete.displayName || athlete.fullName) === normalizePersonName(name));
+  if (matches.length !== 1) return "";
+  const athlete = matches[0];
+  const id = String(athlete.id || "");
+  const image = athlete.headshot?.href;
+  if (!/^\d+$/.test(id) || typeof image !== "string") return "";
+  try {
+    const url = new URL(image);
+    if (url.protocol !== "https:" || url.hostname !== "a.espncdn.com" ||
+        url.pathname !== `/i/headshots/${league}/players/full/${id}.png`) return "";
+  } catch (error) {
+    return "";
+  }
+  return image;
+}
 
 async function fetchJSON(url) {
   const response = await fetch(url, { headers: { accept: "application/json" } });
@@ -220,24 +277,37 @@ async function handleHometown(request) {
   const gender = params.get("gender") === "women" ? "women" : "men";
   if (!name) return Response.json({});
 
-  const key = gender + ":" + normalizeName(name);
-  if (!hometownCache.has(key)) {
-    hometownCache.set(key, (async () => {
-      const [hometown, photos] = await Promise.allSettled([
-        resolveHometown(name, gender, params.get("ctry")),
-        wikidataPhotos(name)
-      ]);
-      if (hometown.status === "rejected") console.warn("Hometown lookup failed", name, hometown.reason);
-      if (photos.status === "rejected") console.warn("Wikimedia photo lookup failed", name, photos.reason);
-      return {
-        ...(hometown.status === "fulfilled" ? hometown.value : {}),
-        headshots: photos.status === "fulfilled" ? photos.value : []
-      };
-    })());
+  const teamId = params.get("team") || "";
+  const school = params.get("college") || "";
+  const recruitYear = Number(params.get("recruitYear"));
+  const verifiedPhotosOnly = params.get("recruit") === "1";
+  const country = params.get("ctry") || "";
+  const key = [gender, normalizePersonName(name), teamId, normalizePersonName(school), recruitYear, verifiedPhotosOnly, country].join(":");
+  let entry = hometownCache.get(key);
+  if (!entry || entry.expires <= Date.now()) {
+    const [hometown, photos, college] = await Promise.allSettled([
+      resolveHometown(name, gender, country),
+      wikidataPhotos(name),
+      collegeRosterHeadshot(name, gender, teamId, recruitYear, school)
+    ]);
+    if (hometown.status === "rejected") console.warn("Hometown lookup failed", name, hometown.reason);
+    if (photos.status === "rejected") console.warn("Wikimedia photo lookup failed", name, photos.reason);
+    if (college.status === "rejected") console.warn("College roster photo lookup failed", name, college.reason);
+    const hometownResult = hometown.status === "fulfilled" ? hometown.value : {};
+    if (verifiedPhotosOnly) delete hometownResult.headshot;
+    const result = {
+      ...hometownResult,
+      headshots: [
+        ...(college.status === "fulfilled" && college.value ? [college.value] : []),
+        ...(photos.status === "fulfilled" ? photos.value : [])
+      ]
+    };
+    const failed = hometown.status === "rejected" || photos.status === "rejected" || college.status === "rejected";
+    entry = { result, failed, expires: Date.now() + 60 * 60 * 1000 };
+    if (!failed && (result.home || result.headshot || result.headshots.length)) hometownCache.set(key, entry);
+    else hometownCache.delete(key);
   }
-  const result = await hometownCache.get(key);
-  if (!result.home && !result.headshot && !result.headshots.length) hometownCache.delete(key);
-  return Response.json(result, { headers: { "cache-control": "public, max-age=86400" } });
+  return Response.json(entry.result, { headers: { "cache-control": entry.failed ? "no-store" : "public, max-age=3600" } });
 }
 
 const HEADSHOT_HOSTS = ["a.espncdn.com", "cdn.nba.com", "commons.wikimedia.org", "upload.wikimedia.org"];
@@ -415,7 +485,7 @@ window.__HOOPLAND_PREPARE_REAL_PLAYERS=async function(players,gender){
       const p=queue.shift();
       let d=null;
       try{
-        const q=new URLSearchParams({name:[p.fn,p.ln].filter(Boolean).join(" "),gender:gender==="1"?"women":"men",ctry:String(p.ctry||p.country||""),v:"2"});
+        const q=new URLSearchParams({name:[p.fn,p.ln].filter(Boolean).join(" "),gender:gender==="1"?"women":"men",ctry:String(p.ctry||p.country||""),team:String(p.collegeTeamId||""),college:String(p.committedCollege||""),recruitYear:String(p.recruitYear||""),recruit:p.recruitYear?"1":"",v:"3"});
         const res=await fetch("/api/hometown?"+q);
         d=res.ok?await res.json():null;
       }catch(e){console.warn('Hometown and photo lookup failed for',[p.fn,p.ln].join(' '),e);}

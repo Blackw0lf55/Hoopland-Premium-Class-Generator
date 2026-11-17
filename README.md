@@ -19,6 +19,17 @@ only when the returned year, player name, and (where provided) draft pick
 match. This includes the separately sourced 2026 women's class. If ESPN returns
 another year or a source fails, no photo is substituted from that response.
 
+For men's and women's freshman classes, an ESPN recruiting commitment (or an
+explicit college column in the McDonald's roster) can identify a college team.
+The generator checks that team's ESPN roster for one exact player-name match,
+the correct team, a plausible season, and that player's ESPN headshot. An
+unambiguous college name can be matched against ESPN's team list when no team
+ID is supplied. The roster may be current rather than historical, and future
+recruits may not appear yet; no roster photo is used when these checks fail.
+Name-only ESPN search photos are not used for recruits. Other independently
+matched photos may still be available, but this does not guarantee three photos
+or an accurate appearance.
+
 Ratings are estimates, not measured pro-level ability. Each of the 12 core
 attributes starts at 1 (export value 2), and added points use the export's
 2–20 scale. Potential tiers of 2, 2.5, 3, 3.5, 4, 4.5 and 5 stars cap added

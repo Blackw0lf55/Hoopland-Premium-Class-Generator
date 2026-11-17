@@ -313,6 +313,7 @@ async function loadMcDonaldsRoster(gender, year) {
     const positionColumn = column(/^pos/);
     const heightColumn = column(/^(ht|height)/);
     const schoolColumn = column(/^(school|high school)/);
+    const collegeColumn = column(/^(college|commitment|committed|college choice)$/);
 
     for (const row of rows) {
       if (row === headerRow) {
@@ -332,6 +333,7 @@ async function loadMcDonaldsRoster(gender, year) {
         position: positionColumn >= 0 ? row[positionColumn]?.text || "" : "",
         height: heightColumn >= 0 ? heightInches(row[heightColumn]?.text) : null,
         school: schoolColumn >= 0 ? row[schoolColumn]?.text || "" : "",
+        committedCollege: collegeColumn >= 0 ? row[collegeColumn]?.text || "" : "",
         country: "United States"
       });
     }
@@ -361,6 +363,8 @@ function parseEspnRecruits(html) {
   const seen = new Set();
 
   for (const rows of parseTables(html)) {
+    const header = rows.find(row => row.some(cell => cell.header));
+    const commitmentColumn = header ? header.findIndex(cell => /^(college|commitment|committed|college choice)$/i.test(cell.text)) : -1;
     for (const row of rows) {
       if (row.some(cell => cell.header)) {
         continue;
@@ -386,6 +390,11 @@ function parseEspnRecruits(html) {
       const positionCell = texts.find(text => /^(PG|SG|SF|PF|C|G|F|CG|G\/F|F\/C)$/i.test(text));
       const gradeCell = texts.find(text => /^\d{2,3}$/.test(text) && Number(text) >= 60 && Number(text) <= 100 && text !== String(rank));
       const starMatches = row.reduce((total, cell) => total + (cell.html.match(/star/gi) || []).length, 0);
+      const schoolCells = row.filter(cell => /recruiting\/school\/_\/id\/\d+/i.test(cell.html));
+      const schoolCell = schoolCells[0] ||
+        (commitmentColumn >= 0 ? row[commitmentColumn] : null);
+      const schoolIds = [...new Set(schoolCells.flatMap(cell =>
+        [...cell.html.matchAll(/recruiting\/school\/_\/id\/(\d+)/gi)].map(match => match[1])))];
 
       players.push({
         ...name,
@@ -393,7 +402,9 @@ function parseEspnRecruits(html) {
         position: positionCell || "",
         height: heightCell ? heightInches(heightCell) : null,
         stars: gradeCell ? Number(gradeCell) : (starMatches > 0 ? Math.min(5, starMatches) : null),
-        school: "",
+        school: schoolCell?.text || "",
+        committedCollege: schoolIds.length > 1 ? "" : schoolCell?.text || "",
+        collegeTeamId: schoolIds.length === 1 ? schoolIds[0] : undefined,
         country: "United States"
       });
     }
@@ -413,7 +424,7 @@ async function loadFreshmen(gender, year) {
 
     if (players.length) {
       players.sort((a, b) => a.rank - b.rank);
-      players.forEach((player, index) => { player.sourceOrder = index; });
+      players.forEach((player, index) => { player.sourceOrder = index; player.recruitYear = year; });
 
       return { players, diagnostics: { attempts } };
     }
@@ -425,6 +436,7 @@ async function loadFreshmen(gender, year) {
   roster.forEach((player, index) => {
     player.rank = index + 1;
     player.sourceOrder = index;
+    player.recruitYear = year;
   });
 
   return { players: roster, diagnostics: { attempts } };

@@ -198,3 +198,59 @@ test("a partial appearance profile still fetches and applies photo descriptions"
   assert.ok(player.appearanceWarnings.some(w=>w.includes("1 of 1 attempted photos")));
   assert.ok(player.appearanceWarnings.some(w=>w.includes("fewer than three")));
 });
+
+test("freshman preparation uses verified roster photos and warns when only a name-search photo exists", async () => {
+  const {default:worker} = await import("../location-worker.js");
+  const csv = fs.readFileSync(path.join(__dirname, "..", "data/location-catalog.csv"),"utf8");
+  const env = {ASSETS:{fetch:async r=>new URL(r.url).pathname.endsWith(".csv")?new Response(csv):new Response(html)}};
+  const transformed = await (await worker.fetch(new Request("https://example.test/"),env)).text();
+  const script=transformed.match(/<script>\nwindow\.__HOOPLAND_LOCATION_RECORDS[\s\S]*?<\/script>/)[0].slice(8,-9);
+  const original = global.fetch;
+  const verified = "https://a.espncdn.com/i/headshots/womens-college-basketball/players/full/71.png";
+  const wrong = "https://a.espncdn.com/wrong-player.png";
+  const described = [];
+  try {
+    global.fetch = async url => {
+      const request = new URL(url);
+      if (request.pathname.endsWith("/901/roster")) return Response.json({
+        team:{id:"901"},season:{year:2026},
+        athletes:[{id:"71",displayName:"Verified Recruit",headshot:{href:verified}}]
+      });
+      if (request.hostname === "www.wikidata.org") return Response.json({search:[]});
+      if (request.pathname.includes("/search")) {
+        const name = request.searchParams.get("query");
+        return Response.json({results:[{id:"72",displayName:name,sport:"basketball"}]});
+      }
+      if (request.pathname.includes("/athletes/72")) return Response.json({
+        athlete:{displayName:"Missing Recruit",headshot:{href:wrong}}
+      });
+      throw new Error("Unexpected request "+url);
+    };
+    const c=vm.createContext({
+      window:{},URL,URLSearchParams,console:{warn(){}},
+      REAL_PLAYER_APPEARANCE_PROFILES:{},REAL_PLAYER_DESCRIPTIONS:{},
+      normalizeAppearancePlayerName:name=>name.toLowerCase().replace(/[^a-z0-9]/g,""),
+      mergeLookDescriptions:merge,parseLookDescription:parse,
+      document:{getElementById:()=>({value:"freshman"})},
+      fetch:async url=>{
+        const request = new URL(String(url),"https://example.test");
+        if(request.pathname==="/api/hometown") return worker.fetch(new Request(request),env);
+        if(request.pathname==="/api/describe"){
+          described.push(request.searchParams.get("src"));
+          return Response.json({ok:true,text:"skin: dark 4; hairstyle: high-bun"});
+        }
+        throw new Error("Unexpected request "+url);
+      }
+    });
+    vm.runInContext(script,c);
+    const players=[
+      {fn:"Verified",ln:"Recruit",collegeTeamId:"901",recruitYear:2025},
+      {fn:"Missing",ln:"Recruit",collegeTeamId:"901",recruitYear:2025}
+    ];
+    await c.window.__HOOPLAND_PREPARE_REAL_PLAYERS(players,"1");
+    assert.deepEqual(described,[verified]);
+    assert.match(players[0].lookText,/skin: dark 4/);
+    assert.ok(players[0].appearanceWarnings.some(w=>w.includes("fewer than three")));
+    assert.ok(players[1].appearanceWarnings.some(w=>w.includes("No photo was found")));
+  } finally { global.fetch = original; }
+});
