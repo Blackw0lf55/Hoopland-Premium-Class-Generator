@@ -277,6 +277,40 @@ async function loadFreshmen(gender, year) {
   return { players: [], diagnostics: { attempts } };
 }
 
+async function loadProjectedDraft(gender, year) {
+  const weights = { 1: 1, 2: 1.5, 3: 2, 4: 2.5 };
+  const pool = [];
+  const diagnostics = [];
+
+  for (const back of [1, 2, 3, 4]) {
+    const loaded = await loadFreshmen(gender, year - back);
+
+    diagnostics.push({ classYear: year - back, parsed: loaded.players.length });
+
+    for (const player of loaded.players) {
+      pool.push({ ...player, projectedScore: player.rank * weights[back] });
+    }
+  }
+
+  const seen = new Set();
+  const players = pool
+    .sort((a, b) => a.projectedScore - b.projectedScore)
+    .filter(player => {
+      const key = `${player.fn} ${player.ln}`.toLowerCase();
+
+      if (seen.has(key)) {
+        return false;
+      }
+
+      seen.add(key);
+
+      return true;
+    })
+    .map((player, index) => ({ ...player, projectedPick: index + 1, sourceOrder: index }));
+
+  return { players, diagnostics: { projected: true, classes: diagnostics } };
+}
+
 export async function handleClassData(request) {
   const url = new URL(request.url);
   const gender = url.searchParams.get("gender") === "women" ? "women" : "men";
@@ -287,9 +321,18 @@ export async function handleClassData(request) {
     return Response.json({ ok: false, error: "Invalid year." }, { status: 400 });
   }
 
-  const loaded = type === "draft"
-    ? await loadWikipediaDraft(gender, year)
-    : await loadFreshmen(gender, year);
+  let loaded;
+
+  if (type === "draft") {
+    loaded = await loadWikipediaDraft(gender, year);
+
+    if (!loaded.players.length) {
+      loaded = await loadProjectedDraft(gender, year);
+    }
+  }
+  else {
+    loaded = await loadFreshmen(gender, year);
+  }
 
   if (!loaded.players.length) {
     return Response.json(
