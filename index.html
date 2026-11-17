@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Hoopland Class Generator</title>
 
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@500;700;800;900&family=Press+Start+2P&display=swap" rel="stylesheet">
+
 <style>
 :root{
   --bg:#081120;
@@ -1913,6 +1917,207 @@ h3,
   }
 }
   
+
+/* =========================================
+   HOOP LAND PLUS STYLE REFINEMENT
+   Pixel-notched borders, slab buttons, pixel
+   fonts, and screen transitions. Visual only.
+   ========================================= */
+
+html body{
+  --px:#1f78e0;
+  --px-hi:#38e3f2;
+  --px-fill:#124fa3;
+  --px-fill-dark:#0b2d6b;
+  --px-slab:#0a2459;
+  font-family:"Exo 2",system-ui,sans-serif!important;
+  background-color:#06143a!important;
+  background-image:
+    linear-gradient(rgba(34,120,224,.14) 50%,transparent 50%),
+    linear-gradient(90deg,rgba(34,120,224,.10) 50%,transparent 50%)!important;
+  background-size:16px 16px!important;
+}
+
+html body label,
+html body input,
+html body select,
+html body textarea,
+html body button,
+html body td,
+html body .muted,
+html body .notice,
+html body h2,
+html body h3{
+  font-family:"Exo 2",system-ui,sans-serif!important;
+}
+
+html body .hl-ticker-track span,
+html body .hl-screen-title,
+html body th{
+  font-family:"Press Start 2P","Courier New",monospace!important;
+  font-weight:400!important;
+  letter-spacing:.04em!important;
+}
+
+html body .hl-ticker-track span{font-size:clamp(.8rem,3.6vw,1.4rem)!important;}
+html body .hl-screen-title{font-size:clamp(.8rem,3.4vw,1.15rem)!important;line-height:1.5;}
+html body th{font-size:.62rem!important;line-height:1.5;}
+
+/* Panels: notched pixel border */
+html body .card,
+html body section{
+  border:0!important;
+  border-radius:0!important;
+  background:var(--px-fill)!important;
+  margin:4px 4px 24px!important;
+  box-shadow:
+    0 -4px 0 0 var(--px),
+    0 4px 0 0 var(--px),
+    -4px 0 0 0 var(--px),
+    4px 0 0 0 var(--px),
+    0 8px 0 0 var(--px-slab)!important;
+}
+
+/* Section titles with side rules */
+html body .card > h2,
+html body section > h2{
+  display:flex!important;
+  align-items:center;
+  gap:12px;
+  text-transform:uppercase;
+  font-size:1rem;
+  font-weight:900;
+  letter-spacing:.08em;
+  margin:0 0 16px;
+}
+html body .card > h2::before,
+html body .card > h2::after,
+html body section > h2::before,
+html body section > h2::after{
+  content:"";
+  flex:1;
+  height:4px;
+  background:var(--px);
+}
+
+/* Inputs: pixel notched */
+html body input:not([type=checkbox]):not([type=range]),
+html body select,
+html body textarea{
+  border:0!important;
+  border-radius:0!important;
+  background:var(--px-fill-dark)!important;
+  box-shadow:
+    0 -3px 0 0 var(--px),
+    0 3px 0 0 var(--px),
+    -3px 0 0 0 var(--px),
+    3px 0 0 0 var(--px)!important;
+  margin:3px 0;
+  padding:12px!important;
+}
+html body input:focus,
+html body select:focus,
+html body textarea:focus{
+  box-shadow:
+    0 -3px 0 0 var(--px-hi),
+    0 3px 0 0 var(--px-hi),
+    -3px 0 0 0 var(--px-hi),
+    3px 0 0 0 var(--px-hi)!important;
+}
+
+/* Buttons: pixel border with dark slab edge */
+html body button.primary,
+html body button.secondary,
+html body .wizard-button{
+  position:relative;
+  border:0!important;
+  border-radius:0!important;
+  background:var(--px-fill)!important;
+  color:#fff!important;
+  font-weight:800!important;
+  font-size:1.05rem;
+  padding:14px 18px;
+  margin:4px;
+  box-shadow:
+    0 -4px 0 0 var(--px),
+    0 4px 0 0 var(--px),
+    -4px 0 0 0 var(--px),
+    4px 0 0 0 var(--px),
+    0 10px 0 0 var(--px-slab)!important;
+  transition:transform .08s steps(2),box-shadow .08s steps(2),filter .12s;
+}
+html body button.primary{
+  box-shadow:
+    0 -4px 0 0 var(--px-hi),
+    0 4px 0 0 var(--px-hi),
+    -4px 0 0 0 var(--px-hi),
+    4px 0 0 0 var(--px-hi),
+    0 10px 0 0 var(--px-slab)!important;
+}
+html body button.primary:hover,
+html body button.secondary:hover,
+html body .wizard-button:hover{
+  filter:brightness(1.15);
+}
+html body button.primary:active,
+html body button.secondary:active,
+html body .wizard-button:active{
+  transform:translateY(6px);
+  box-shadow:
+    0 -4px 0 0 var(--px),
+    0 4px 0 0 var(--px),
+    -4px 0 0 0 var(--px),
+    4px 0 0 0 var(--px),
+    0 4px 0 0 var(--px-slab)!important;
+}
+html body button:focus-visible{
+  outline:3px dashed var(--px-hi);
+  outline-offset:6px;
+}
+
+/* Screen transitions */
+@keyframes hlScreenIn{
+  from{opacity:0;transform:translateY(24px);}
+  to{opacity:1;transform:none;}
+}
+html body main > section{
+  animation:hlScreenIn .5s steps(6) both;
+  animation-delay:calc(var(--hl-i,0) * 90ms);
+}
+html body .hl-reveal{
+  animation:hlScreenIn .45s steps(5) both;
+}
+
+#hlWipe{
+  position:fixed;
+  inset:0;
+  z-index:9999;
+  display:flex;
+  pointer-events:none;
+}
+#hlWipe span{
+  flex:1;
+  background:#0a2459;
+  box-shadow:inset 0 -4px 0 var(--px-hi);
+  transform:scaleY(0);
+  transform-origin:top;
+}
+#hlWipe.play span{
+  animation:hlBar .55s steps(7) both;
+  animation-delay:calc(var(--n) * 28ms);
+}
+@keyframes hlBar{
+  0%{transform:scaleY(0);transform-origin:top;}
+  45%{transform:scaleY(1);transform-origin:top;}
+  55%{transform:scaleY(1);transform-origin:bottom;}
+  100%{transform:scaleY(0);transform-origin:bottom;}
+}
+
+@media(prefers-reduced-motion:reduce){
+  html body main > section,
+  html body .hl-reveal{animation:none;}
+  #hlWipe{display:none;}
+}
 </style>
 </head>
 
@@ -2322,6 +2527,45 @@ h3,
 </section>
 
 </main>
+
+<div id="hlWipe" aria-hidden="true"></div>
+<script>
+(function(){
+  const wipe=document.getElementById("hlWipe");
+  for(let n=0;n<12;n++){
+    const bar=document.createElement("span");
+    bar.style.setProperty("--n",n);
+    wipe.appendChild(bar);
+  }
+  document.querySelectorAll("main > section").forEach((section,index)=>{
+    section.style.setProperty("--hl-i",index);
+  });
+
+  function playWipe(){
+    wipe.classList.remove("play");
+    void wipe.offsetWidth;
+    wipe.classList.add("play");
+  }
+
+  document.addEventListener("click",event=>{
+    if(event.target.closest("button.primary, button.secondary")){
+      playWipe();
+    }
+  });
+
+  const players=document.getElementById("players");
+  if(players){
+    new MutationObserver(()=>{
+      const preview=players.closest("section");
+      if(!preview)return;
+      preview.classList.remove("hl-reveal");
+      void preview.offsetWidth;
+      preview.classList.add("hl-reveal");
+    }).observe(players,{childList:true});
+  }
+})();
+</script>
+
 
 <script>
 
