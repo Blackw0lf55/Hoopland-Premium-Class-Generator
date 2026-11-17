@@ -1,0 +1,445 @@
+Country,State,City,X,Y
+,,Boulder,4001,-10527
+,,Columbus,4210,-7592
+,,Corvallis State,4456,-12326
+,,Crandall,4091,-7312
+,,Datmoor,4370,-7229
+,,Logan,4273,-8456
+,,Moscow,4673,-11700
+,,South Orange,4075,-7426
+,,Temple,4027,-7689
+Algeria,,,3485,572
+Australia,,,-4143,14714
+Australia,,,-3781,14496
+Australia,,,-3756,14385
+Australia,,,-3608,14692
+Australia,,,-3528,14913
+Australia,,,-3442,15088
+Australia,,,-3195,11586
+Australia,,,-3030,15311
+Australia,,,-2756,15195
+Australia,,,-2665,15309
+Australia,,,-2337,15050
+Australia,,,-1926,14680
+Australia,,,-1246,13084
+Austria,,Vienna,4050,2000
+Bahamas,,,2572,-7929
+Bahamas,,,2572,-7783
+Barbados,,,1323,-5965
+Bosnia and Herzegovina,,Aleksandrovac,4600,2550
+Bosnia and Herzegovina,,Sarajevo,4550,2300
+Bulgaria,,,4270,2332
+Cameroon,,,596,1016
+Canada,,,4231,-8304
+Canada,,,4298,-8125
+Canada,,,4316,-7925
+Canada,,,4326,-7987
+Canada,,,4343,-8051
+Canada,,,4345,-8048
+Canada,,,4365,-7938
+Canada,,,4370,-7942
+Canada,,,4465,-6358
+Canada,,,4540,-7190
+Canada,,,4542,-7569
+Canada,,,4550,-7357
+Canada,,,4681,-7121
+Canada,,,4756,-5271
+Canada,,,4843,-12337
+Canada,,,4928,-12312
+Canada,,,4989,-9714
+Canada,,,4990,-9714
+Canada,,,5045,-10462
+Canada,,,5104,-11407
+Canada,,,5105,-11407
+Canada,,,5214,-10665
+Canada,,,5354,-11349
+Canada,,,5355,-11349
+Cayman Islands,,,1937,-8130
+Cayman Islands,,,1939,-8129
+Croatia,,,4533,1444
+Croatia,,,4534,1431
+Croatia,,Split,3650,2600
+Croatia,,Zadar,3800,2400
+Cuba,,,2215,-8045
+Ecuador,,,-223,-8086
+Ecuador,,,-217,-7992
+Ecuador,,,-103,-7946
+Egypt,,,2726,3381
+Finland,,,6017,2494
+Finland,,,6098,2566
+France,,,4312,593
+France,,,4330,537
+France,,,4360,144
+France,,,4361,388
+France,,,4384,436
+France,,,4484,-58
+France,,,4575,485
+France,,,4732,504
+France,,,4812,-168
+France,,,4886,235
+France,,,4926,403
+France,,,4949,10
+Germany,,,4945,1108
+Germany,,,5105,1374
+Germany,,,5134,1237
+Germany,,,5148,722
+Germany,,,5151,747
+Germany,,,5355,999
+Haiti,,,1851,-7263
+Haiti,,,1945,-7268
+Hong Kong,,,2237,11410
+Hungary,,,4696,1894
+India,,,2231,7318
+Ireland,,,5286,-820
+Japan,,,3280,13071
+Libya,,,2986,2265
+Lithuania,,,5525,2229
+Lithuania,,,5535,2148
+Montenegro,,Podgorica,4550,2900
+Montenegro,,Podgorica,4550,2920
+Netherlands,,,5157,477
+Netherlands,,,5181,469
+Netherlands,,,5221,597
+Nigeria,,,511,737
+Nigeria,,,652,338
+Nigeria,,,652,751
+Palestine,,,3129,3426
+Palestine,,,3142,3434
+Palestine,,,3155,3451
+Palestine,,,3188,3522
+Panama,,,893,-7970
+Panama,,,898,-7952
+Puerto Rico,,,1799,-6661
+Romania,,Cluj-Napoca,4950,2500
+Russia,,,5177,5510
+Russia,,,5576,4912
+Russia,,,5602,9289
+Senegal,,,1435,-1641
+Senegal,,,1495,-1681
+Serbia,,,4300,2195
+Serbia,,,4315,2259
+Serbia,,,4475,1969
+Serbia,,Belgrade,4450,2450
+Serbia,,Belgrade,4470,2430
+Serbia,,Belgrade,4480,2420
+Serbia,,Belgrade,4490,2440
+Serbia,,Subotica,4450,2200
+Serbia,,Čačak,4400,2500
+Slovenia,,,4555,1373
+Slovenia,,,4606,1451
+Slovenia,,,4622,1461
+Slovenia,,,4624,1527
+Slovenia,,,4642,1587
+Slovenia,,Ljubljana,4100,2100
+Slovenia,,Novo Mesto,4150,2150
+South Africa,,,-3331,2652
+South Africa,,,-2986,3102
+South Africa,,,-2874,2477
+Spain,,,2846,-1625
+Spain,,,3718,-360
+Spain,,,3947,-38
+Spain,,,4286,-268
+Spain,,,4336,-841
+Switzerland,,,4601,894
+Syria,,,3613,3653
+Trinidad and Tobago,,,1125,-6067
+Turkey,,,3680,3463
+Turkey,,,3873,3548
+Turkey,,,3993,3286
+Turkey,,,4101,2898
+Uganda,,,106,3418
+United Arab Emirates,,Dubai,7100,3400
+United Kingdom,,,5241,-152
+United Kingdom,,,5341,-299
+United States,,,1971,-15508
+United States,,,2133,-15809
+United States,,,2139,-15774
+United States,,,2141,-15797
+United States,,,2777,-8267
+United States,,,2795,-8247
+United States,,,2942,-9849
+United States,,,2995,-9008
+United States,,,3021,-9321
+United States,,,3027,-9774
+United States,,,3033,-8166
+United States,,,3037,-8909
+United States,,,3040,-8889
+United States,,,3045,-9115
+United States,,,3069,-8804
+United States,,,3132,-8929
+United States,,,3181,-8597
+United States,,,3208,-8110
+United States,,,3222,-11097
+United States,,,3230,-9018
+United States,,,3232,-10676
+United States,,,3238,-8631
+United States,,,3247,-8498
+United States,,,3252,-9377
+United States,,,3278,-7993
+United States,,,3280,-7989
+United States,,,3284,-8363
+United States,,,3288,-8002
+United States,,,3339,-10452
+United States,,,3342,-11182
+United States,,,3345,-11207
+United States,,,3347,-8197
+United States,,,3350,-11192
+United States,,,3352,-8681
+United States,,,3377,-11819
+United States,,,3402,-8462
+United States,,,3402,-8436
+United States,,,3404,-8090
+United States,,,3411,-11729
+United States,,,3423,-9200
+United States,,,3461,-9839
+United States,,,3473,-8659
+United States,,,3493,-8103
+United States,,,3497,-9001
+United States,,,3505,-8531
+United States,,,3509,-9244
+United States,,,3520,-11165
+United States,,,3522,-9744
+United States,,,3523,-8084
+United States,,,3529,-10670
+United States,,,3539,-9441
+United States,,,3565,-9748
+United States,,,3568,-10594
+United States,,,3584,-9069
+United States,,,3596,-8392
+United States,,,3604,-11503
+United States,,,3605,-9579
+United States,,,3607,-7979
+United States,,,3610,-8026
+United States,,,3619,-9413
+United States,,,3653,-8736
+United States,,,3676,-7629
+United States,,,3685,-7629
+United States,,,3685,-7598
+United States,,,3710,-11358
+United States,,,3721,-9329
+United States,,,3754,-7743
+United States,,,3777,-8711
+United States,,,3780,-12227
+United States,,,3835,-8164
+United States,,,3842,-8244
+United States,,,3858,-12149
+United States,,,3858,-9217
+United States,,,3863,-9020
+United States,,,3888,-9482
+United States,,,3888,-7711
+United States,,,3890,-7704
+United States,,,3895,-9233
+United States,,,3898,-9467
+United States,,,3899,-7703
+United States,,,3905,-9568
+United States,,,3907,-9441
+United States,,,3909,-8451
+United States,,,3910,-9458
+United States,,,3916,-7553
+United States,,,3918,-7726
+United States,,,3921,-7686
+United States,,,3927,-8156
+United States,,,3930,-7561
+United States,,,3933,-8210
+United States,,,3942,-7742
+United States,,,3945,-7571
+United States,,,3953,-11975
+United States,,,3963,-7995
+United States,,,3968,-7575
+United States,,,3970,-10508
+United States,,,3973,-10482
+United States,,,3974,-10499
+United States,,,3974,-7554
+United States,,,4007,-8072
+United States,,,4024,-11166
+United States,,,4029,-11170
+United States,,,4044,-7999
+United States,,,4046,-9067
+United States,,,4052,-7441
+United States,,,4060,-7547
+United States,,,4066,-7421
+United States,,,4069,-11200
+United States,,,4070,-9908
+United States,,,4073,-7407
+United States,,,4092,-9834
+United States,,,4092,-7416
+United States,,,4094,-7387
+United States,,,4106,-7354
+United States,,,4108,-8514
+United States,,,4114,-10482
+United States,,,4115,-9592
+United States,,,4117,-7319
+United States,,,4147,-8706
+United States,,,4150,-8169
+United States,,,4153,-9058
+United States,,,4153,-8812
+United States,,,4156,-7305
+United States,,,4159,-10920
+United States,,,4159,-9362
+United States,,,4161,-8749
+United States,,,4166,-9154
+United States,,,4166,-8358
+United States,,,4168,-8625
+United States,,,4171,-7142
+United States,,,4175,-8815
+United States,,,4176,-8820
+United States,,,4178,-7147
+United States,,,4187,-7138
+United States,,,4198,-9166
+United States,,,4203,-9362
+United States,,,4210,-7259
+United States,,,4212,-8009
+United States,,,4226,-7180
+United States,,,4227,-8910
+United States,,,4228,-8374
+United States,,,4249,-8303
+United States,,,4250,-9640
+United States,,,4253,-9245
+United States,,,4258,-8786
+United States,,,4258,-8303
+United States,,,4264,-7132
+United States,,,4273,-8778
+United States,,,4276,-7147
+United States,,,4286,-10631
+United States,,,4287,-11245
+United States,,,4289,-7888
+United States,,,4289,-7130
+United States,,,4296,-8567
+United States,,,4299,-7146
+United States,,,4304,-8791
+United States,,,4316,-7761
+United States,,,4321,-7154
+United States,,,4330,-7098
+United States,,,4349,-11204
+United States,,,4355,-9673
+United States,,,4358,-11657
+United States,,,4361,-11639
+United States,,,4361,-7297
+United States,,,4366,-7025
+United States,,,4402,-9247
+United States,,,4406,-12311
+United States,,,4408,-10323
+United States,,,4409,-7022
+United States,,,4410,-7021
+United States,,,4419,-7250
+United States,,,4426,-7257
+United States,,,4429,-10550
+United States,,,4431,-9679
+United States,,,4447,-7322
+United States,,,4448,-7322
+United States,,,4452,-8802
+United States,,,4480,-6877
+United States,,,4482,-9331
+United States,,,4490,-9712
+United States,,,4494,-12304
+United States,,,4495,-9310
+United States,,,4547,-9848
+United States,,,4550,-12243
+United States,,,4552,-12299
+United States,,,4563,-12265
+United States,,,4579,-10850
+United States,,,4599,-11253
+United States,,,4678,-9210
+United States,,,4681,-10078
+United States,,,4687,-9690
+United States,,,4688,-9679
+United States,,,4725,-12244
+United States,,,4751,-11130
+United States,,,4761,-12220
+United States,,,4792,-9707
+United States,,,4823,-10130
+United States,,,5534,-13165
+United States,,,5705,-13533
+United States,,,5830,-13441
+United States,,,6122,-14989
+United States,,,6484,-14772
+United States,,,306200,-963400
+United States,,,336200,-838600
+United States,,,359300,-790600
+United States,,,389900,-769300
+United States,,,401100,-752100
+United States,,,406500,-741300
+United States,,,407100,-738700
+United States,,,417400,-1118400
+United States,,,418000,-722500
+United States,,,468400,-1170000
+United States,,Air Force,3883,-10482
+United States,,Akron,4108,-8152
+United States,,Alabama,3321,-8756
+United States,,Albuquerque State,3508,-10665
+United States,,Arizona State,3331,-11184
+United States,,Arkansas,3606,-9416
+United States,,Auburn,3261,-8548
+United States,,Berkeley,3777,-12242
+United States,,Boise State,4362,-11621
+United States,,Boston College,4236,-7106
+United States,,Bozeman State,4568,-11105
+United States,,Charlottesville,3803,-7848
+United States,,Colorado State,4059,-10508
+United States,,Connecticut,4176,-7268
+United States,,Dallas State,3278,-9680
+United States,,Dayton,3910,-8451
+United States,,Durham,3599,-7890
+United States,,Ebony,4182,-7142
+United States,,Edina, MN,4497,-9326
+United States,,Florida,2967,-8234
+United States,,Georgia,3375,-8439
+United States,,Hale,4131,-7292
+United States,,Honolulu,2131,-15786
+United States,,Indiana,3977,-8615
+United States,,JSU,4076,-11189
+United States,,Kansas,3911,-9463
+United States,,Karvard,4237,-7110
+United States,,Kentucky,3803,-8450
+United States,,Keystone,3995,-7516
+United States,,Klawos,4073,-7417
+United States,,Lansing State,4233,-8305
+United States,,Laramie,4131,-10559
+United States,,Lincoln,4081,-9668
+United States,,Little Rock,3474,-9227
+United States,,Louisiana State,3022,-9201
+United States,,Louisville,3825,-8576
+United States,,Lubbock Tech,3358,-10188
+United States,,Madison,4307,-8938
+United States,,Malibu,3537,-11902
+United States,,Maryland,3929,-7661
+United States,,Miami (OH),3998,-8299
+United States,,Missoula,4687,-11401
+United States,,Muncie State,3797,-8756
+United States,,Navy,3272,-11716
+United States,,Nevada Reno,3953,-11981
+United States,,North Carolina,3578,-7864
+United States,,North Las Vegas,3617,-11514
+United States,,Ogden State,4122,-11197
+United States,,Oklahoma,3547,-9752
+United States,,Ole Ford,3437,-8952
+United States,,Omaha,4126,-9601
+United States,,Portland State,4552,-12268
+United States,,Preston,4035,-7466
+United States,,Pullman State,4673,-11716
+United States,,Rhode Island,4181,-7135
+United States,,San Joaquin State,3675,-11977
+United States,,San Jose State,3734,-12189
+United States,,Silicon Valley,3384,-11791
+United States,,Southern California,3405,-11824
+United States,,Spokane,4766,-11743
+United States,,St. Joes,4068,-7394
+United States,,Syracuse,4305,-7615
+United States,,Tallahassee State,3044,-8428
+United States,,Tennessee,3616,-8678
+United States,,Texas A&M,3275,-9733
+United States,,Tulsa,3615,-9599
+United States,,UEO,2854,-8138
+United States,,Utah State,4057,-11186
+United States,,Villanova,4004,-7523
+United States,,Waco,3154,-9715
+United States,,Witchta State,3769,-9734
+United States,Florida,Miami,2576,-8019
+United States,Illinois,Chicago,4187,-8762
+United States,New York,New York,4071,-7401
+United States,Tennessee,Memphis,3515,-9005
+United States,Texas,Houston,2976,-9537
+United States,Washington,Seattle,4761,-12233
+Uruguay,,,-3448,-5784
+Uruguay,,,-3091,-5555
+Uzbekistan,,,4079,7234
