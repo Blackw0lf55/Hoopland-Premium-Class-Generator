@@ -353,11 +353,23 @@ window.__HOOPLAND_SAMPLE_HEADSHOT=function(image){
     return v[Math.floor(v.length/2)];
   };
   const colorOf=px=>px.length>=20?[median(px,0),median(px,1),median(px,2)]:null;
-  // Cheek and forehead area; drop very dark (eyes, brows, shadow) and near-white (glare, background) pixels.
-  const skinPixels=region(0.36,0.64,0.24,0.5).filter(p=>{
-    const l=(p[0]+p[1]+p[2])/3;
-    return l>35&&l<245&&p[0]>=p[2];
-  });
+  // Skin-chroma mask over the face area; use mid-brightness pixels so shadows and glare do not skew the tone.
+  const isSkin=p=>{
+    const cb=128-0.168736*p[0]-0.331264*p[1]+0.5*p[2];
+    const cr=128+0.5*p[0]-0.418688*p[1]-0.081312*p[2];
+    const l=0.299*p[0]+0.587*p[1]+0.114*p[2];
+    return l>40&&l<240&&cb>=75&&cb<=130&&cr>=132&&cr<=175&&p[0]>=p[2];
+  };
+  const lum=p=>0.299*p[0]+0.587*p[1]+0.114*p[2];
+  let skinPixels=region(0.25,0.75,0.08,0.6).filter(isSkin).sort((a,b)=>lum(a)-lum(b));
+  if(skinPixels.length>=60){
+    skinPixels=skinPixels.slice(Math.floor(skinPixels.length*0.35),Math.floor(skinPixels.length*0.8));
+  }else{
+    skinPixels=region(0.36,0.64,0.24,0.5).filter(p=>{
+      const l=(p[0]+p[1]+p[2])/3;
+      return l>35&&l<245&&p[0]>=p[2];
+    });
+  }
   const hairPixels=region(0.34,0.66,0.0,0.13).filter(p=>{
     const l=(p[0]+p[1]+p[2])/3;
     return l<235;
