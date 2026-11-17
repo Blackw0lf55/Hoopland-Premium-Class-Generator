@@ -2147,7 +2147,7 @@ html body #secAttr,html body #secPhys,html body #secAppear,html body #secGen,htm
 .hl-country.on{opacity:1;background:#1c60b7;box-shadow:0 -3px 0 var(--px-hi),0 3px 0 var(--px-hi),-3px 0 0 var(--px-hi),3px 0 0 var(--px-hi);}
 .hl-pager{height:min(52vh,430px);overflow:hidden;margin:0 6px;}
 .hl-list{display:flex;flex-direction:column;gap:6px;height:100%;}
-.hl-row{flex:1;min-height:0;display:grid;grid-template-columns:2.6em 1fr 2.6em 3.6em 2.2em;align-items:center;gap:6px;background:var(--px-fill-dark);padding:0 8px;font-size:.85rem;font-weight:700;animation:hlPageIn .3s steps(4) both;}
+.hl-row{flex:1;min-height:0;display:grid;grid-template-columns:2.6em 1fr 2.6em 2.2em;cursor:pointer;align-items:center;gap:6px;background:var(--px-fill-dark);padding:0 8px;font-size:.85rem;font-weight:700;animation:hlPageIn .3s steps(4) both;}
 .hl-row .n{font-family:"Press Start 2P",monospace;font-size:.5rem;}
 .hl-row .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .hl-pagebar{display:flex;justify-content:center;align-items:center;gap:20px;margin:14px 0 6px;font-family:"Press Start 2P",monospace;font-size:.65rem;}
@@ -2188,6 +2188,23 @@ html,body{overflow-x:hidden;}
 html body main > section,.hl-page,.hl-page.on,.hl-q,.hl-row,.hl-reveal{animation:none!important;}
 html body button{transition:none!important;}
 
+.hl-hint{text-align:center;font-size:.8rem;margin:-8px 6px 10px;opacity:.85;}
+.hl-modal{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;padding:8px;}
+.hl-modal.hidden{display:none;}
+.hl-modal-card{background:var(--px-fill-dark);color:#fff;width:min(520px,100%);max-height:100%;overflow:auto;padding:12px;box-shadow:0 -3px 0 var(--px-hi),0 3px 0 var(--px-hi),-3px 0 0 var(--px-hi),3px 0 0 var(--px-hi);}
+.hl-pv-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;}
+.hl-pv-head b{font-family:"Press Start 2P",monospace;font-size:.8rem;line-height:1.5;}
+.hl-pv-meta{font-size:.8rem;opacity:.85;margin-bottom:8px;}
+.hl-pv-art{width:min(210px,60vw);margin:0 auto 8px;background:linear-gradient(#2a5da8,#1b3f78);box-shadow:0 0 0 3px var(--px);}
+.hl-pv-art svg{display:block;width:100%;height:auto;shape-rendering:crispEdges;}
+.hl-pv-note{font-size:.75rem;text-align:center;margin-bottom:10px;line-height:1.4;}
+.hl-pv-note.warn{color:#ffd166;}
+.hl-pv-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.hl-pv-grid label{display:flex;flex-direction:column;gap:3px;font-size:.7rem;font-weight:900;text-transform:uppercase;min-width:0;}
+.hl-pv-grid select,.hl-pv-desc input{width:100%;min-width:0;font-size:.85rem;padding:6px;}
+.hl-pv-desc{display:flex;gap:6px;margin:10px 0;}
+.hl-pv-nav{display:flex;justify-content:space-between;gap:8px;margin-top:10px;}
+
 /* Scrolling logo background */
 #hlBg{position:fixed;inset:0;z-index:-1;overflow:hidden;pointer-events:none;display:flex;flex-direction:column;justify-content:space-around;transform:rotate(-8deg) scale(1.3);}
 #hlBg .row{display:flex;width:max-content;white-space:nowrap;animation:hlBgL 40s linear infinite;}
@@ -2221,7 +2238,7 @@ html{background-color:#06143a!important;}
 
 <section class="card setup-panel">
 
-  <div class="hl-screen-title">
+  <div class="hl-screen-title" id="hlScreenTitle">
     CREATE NEW CLASS
   </div>
 
@@ -2388,7 +2405,8 @@ html{background-color:#06143a!important;}
     <div class="hl-nav"><button type="button" class="secondary" data-back="2">◀ BACK</button><button type="button" class="primary" id="hlSubmit">SUBMIT CLASS</button></div>
   </div>
   <div class="hl-page" data-page="4">
-    <div class="hl-page-title" id="hlResultTitle">YOUR CLASS</div>
+    <div class="hl-page-title" id="hlResultTitle"></div>
+    <p class="hl-hint">Tap a player to see and adjust their Hoop Land look.</p>
     <div id="hlPager" class="hl-pager">
       <div class="hl-list" id="hlList"></div>
     </div>
@@ -2773,6 +2791,8 @@ html{background-color:#06143a!important;}
       const key=$("gender").value==="1"?"women":"men";
       applyRecommended(key!==physAppliedFor);
     }
+    const title=$("hlScreenTitle");
+    if(title)title.textContent=n===4?"CLASS PREVIEW":"CREATE NEW CLASS";
     return baseShowPage(n,back);
   };
 
@@ -5423,11 +5443,7 @@ function applyHeadshotSample(baseAppearance, sample) {
 
   const skinC = palette.skin;
   const hairOptions = [
-    ...new Set(
-      APPEARANCE_PALETTES.flatMap(candidate =>
-        Object.values(candidate.hair).flat()
-      )
-    )
+    ...new Set(Object.values(palette.palette.hair).flat())
   ];
   const hairC = Array.isArray(sample.hair)
     ? nearestColor(sample.hair, hairOptions)
@@ -5654,6 +5670,18 @@ function applyLookDescription(baseAppearance, text, gender) {
     }));
   }
   return result;
+}
+
+function appearanceSourceFor(sourcePlayer) {
+  if (!sourcePlayer) return "fictional";
+  const key = normalizeAppearancePlayerName(
+    [sourcePlayer.fn, sourcePlayer.ln].filter(Boolean).join(" ")
+  );
+  if (REAL_PLAYER_APPEARANCE_PROFILES[key]) return "profile";
+  if (REAL_PLAYER_DESCRIPTIONS[key]) return "manual";
+  if (sourcePlayer.lookText) return "ai";
+  if (sourcePlayer.headshotSample) return "photo";
+  return "none";
 }
 
   function generateRealPlayerAppearance(
@@ -8367,6 +8395,12 @@ else {
             )
           : {}
       ),
+
+    appearanceSource:
+      appearanceSourceFor(sourcePlayer),
+
+    lookText:
+      (sourcePlayer && sourcePlayer.lookText) || "",
 
     appearance:
   sourcePlayer
@@ -11475,13 +11509,18 @@ classSizePlus.addEventListener(
       const pos=(POS.find(x=>Number(x[0])===player.pos)||[0,"?"])[1];
       const row=document.createElement("div");
       row.className="hl-row";
-      row.innerHTML='<span class="n"></span><span class="nm"></span><span></span><span></span><span></span>';
+      row.innerHTML='<span class="n"></span><span class="nm"></span><span></span><span></span>';
       const cells=row.children;
       cells[0].textContent="#"+(page*size+i+1);
       cells[1].textContent=player.fn+" "+player.ln;
       cells[2].textContent=pos;
-      cells[3].textContent=Number(player.currentStars).toFixed(1)+"★";
-      cells[4].textContent=player.age;
+      cells[3].textContent=player.age;
+      row.tabIndex=0;
+      row.setAttribute("role","button");
+      const playerIndex=page*size+i;
+      const open=()=>window.hlOpenPreview(playerIndex);
+      row.addEventListener("click",open);
+      row.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();open();}});
       list.appendChild(row);
     });
     $("hlPageNum").textContent=(page+1)+"/"+pages;
@@ -11498,12 +11537,259 @@ classSizePlus.addEventListener(
     try{await generateClass();}finally{btn.disabled=false;}
     if(generated.length&&!$("status").classList.contains("error")){
       page=0;
-      $("hlResultTitle").textContent=($("className").value||"YOUR CLASS").toUpperCase();
+      const resultTitle=$("hlResultTitle");
+      resultTitle.textContent=($("className").value||"").toUpperCase();
+      resultTitle.style.display=resultTitle.textContent?"":"none";
       window.hlShowPage(4,false);
       drawList();
     }
   });
   $("hlDownload").addEventListener("click",()=>$("downloadHoopLand").click());
+})();
+</script>
+<div id="hlPreview" class="hl-modal hidden" role="dialog" aria-modal="true" aria-labelledby="hlPvName">
+  <div class="hl-modal-card">
+    <div class="hl-pv-head"><b id="hlPvName"></b><button type="button" class="secondary" id="hlPvClose" aria-label="Close">✕</button></div>
+    <div class="hl-pv-meta" id="hlPvMeta"></div>
+    <div class="hl-pv-art" id="hlPvArt"></div>
+    <div class="hl-pv-note" id="hlPvNote"></div>
+    <div class="hl-pv-grid">
+      <label>Skin<select id="hlPvSkin"></select></label>
+      <label>Hair color<select id="hlPvHairC"></select></label>
+      <label>Hair style<select id="hlPvHair"></select></label>
+      <label id="hlPvFHairWrap">Facial hair<select id="hlPvFHair"></select></label>
+      <label>Head accessory<select id="hlPvAcc"></select></label>
+    </div>
+    <div class="hl-pv-desc"><input id="hlPvDesc" type="text" placeholder="Or describe: dark 4 skin, afro, goggles"><button type="button" class="primary" id="hlPvApply">APPLY</button></div>
+    <div class="hl-pv-nav"><button type="button" class="secondary" id="hlPvPrev">◀ PREV</button><button type="button" class="secondary" id="hlPvNext">NEXT ▶</button></div>
+  </div>
+</div>
+<script>
+(function(){
+  const $=id=>document.getElementById(id);
+  const ns="http://www.w3.org/2000/svg";
+  const hex=c=>/^[0-9a-f]{6}$/i.test(String(c||""))?"#"+c:null;
+  const rect=(x,y,w,h,fill,extra="")=>`<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${fill}" ${extra}/>`;
+  let idx=0;
+
+  function hairParts(ref,color){
+    const back=[],front=[];
+    if(!ref)return{back:"",front:rect(20,12,24,8,color)};
+    const text=((ref.description||"")+" "+(ref.structure||"")).toLowerCase();
+    const vol={low:0,medium:1,high:2,"very-high":3}[ref.volume]??1;
+    const len=ref.length||"short";
+    const tex=ref.texture||"straight";
+    const bald=/bald|mostly exposed/.test(text);
+    const buzz=len==="very-short"||/buzz|shaved|close-crop/.test(text);
+    const top=Math.max(4,14-vol*2-(len==="long"?0:0));
+    if(bald)return{back:"",front:rect(20,20,2,4,color)+rect(42,20,2,4,color)};
+    const halo=(tex==="coiled"||/halo|fluffy|full-coils|large-curly/.test(text))&&vol>=2;
+    if(halo){
+      back.push(`<ellipse cx="32" cy="22" rx="${18+vol*2}" ry="${15+vol*2}" fill="${color}"/>`);
+      front.push(rect(21,15,22,4,color));
+      return{back:back.join(""),front:front.join("")};
+    }
+    if(/flat-top|flat top/.test(text))front.push(rect(20,6,24,13,color));
+    else if(/crest|mohawk|narrow-upright/.test(text))front.push(rect(27,4,10,15,color));
+    else if(buzz)front.push(rect(20,15,24,4,color));
+    else front.push(rect(19,top,26,19-top,color,'rx="3"'));
+    if(/sweep|fringe|side-part|combed|bob/.test(text))front.push(rect(20,18,14,4,color));
+    if(!/crest|mohawk/.test(text)){front.push(rect(20,19,2,6,color));front.push(rect(42,19,2,6,color));}
+    if(len==="medium"&&!buzz){back.push(rect(17,16,5,18,color));back.push(rect(42,16,5,18,color));}
+    if(len==="long"){back.push(rect(15,16,7,34,color));back.push(rect(42,16,7,34,color));}
+    if(/loc|braid|twist/.test(text)||tex==="loc-like"||tex==="braided"){
+      const to=len==="long"?44:len==="medium"?36:28;
+      for(const x of[17,21,25,35,39,43])back.push(rect(x,16,3,to-16,color));
+    }
+    if(/bun|knot/.test(text))back.push(`<circle cx="${/double|two/.test(text)?22:32}" cy="8" r="5" fill="${color}"/>`+(/double|two/.test(text)?`<circle cx="42" cy="8" r="5" fill="${color}"/>`:""));
+    if(/ponytail|tail/.test(text))back.push(rect(44,16,6,26,color));
+    return{back:back.join(""),front:front.join("")};
+  }
+
+  function facialSvg(id,color){
+    const ref=typeof getFacialHairReference==="function"?getFacialHairReference(id):null;
+    if(!ref||id===0)return"";
+    const t=ref.tags.join(" ");
+    const big=/large|long|dense|full/.test(t);
+    const out=[];
+    if(/beard|jaw|rounded|dense|cheek|broad/.test(t))out.push(rect(21,33,22,big?13:10,color,'rx="3"'));
+    else if(/goatee|chin|patch/.test(t))out.push(rect(29,41,6,big?5:3,color));
+    if(/mustache/.test(t))out.push(rect(26,35,12,2,color));
+    return out.join("");
+  }
+
+  function accessorySvg(id,color){
+    const ref=typeof getPrimaryAccessoryReference==="function"?getPrimaryAccessoryReference(id):null;
+    if(!ref||id===0)return"";
+    const t=ref.tags.join(" ");
+    const c=hex(color)||"#ffffff";
+    if(/goggles|eyewear|visor|eye-mask|eye-cover/.test(t)){
+      const wide=/wide|large|visor|mask/.test(t);
+      return rect(21,26,22,wide?7:5,"#111",'opacity=".9"')+rect(19,27,3,2,"#111")+rect(42,27,3,2,"#111")+rect(23,27,6,1,"#5b7fb8")+rect(35,27,6,1,"#5b7fb8");
+    }
+    if(/face-mask|lower-face/.test(t))return rect(22,33,20,10,"#e8eef7",'opacity=".95"');
+    if(/ear-guards/.test(t))return rect(16,26,4,8,c)+rect(44,26,4,8,c);
+    if(/cap|skullcap|head-covering/.test(t))return rect(19,8,26,11,c,'rx="3"');
+    if(/bandana|head-wrap/.test(t))return rect(19,12,26,8,c,'rx="2"')+rect(44,16,5,6,c);
+    const h=/wide/.test(t)?5:/medium/.test(t)?4:2;
+    return rect(19,17,26,h,c);
+  }
+
+  function renderArt(player){
+    const a=player.appearance;
+    const skin=hex(a.skinC)||"#c69479",skinD=hex(shadeColor(a.skinC,.88))||skin;
+    const hair=hex(a.hairC)||"#202020",brow=hex(a.browC)||hair,eye=hex(a.eyeC)||"#222";
+    const parts=hairParts(getHairReference(Number(a.hair)),hair);
+    const acc=(a.accessories&&a.accessories[0])||{};
+    const accId=acc.headAcc&&acc.headAcc!=="none"?Number(acc.headAcc):0;
+    const mouth=hex(shadeColor(a.skinC,.6))||"#733";
+    return `<svg viewBox="0 0 64 64" role="img" aria-label="Appearance mock-up">
+      ${parts.back}
+      ${rect(27,40,10,9,skinD)}
+      <polygon points="4,64 8,52 22,47 42,47 56,52 60,64" fill="#d93a3a"/>
+      <polygon points="26,47 38,47 32,54" fill="${skinD}"/>
+      ${rect(20,14,24,30,skin,'rx="4"')}
+      ${rect(18,27,2,6,skinD)}${rect(44,27,2,6,skinD)}
+      ${facialSvg(Number(a.fHair),hair)}
+      ${rect(28,39,8,1,mouth)}
+      ${rect(24,28,5,3,"#fff")}${rect(35,28,5,3,"#fff")}
+      ${rect(26,28,3,3,eye)}${rect(37,28,3,3,eye)}
+      ${rect(23,24,7,2,brow)}${rect(34,24,7,2,brow)}
+      ${parts.front}
+      ${accessorySvg(accId,acc.headAccC)}
+    </svg>`;
+  }
+
+  const lumOf=h=>.299*parseInt(h.slice(0,2),16)+.587*parseInt(h.slice(2,4),16)+.114*parseInt(h.slice(4,6),16);
+  const cap=w=>w[0].toUpperCase()+w.slice(1);
+  function fillSelect(sel,options,current){
+    sel.innerHTML="";
+    let found=false;
+    options.forEach(([value,label,swatch])=>{
+      const o=document.createElement("option");
+      o.value=value;o.textContent=label;
+      if(swatch){o.style.background="#"+swatch;o.style.color=lumOf(swatch)>120?"#000":"#fff";}
+      if(String(value).toUpperCase()===String(current).toUpperCase()){o.selected=true;found=true;}
+      sel.appendChild(o);
+    });
+    if(!found){
+      const o=document.createElement("option");
+      o.value=current;o.textContent="Current";o.selected=true;
+      sel.insertBefore(o,sel.firstChild);
+    }
+  }
+
+  function buildSelects(player){
+    const a=player.appearance;
+    const women=player.gender==="1";
+    const skins=APPEARANCE_PALETTES.flatMap(g=>g.skins.map((c,i)=>[c,cap(g.group)+" "+(i+1),c]));
+    fillSelect($("hlPvSkin"),skins,a.skinC);
+
+    const hairs=[];
+    ["blonde","brunette","red","black"].forEach(group=>{
+      const colors=[...new Set(APPEARANCE_PALETTES.flatMap(g=>g.hair[group]||[]))].sort((x,y)=>lumOf(y)-lumOf(x));
+      colors.forEach((c,i)=>hairs.push([c,cap(group)+" "+(i+1),c]));
+    });
+    fillSelect($("hlPvHairC"),hairs,a.hairC);
+
+    const other=new Set(women?MEN_HAIRS:WOMEN_HAIRS);
+    const styles=[];
+    for(let id=0;id<=170;id++){
+      const ref=getHairReference(id);
+      if(ref&&!other.has(id))styles.push([padStyle(id),"#"+id+" "+ref.description.replace(/\.$/,"").slice(0,46)]);
+    }
+    fillSelect($("hlPvHair"),styles,a.hair);
+
+    $("hlPvFHairWrap").style.display=women?"none":"";
+    const facial=[];
+    for(let id=0;id<=31;id++){
+      const ref=getFacialHairReference(id);
+      if(ref)facial.push([padStyle(id),"#"+id+" "+ref.description.replace(/\.$/,"").slice(0,44)]);
+    }
+    fillSelect($("hlPvFHair"),facial,a.fHair);
+
+    const accs=[];
+    for(let id=0;id<=25;id++){
+      const ref=getPrimaryAccessoryReference(id);
+      if(ref)accs.push([id===0?"none":padStyle(id),"#"+id+" "+ref.description.replace(/\.$/,"").slice(0,44)]);
+    }
+    const acc=a.accessories&&a.accessories[0]?a.accessories[0].headAcc:"none";
+    fillSelect($("hlPvAcc"),accs,acc||"none");
+  }
+
+  function noteFor(player){
+    const note=$("hlPvNote");
+    note.classList.remove("warn");
+    const src=player.appearanceSource;
+    let text="Mock-up approximation — the in-game look may differ slightly.";
+    if(src==="fictional")text="Fictional player — random look. "+text;
+    else if(src==="profile")text="Hand-built appearance profile. "+text;
+    else if(src==="manual")text="Built from a saved description. "+text;
+    else if(src==="ai")text='Built from the headshot description: "'+player.lookText+'". '+text;
+    else if(src==="photo")text="Colors were sampled from the headshot; hair style is a guess. Please check it. "+text;
+    else if(src==="none"){text="No headshot could be read, so this look is a random placeholder. Please adjust it below.";note.classList.add("warn");}
+    note.textContent=text;
+  }
+
+  function show(i){
+    if(!generated.length)return;
+    idx=(i+generated.length)%generated.length;
+    const p=generated[idx];
+    const pos=(POS.find(x=>Number(x[0])===p.pos)||[0,"?"])[1];
+    $("hlPvName").textContent=p.fn+" "+p.ln;
+    $("hlPvMeta").textContent=pos+" • "+Math.floor(p.ht/12)+"'"+p.ht%12+'" • '+p.wt+" lb • age "+p.age+" • "+p.ctry;
+    $("hlPvArt").innerHTML=renderArt(p);
+    $("hlPvDesc").value="";
+    buildSelects(p);
+    noteFor(p);
+  }
+
+  function relinkSkin(a,oldSkin,newSkin){
+    const re=/^[LR]_(Shoulder|Elbow|Wrist|Knee|Shin)$/;
+    a.accessories=(a.accessories||[]).map(set=>{
+      const next={...set};
+      Object.keys(next).forEach(k=>{
+        if(re.test(k)&&String(next[k]).toUpperCase()===String(oldSkin).toUpperCase())next[k]=newSkin;
+      });
+      return next;
+    });
+  }
+
+  function edit(change){
+    const p=generated[idx];
+    let a={...p.appearance};
+    change(a,p);
+    p.appearance=harmonizeFaceColors(a);
+    $("hlPvArt").innerHTML=renderArt(p);
+    buildSelects(p);
+  }
+
+  $("hlPvSkin").addEventListener("change",e=>edit(a=>{
+    const old=a.skinC;a.skinC=e.target.value;relinkSkin(a,old,a.skinC);
+    const group=APPEARANCE_PALETTES.find(g=>g.skins.includes(a.skinC));
+    if(group&&!group.eyes.includes(a.eyeC))a.eyeC=group.eyes[group.eyes.length-1];
+  }));
+  $("hlPvHairC").addEventListener("change",e=>edit(a=>{a.hairC=e.target.value;a.fHairC=e.target.value;a.browC=e.target.value;}));
+  $("hlPvHair").addEventListener("change",e=>edit(a=>{a.hair=e.target.value;}));
+  $("hlPvFHair").addEventListener("change",e=>edit(a=>{a.fHair=e.target.value;}));
+  $("hlPvAcc").addEventListener("change",e=>edit(a=>{
+    a.accessories=(a.accessories||[]).map(set=>({...set,headAcc:e.target.value}));
+  }));
+  $("hlPvApply").addEventListener("click",()=>{
+    const text=$("hlPvDesc").value.trim();
+    if(!text)return;
+    const p=generated[idx];
+    p.lookText=text;p.appearanceSource="manual";
+    p.appearance=harmonizeFaceColors(applyLookDescription(p.appearance,text,p.gender));
+    show(idx);
+  });
+  $("hlPvPrev").addEventListener("click",()=>show(idx-1));
+  $("hlPvNext").addEventListener("click",()=>show(idx+1));
+  const close=()=>$("hlPreview").classList.add("hidden");
+  $("hlPvClose").addEventListener("click",close);
+  $("hlPreview").addEventListener("click",e=>{if(e.target===$("hlPreview"))close();});
+  document.addEventListener("keydown",e=>{if(e.key==="Escape")close();});
+  window.hlOpenPreview=i=>{$("hlPreview").classList.remove("hidden");show(i);};
 })();
 </script>
 <div id="hlBg" aria-hidden="true"></div>

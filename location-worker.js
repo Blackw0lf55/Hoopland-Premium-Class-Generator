@@ -458,24 +458,30 @@ window.__HOOPLAND_PREPARE_REAL_PLAYERS=async function(players,gender){
     while(queue.length){
       const p=queue.shift();
       if(window.__HOOPLAND_REAL_HOMETOWN(p)&&hasProfile(p))continue;
+      let d=null;
       try{
         const q=new URLSearchParams({name:[p.fn,p.ln].filter(Boolean).join(" "),gender:gender==="1"?"women":"men",ctry:String(p.ctry||p.country||"")});
         const res=await fetch("/api/hometown?"+q);
-        const d=res.ok?await res.json():null;
-        if(!d&&p.headshot&&!hasProfile(p)){try{p.headshotSample=await sampleImage(p.headshot);}catch(e){}}
-        if(!d)continue;
-        if(d&&d.home&&!window.__HOOPLAND_REAL_HOMETOWN(p)){p.hometown=d.home;}
-        if(d&&Number.isFinite(d.x)&&Number.isFinite(d.y)){p.homeX=d.x;p.homeY=d.y;}
-        if(d&&d.countryName)p.homeCountry=d.countryName;
-        if(d&&!d.home)console.warn('Hometown lookup failed for',[p.fn,p.ln].join(' '),d.debug);
-        const shot=(d&&d.headshot)||p.headshot;
-        if(shot&&!hasProfile(p)){
-          try{p.headshotSample=await sampleImage(shot);}catch(e){console.warn('Headshot sampling failed for',[p.fn,p.ln].join(' '),e);}
-        }
-        if(shot&&!hasProfile(p)&&!hasManualLook(p)){
-          try{const r=await fetch("/api/describe?src="+encodeURIComponent(shot));const j=r.ok?await r.json():null;if(j&&j.ok&&j.text)p.lookText=j.text;}catch(e){}
-        }
+        d=res.ok?await res.json():null;
       }catch(e){}
+      if(d){
+        if(d.home&&!window.__HOOPLAND_REAL_HOMETOWN(p)){p.hometown=d.home;}
+        if(Number.isFinite(d.x)&&Number.isFinite(d.y)){p.homeX=d.x;p.homeY=d.y;}
+        if(d.countryName)p.homeCountry=d.countryName;
+        if(!d.home)console.warn('Hometown lookup failed for',[p.fn,p.ln].join(' '),d.debug);
+      }
+      const shots=[...new Set([d&&d.headshot,p.headshot].filter(Boolean))];
+      if(shots.length&&!hasProfile(p)){
+        for(const shot of shots){
+          try{p.headshotSample=await sampleImage(shot);}catch(e){console.warn('Headshot sampling failed for',[p.fn,p.ln].join(' '),e);}
+          if(p.headshotSample)break;
+        }
+        if(!hasManualLook(p)){
+          for(const shot of shots){
+            try{const r=await fetch("/api/describe?src="+encodeURIComponent(shot));const j=r.ok?await r.json():null;if(j&&j.ok&&j.text){p.lookText=j.text;break;}}catch(e){}
+          }
+        }
+      }
     }
   };
   await Promise.all(Array.from({length:Math.min(6,queue.length)},worker));
