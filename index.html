@@ -2380,6 +2380,7 @@ html{background-color:#06143a!important;}
   </div>
   <div class="hl-page" data-page="3">
     <div class="hl-page-title">STEP 4: PHYSICALS &amp; COUNTRIES</div>
+    <p id="hlPhysHint" class="section-note"></p>
     <div id="hlPhysSlot"></div>
     <div class="hl-q-label hl-sub">Countries</div>
     <div id="hlCountries" class="hl-countries"></div>
@@ -2748,6 +2749,32 @@ html{background-color:#06143a!important;}
     window.scrollTo({top:0});
   }
   window.hlShowPage=showPage;
+
+  const RECOMMENDED={
+    men:{minHt:66,maxHt:88,minWt:150,maxWt:285,text:"Men's recommended: 5'6\" to 7'4\", 150 to 285 lb"},
+    women:{minHt:62,maxHt:80,minWt:115,maxWt:225,text:"Women's recommended: 5'2\" to 6'8\", 115 to 225 lb"}
+  };
+  const physTouched={};
+  let physAppliedFor=null;
+  function applyRecommended(force){
+    const key=$("gender").value==="1"?"women":"men";
+    const rec=RECOMMENDED[key];
+    ["minHt","maxHt","minWt","maxWt"].forEach(id=>{
+      if(force||!physTouched[id]){$(id).value=rec[id];physTouched[id]=false;}
+    });
+    physAppliedFor=key;
+    const hint=$("hlPhysHint");
+    if(hint)hint.textContent=rec.text;
+  }
+  ["minHt","maxHt","minWt","maxWt"].forEach(id=>$(id).addEventListener("input",()=>{physTouched[id]=true;}));
+  const baseShowPage=showPage;
+  window.hlShowPage=function(n,back){
+    if(n===3){
+      const key=$("gender").value==="1"?"women":"men";
+      applyRecommended(key!==physAppliedFor);
+    }
+    return baseShowPage(n,back);
+  };
 
   $("hlToPage2").addEventListener("click",()=>{revealed=1;render();showPage(1,false);});
   $("hlBack").addEventListener("click",()=>showPage(0,true));
@@ -7461,8 +7488,8 @@ const height =
   sourceHeight !== null
     ? clamp(
         sourceHeight,
-        minimumHeight,
-        maximumHeight
+        numberValue("minHt", 63),
+        numberValue("maxHt", 80)
       )
     : randomInteger(
         minimumHeight,
