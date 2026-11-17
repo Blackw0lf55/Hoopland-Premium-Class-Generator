@@ -2200,8 +2200,11 @@ html body button{transition:none!important;}
 .hl-pv-note{font-size:.75rem;text-align:center;margin-bottom:10px;line-height:1.4;}
 .hl-pv-note.warn{color:#ffd166;}
 .hl-pv-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-.hl-pv-grid label{display:flex;flex-direction:column;gap:3px;font-size:.7rem;font-weight:900;text-transform:uppercase;min-width:0;}
-.hl-pv-grid select,.hl-pv-desc input{width:100%;min-width:0;font-size:.85rem;padding:6px;}
+.hl-pv-field{display:flex;flex-direction:column;gap:3px;font-size:.7rem;font-weight:900;text-transform:uppercase;min-width:0;}
+.hl-pv-choice{display:grid;grid-template-columns:38px minmax(0,1fr) 38px;align-items:stretch;min-height:44px;}
+.hl-pv-choice button{padding:4px;font-size:1rem;min-width:0;}
+.hl-pv-choice output{display:flex;align-items:center;justify-content:center;text-align:center;overflow-wrap:anywhere;padding:4px;background:#153b72;color:white;font-size:.68rem;line-height:1.15;}
+.hl-pv-desc input{width:100%;min-width:0;font-size:.85rem;padding:6px;}
 .hl-pv-desc{display:flex;gap:6px;margin:10px 0;}
 .hl-pv-nav{display:flex;justify-content:space-between;gap:8px;margin-top:10px;}
 
@@ -3368,7 +3371,7 @@ addHairReference(
   3,
   {
     description:
-      "Short smooth rounded cut with a full even crown.",
+      "Short full, rounded cap with a broad, nearly flat top and close sides.",
     tags: [
       "short",
       "smooth",
@@ -3425,7 +3428,7 @@ addHairReference(
   6,
   {
     description:
-      "Asymmetric tied style with a side ponytail or side-gathered section.",
+      "Smooth, close-fitting crown with a short ponytail tied high on one side.",
     tags: [
       "side-ponytail",
       "tied",
@@ -4255,8 +4258,8 @@ const HAIR_REFERENCE_DATA = [
   [67, "Very short rounded crop with minimal height.", "very-short", "straight", "close-rounded-crop", "low"],
   [68, "Very short narrow center strip with heavily exposed sides.", "very-short", "straight", "central-strip", "low"],
   [69, "Mostly bald head with a small dark patch concentrated near the top or rear.", "very-short", "straight", "sparse-top", "low"],
-  [70, "Braided or loc-like hair gathered into a high tied top section with hanging rear strands.", "long", "braided", "braided-top-knot", "high"],
-  [71, "Medium thick braided or loc-like hair with rounded coverage around the head.", "medium", "braided", "rounded-braids", "high"],
+  [70, "Long narrow locs gathered in a high top knot, with strands hanging behind the head.", "long", "braided", "braided-top-knot", "high"],
+  [71, "Medium center-parted braids with thick curved strands framing both sides of the head.", "medium", "braided", "rounded-braids", "high"],
 
 
   // PAGE 4 - IDs 72-95
@@ -4272,7 +4275,7 @@ const HAIR_REFERENCE_DATA = [
 
   [80, "Long smooth ponytail tied toward the rear with substantial hanging length.", "long", "straight", "long-ponytail", "medium"],
   [81, "Medium-to-long tied ponytail with a fuller raised crown.", "long", "straight", "raised-ponytail", "medium"],
-  [82, "Two large rounded side buns or puffs positioned toward the rear sides.", "medium", "textured", "double-buns", "high"],
+  [82, "Two large rounded puffs tied high on either side of the crown.", "medium", "textured", "double-buns", "high"],
   [83, "Very short smooth rounded crop with closely fitted sides.", "very-short", "straight", "smooth-close-crop", "low"],
   [84, "Very short plain close crop with an even low silhouette.", "very-short", "straight", "plain-close-crop", "low"],
   [85, "Short side-parted crop with gently raised front volume.", "short", "straight", "gentle-side-part", "medium"],
@@ -4326,7 +4329,7 @@ const HAIR_REFERENCE_DATA = [
   [122, "Medium fluffy textured style with an irregular rounded crown.", "medium", "textured", "fluffy-rounded", "high"],
   [123, "Medium curly or coiled side-oriented style with a narrow trailing side section.", "medium", "coiled", "curly-side-tail", "high"],
   [124, "Large full textured or coiled style with substantial width and height.", "medium", "coiled", "large-full-coils", "high"],
-  [125, "Hair pulled into a high compact bun with smooth close-fitting sides.", "long", "straight", "high-bun", "medium"],
+  [125, "Smooth hair pulled back tightly into a round bun high above the crown.", "long", "straight", "high-bun", "medium"],
   [126, "Medium smooth side-swept style with a long section trailing toward one rear side.", "medium", "straight", "side-swept-tail", "medium"],
   [127, "Long textured or braided hair falling down one side of the head.", "long", "braided", "long-side-braids", "medium"],
 
@@ -4376,7 +4379,7 @@ const HAIR_REFERENCE_DATA = [
   [164, "Medium dramatic textured spikes radiating outward around the crown.", "medium", "textured", "radiating-spikes", "high"],
   [165, "Medium swept spiked style with long points extending strongly toward one side.", "medium", "textured", "long-side-spikes", "high"],
   [166, "Medium angular side-swept style with a large pointed front section.", "medium", "straight", "angular-large-sweep", "high"],
-  [167, "Large rounded high-volume curly or coiled halo.", "medium", "coiled", "large-coiled-halo", "very-high"],
+  [167, "Very large rounded afro with a broad, dense coiled halo around the head.", "medium", "coiled", "large-coiled-halo", "very-high"],
 
 
   // PAGE 8 - IDs 168-170
@@ -4567,13 +4570,13 @@ addFacialHairReference(
 
 addFacialHairReference(
   3,
-  "Medium rounded beard covering the chin and lower jaw.",
+  "Rounded full beard around the mouth, chin, and lower jaw.",
   ["medium", "beard", "rounded"]
 );
 
 addFacialHairReference(
   4,
-  "Large full beard with broad chin and jaw coverage.",
+  "Long full beard with broad cheek and jaw coverage, extending below the chin.",
   ["full", "large", "beard"]
 );
 
@@ -11554,11 +11557,11 @@ classSizePlus.addEventListener(
     <div class="hl-pv-art" id="hlPvArt"></div>
     <div class="hl-pv-note" id="hlPvNote"></div>
     <div class="hl-pv-grid">
-      <label>Skin<select id="hlPvSkin"></select></label>
-      <label>Hair color<select id="hlPvHairC"></select></label>
-      <label>Hair style<select id="hlPvHair"></select></label>
-      <label id="hlPvFHairWrap">Facial hair<select id="hlPvFHair"></select></label>
-      <label>Head accessory<select id="hlPvAcc"></select></label>
+      <div class="hl-pv-field">Skin<div class="hl-pv-choice" data-field="skin"><button type="button" class="secondary" data-direction="-1" aria-label="Previous skin color">◀</button><output id="hlPvSkin" aria-live="polite"></output><button type="button" class="secondary" data-direction="1" aria-label="Next skin color">▶</button></div></div>
+      <div class="hl-pv-field">Hair color<div class="hl-pv-choice" data-field="hairColor"><button type="button" class="secondary" data-direction="-1" aria-label="Previous hair color">◀</button><output id="hlPvHairC" aria-live="polite"></output><button type="button" class="secondary" data-direction="1" aria-label="Next hair color">▶</button></div></div>
+      <div class="hl-pv-field">Hair style<div class="hl-pv-choice" data-field="hair"><button type="button" class="secondary" data-direction="-1" aria-label="Previous hair style">◀</button><output id="hlPvHair" aria-live="polite"></output><button type="button" class="secondary" data-direction="1" aria-label="Next hair style">▶</button></div></div>
+      <div class="hl-pv-field" id="hlPvFHairWrap">Facial hair<div class="hl-pv-choice" data-field="facial"><button type="button" class="secondary" data-direction="-1" aria-label="Previous facial hair">◀</button><output id="hlPvFHair" aria-live="polite"></output><button type="button" class="secondary" data-direction="1" aria-label="Next facial hair">▶</button></div></div>
+      <div class="hl-pv-field">Head accessory<div class="hl-pv-choice" data-field="accessory"><button type="button" class="secondary" data-direction="-1" aria-label="Previous head accessory">◀</button><output id="hlPvAcc" aria-live="polite"></output><button type="button" class="secondary" data-direction="1" aria-label="Next head accessory">▶</button></div></div>
     </div>
     <div class="hl-pv-desc"><input id="hlPvDesc" type="text" placeholder="Or describe: dark 4 skin, afro, goggles"><button type="button" class="primary" id="hlPvApply">APPLY</button></div>
     <div class="hl-pv-nav"><button type="button" class="secondary" id="hlPvPrev">◀ PREV</button><button type="button" class="secondary" id="hlPvNext">NEXT ▶</button></div>
@@ -11582,27 +11585,36 @@ classSizePlus.addEventListener(
     const bald=/bald|mostly exposed/.test(text);
     const buzz=len==="very-short"||/buzz|shaved|close-crop/.test(text);
     const top=Math.max(4,14-vol*2-(len==="long"?0:0));
-    if(bald)return{back:"",front:rect(20,20,2,4,color)+rect(42,20,2,4,color)};
+    if(ref.id===0)return{back:"",front:""};
+    if(bald){
+      if(/tail/.test(text))back.push(rect(15,25,5,21,color));
+      return{back:back.join(""),front:rect(19,22,3,7,color)+rect(42,22,3,7,color)};
+    }
     const halo=(tex==="coiled"||/halo|fluffy|full-coils|large-curly/.test(text))&&vol>=2;
     if(halo){
       back.push(`<ellipse cx="32" cy="22" rx="${18+vol*2}" ry="${15+vol*2}" fill="${color}"/>`);
-      front.push(rect(21,15,22,4,color));
+      for(const x of [15,20,25,30,35,40,45])front.push(rect(x,12+(x%3),4,4,color,'rx="2"'));
+      front.push(rect(21,15,22,4,color,'rx="2"'));
       return{back:back.join(""),front:front.join("")};
     }
-    if(/flat-top|flat top/.test(text))front.push(rect(20,6,24,13,color));
-    else if(/crest|mohawk|narrow-upright/.test(text))front.push(rect(27,4,10,15,color));
+    if(/flat-top|flat top/.test(text))front.push(rect(20,vol>=2?5:10,24,14,color));
+    else if(/crest|mohawk|narrow-upright/.test(text))front.push(`<path d="M27 19 L28 8 L32 3 L36 8 L37 19 Z" fill="${color}"/>`);
+    else if(/spik|pointed|upright/.test(text))front.push(`<path d="M19 19 L19 12 L22 14 L23 8 L26 12 L29 6 L32 11 L36 7 L38 12 L42 9 L45 19 Z" fill="${color}"/>`);
     else if(buzz)front.push(rect(20,15,24,4,color));
-    else front.push(rect(19,top,26,19-top,color,'rx="3"'));
-    if(/sweep|fringe|side-part|combed|bob/.test(text))front.push(rect(20,18,14,4,color));
+    else front.push(`<path d="M19 20 L19 15 Q20 ${top} 32 ${top} Q44 ${top} 45 15 L45 20 Z" fill="${color}"/>`);
+    if(/sweep|fringe|side-part|combed/.test(text))front.push(`<path d="M19 17 Q31 13 44 17 L44 20 Q33 20 24 24 L20 22 Z" fill="${color}"/>`);
     if(!/crest|mohawk/.test(text)){front.push(rect(20,19,2,6,color));front.push(rect(42,19,2,6,color));}
     if(len==="medium"&&!buzz){back.push(rect(17,16,5,18,color));back.push(rect(42,16,5,18,color));}
     if(len==="long"){back.push(rect(15,16,7,34,color));back.push(rect(42,16,7,34,color));}
     if(/loc|braid|twist/.test(text)||tex==="loc-like"||tex==="braided"){
       const to=len==="long"?44:len==="medium"?36:28;
       for(const x of[17,21,25,35,39,43])back.push(rect(x,16,3,to-16,color));
+      for(const x of [22,27,34,39])front.push(rect(x,top+3,3,len==="very-short"?5:10,color,'rx="1"'));
+      const shine=hex(shadeColor(color.slice(1),1.25))||color;
+      for(const x of [23,28,35,40])front.push(rect(x,top+4,1,4,shine));
     }
-    if(/bun|knot/.test(text))back.push(`<circle cx="${/double|two/.test(text)?22:32}" cy="8" r="5" fill="${color}"/>`+(/double|two/.test(text)?`<circle cx="42" cy="8" r="5" fill="${color}"/>`:""));
-    if(/ponytail|tail/.test(text))back.push(rect(44,16,6,26,color));
+    if(/bun|knot|puffs/.test(text))back.push(`<circle cx="${/double|two/.test(text)?20:32}" cy="8" r="6" fill="${color}"/>`+(/double|two/.test(text)?`<circle cx="44" cy="8" r="6" fill="${color}"/>`:""));
+    if(/ponytail|tail/.test(text))back.push(`<path d="M43 13 Q53 13 51 24 L48 42 L42 40 L44 23 Z" fill="${color}"/>`);
     return{back:back.join(""),front:front.join("")};
   }
 
@@ -11612,9 +11624,9 @@ classSizePlus.addEventListener(
     const t=ref.tags.join(" ");
     const big=/large|long|dense|full/.test(t);
     const out=[];
-    if(/beard|jaw|rounded|dense|cheek|broad/.test(t))out.push(rect(21,33,22,big?13:10,color,'rx="3"'));
-    else if(/goatee|chin|patch/.test(t))out.push(rect(29,41,6,big?5:3,color));
-    if(/mustache/.test(t))out.push(rect(26,35,12,2,color));
+    if(/beard|jaw|rounded|dense|cheek|broad/.test(t))out.push(`<path d="M21 33 L24 34 L24 38 Q32 42 40 38 L40 34 L43 33 L42 40 Q39 ${big?49:45} 32 ${big?49:45} Q25 ${big?49:45} 22 40 Z" fill="${color}"/>`);
+    else if(/goatee|chin|patch/.test(t))out.push(`<path d="M28 40 L36 40 L34 ${/long|pointed/.test(t)?49:44} L30 ${/long|pointed/.test(t)?49:44} Z" fill="${color}"/>`);
+    if(/mustache/.test(t))out.push(rect(26,35,12,2,color,'rx="1"'));
     return out.join("");
   }
 
@@ -11648,9 +11660,9 @@ classSizePlus.addEventListener(
       ${rect(27,40,10,9,skinD)}
       <polygon points="4,64 8,52 22,47 42,47 56,52 60,64" fill="#d93a3a"/>
       <polygon points="26,47 38,47 32,54" fill="${skinD}"/>
-      ${rect(20,14,24,30,skin,'rx="4"')}
+      <path d="M32 13 C24 13 20 18 20 25 L20 30 C20 38 25 44 32 46 C39 44 44 38 44 30 L44 25 C44 18 40 13 32 13 Z" fill="${skin}"/>
       ${rect(18,27,2,6,skinD)}${rect(44,27,2,6,skinD)}
-      ${facialSvg(Number(a.fHair),hair)}
+      ${facialSvg(Number(a.fHair),hex(a.fHairC)||hair)}
       ${rect(28,39,8,1,mouth)}
       ${rect(24,28,5,3,"#fff")}${rect(35,28,5,3,"#fff")}
       ${rect(26,28,3,3,eye)}${rect(37,28,3,3,eye)}
@@ -11662,59 +11674,62 @@ classSizePlus.addEventListener(
 
   const lumOf=h=>.299*parseInt(h.slice(0,2),16)+.587*parseInt(h.slice(2,4),16)+.114*parseInt(h.slice(4,6),16);
   const cap=w=>w[0].toUpperCase()+w.slice(1);
-  function fillSelect(sel,options,current){
-    sel.innerHTML="";
-    let found=false;
-    options.forEach(([value,label,swatch])=>{
-      const o=document.createElement("option");
-      o.value=value;o.textContent=label;
-      if(swatch){o.style.background="#"+swatch;o.style.color=lumOf(swatch)>120?"#000":"#fff";}
-      if(String(value).toUpperCase()===String(current).toUpperCase()){o.selected=true;found=true;}
-      sel.appendChild(o);
-    });
-    if(!found){
-      const o=document.createElement("option");
-      o.value=current;o.textContent="Current";o.selected=true;
-      sel.insertBefore(o,sel.firstChild);
+  let choices={};
+  function setChoice(field,output,options,current){
+    const matches=option=>String(option[3]||option[0]).toUpperCase()===String(current).toUpperCase();
+    if(!options.some(matches)){
+      options.unshift([current,"Current"]);
     }
+    choices[field]={options,current};
+    const option=options.find(matches);
+    const el=$(output);
+    el.textContent=option[1];
+    el.style.background=option[2]?"#"+option[2]:"";
+    el.style.color=option[2]&&lumOf(option[2])>120?"#000":"";
   }
 
-  function buildSelects(player){
+  function buildChoices(player){
     const a=player.appearance;
     const women=player.gender==="1";
     const skins=APPEARANCE_PALETTES.flatMap(g=>g.skins.map((c,i)=>[c,cap(g.group)+" "+(i+1),c]));
-    fillSelect($("hlPvSkin"),skins,a.skinC);
+    setChoice("skin","hlPvSkin",skins,a.skinC);
 
     const hairs=[];
+    const seenHairColors=new Set();
     ["blonde","brunette","red","black"].forEach(group=>{
       const colors=[...new Set(APPEARANCE_PALETTES.flatMap(g=>g.hair[group]||[]))].sort((x,y)=>lumOf(y)-lumOf(x));
-      colors.forEach((c,i)=>hairs.push([c,cap(group)+" "+(i+1),c]));
+      colors.forEach((c,i)=>{
+        const skinL=lumOf(a.skinC),hairL=lumOf(c);
+        const value=Math.abs(hairL-skinL)<22&&skinL<130
+          ?shadeColor(c,Math.max(.35,Math.min(1,(skinL-24)/Math.max(hairL,1))))
+          :c;
+        if(!seenHairColors.has(value)){hairs.push([c,cap(group)+" "+(i+1),value,value]);seenHairColors.add(value);}
+      });
     });
-    fillSelect($("hlPvHairC"),hairs,a.hairC);
+    setChoice("hairColor","hlPvHairC",hairs,a.hairC);
 
-    const other=new Set(women?MEN_HAIRS:WOMEN_HAIRS);
     const styles=[];
     for(let id=0;id<=170;id++){
       const ref=getHairReference(id);
-      if(ref&&!other.has(id))styles.push([padStyle(id),"#"+id+" "+ref.description.replace(/\.$/,"").slice(0,46)]);
+      if(ref)styles.push([padStyle(id),"#"+id+" "+ref.description.replace(/\.$/,"")]);
     }
-    fillSelect($("hlPvHair"),styles,a.hair);
+    setChoice("hair","hlPvHair",styles,a.hair);
 
     $("hlPvFHairWrap").style.display=women?"none":"";
     const facial=[];
     for(let id=0;id<=31;id++){
       const ref=getFacialHairReference(id);
-      if(ref)facial.push([padStyle(id),"#"+id+" "+ref.description.replace(/\.$/,"").slice(0,44)]);
+      if(ref)facial.push([padStyle(id),"#"+id+" "+ref.description.replace(/\.$/,"")]);
     }
-    fillSelect($("hlPvFHair"),facial,a.fHair);
+    setChoice("facial","hlPvFHair",facial,a.fHair);
 
     const accs=[];
     for(let id=0;id<=25;id++){
       const ref=getPrimaryAccessoryReference(id);
-      if(ref)accs.push([id===0?"none":padStyle(id),"#"+id+" "+ref.description.replace(/\.$/,"").slice(0,44)]);
+      if(ref)accs.push([id===0?"none":padStyle(id),"#"+id+" "+ref.description.replace(/\.$/,"")]);
     }
     const acc=a.accessories&&a.accessories[0]?a.accessories[0].headAcc:"none";
-    fillSelect($("hlPvAcc"),accs,acc||"none");
+    setChoice("accessory","hlPvAcc",accs,acc||"none");
   }
 
   function noteFor(player){
@@ -11740,7 +11755,7 @@ classSizePlus.addEventListener(
     $("hlPvMeta").textContent=pos+" • "+Math.floor(p.ht/12)+"'"+p.ht%12+'" • '+p.wt+" lb • age "+p.age+" • "+p.ctry;
     $("hlPvArt").innerHTML=renderArt(p);
     $("hlPvDesc").value="";
-    buildSelects(p);
+    buildChoices(p);
     noteFor(p);
   }
 
@@ -11755,25 +11770,30 @@ classSizePlus.addEventListener(
     });
   }
 
-  function edit(change){
+  function edit(change,colorsChanged){
     const p=generated[idx];
     let a={...p.appearance};
     change(a,p);
-    p.appearance=harmonizeFaceColors(a);
+    p.appearance=colorsChanged?harmonizeFaceColors(a):a;
     $("hlPvArt").innerHTML=renderArt(p);
-    buildSelects(p);
+    buildChoices(p);
   }
 
-  $("hlPvSkin").addEventListener("change",e=>edit(a=>{
-    const old=a.skinC;a.skinC=e.target.value;relinkSkin(a,old,a.skinC);
-    const group=APPEARANCE_PALETTES.find(g=>g.skins.includes(a.skinC));
-    if(group&&!group.eyes.includes(a.eyeC))a.eyeC=group.eyes[group.eyes.length-1];
-  }));
-  $("hlPvHairC").addEventListener("change",e=>edit(a=>{a.hairC=e.target.value;a.fHairC=e.target.value;a.browC=e.target.value;}));
-  $("hlPvHair").addEventListener("change",e=>edit(a=>{a.hair=e.target.value;}));
-  $("hlPvFHair").addEventListener("change",e=>edit(a=>{a.fHair=e.target.value;}));
-  $("hlPvAcc").addEventListener("change",e=>edit(a=>{
-    a.accessories=(a.accessories||[]).map(set=>({...set,headAcc:e.target.value}));
+  document.querySelectorAll(".hl-pv-choice button").forEach(button=>button.addEventListener("click",()=>{
+    const field=button.parentElement.dataset.field;
+    const {options,current}=choices[field];
+    const index=options.findIndex(option=>String(option[3]||option[0]).toUpperCase()===String(current).toUpperCase());
+    const value=options[(index+Number(button.dataset.direction)+options.length)%options.length][0];
+    edit(a=>{
+      if(field==="skin"){
+        const old=a.skinC;a.skinC=value;relinkSkin(a,old,value);
+        const group=APPEARANCE_PALETTES.find(g=>g.skins.includes(value));
+        if(group&&!group.eyes.includes(a.eyeC))a.eyeC=group.eyes[group.eyes.length-1];
+      }else if(field==="hairColor"){a.hairC=value;a.fHairC=value;a.browC=value;}
+      else if(field==="hair")a.hair=value;
+      else if(field==="facial")a.fHair=value;
+      else if(field==="accessory")a.accessories=(a.accessories||[]).map(set=>({...set,headAcc:value}));
+    },field==="skin"||field==="hairColor");
   }));
   $("hlPvApply").addEventListener("click",()=>{
     const text=$("hlPvDesc").value.trim();
