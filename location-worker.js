@@ -1,5 +1,6 @@
 import existingWorker from "./worker.js";
 import { handleClassData } from "./class-sources.js";
+import { wikidataProfile } from "./enrich.js";
 
 function normalizeName(value) {
   return String(value || "")
@@ -165,10 +166,26 @@ async function geocode(city, state, countryCode) {
 async function resolveHometown(name, gender, countryHint) {
   const debug = [];
   const athlete = await findAthlete(name, gender, debug);
-  if (!athlete) return { debug };
+  const wikiFallback = async headshot => {
+    try {
+      const wiki = await wikidataProfile(name);
+      if (!wiki) return { headshot, debug };
+      return {
+        home: wiki.home || undefined,
+        headshot: headshot || wiki.headshot,
+        x: Number.isFinite(wiki.lat) ? Math.round(wiki.lat * 100) : undefined,
+        y: Number.isFinite(wiki.lon) ? Math.round(wiki.lon * 100) : undefined,
+        countryName: wiki.country === "United States of America" ? "United States" : undefined,
+        debug: ["wikidata"]
+      };
+    } catch (error) {
+      return { headshot, debug: debug.concat(String(error)) };
+    }
+  };
+  if (!athlete) return wikiFallback();
   const place = athlete.place;
   const headshot = athlete.headshot || undefined;
-  if (!place) return { headshot, debug };
+  if (!place) return wikiFallback(headshot);
 
   const rawCountry = String(place.country || place.countryAbbreviation || countryHint || "").trim();
   const countryCode = COUNTRY_CODES[rawCountry.toUpperCase()] ||
@@ -181,7 +198,10 @@ async function resolveHometown(name, gender, countryHint) {
 
   const home = [place.city, isUS ? stateName : rawCountry].filter(Boolean).join(", ");
   const point = await geocode(place.city, isUS ? stateName : "", countryCode);
-  if (!point) return { home, headshot, debug: ["geocode failed"] };
+  if (!point) {
+    const wiki = await wikiFallback(headshot);
+    return wiki.x !== undefined ? wiki : { home, headshot, debug: ["geocode failed"] };
+  }
 
   return {
     home,
@@ -215,7 +235,7 @@ async function handleHeadshot(request) {
   } catch (error) {
     return new Response("Bad request", { status: 400 });
   }
-  if (target.protocol !== "https:" || target.hostname !== "a.espncdn.com") {
+  if (target.protocol !== "https:" || !["a.espncdn.com", "commons.wikimedia.org", "upload.wikimedia.org"].includes(target.hostname)) {
     return new Response("Forbidden", { status: 403 });
   }
   const upstream = await fetch(target.toString());
