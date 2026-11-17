@@ -524,7 +524,7 @@ export default {
         return handleClassData(request);
       }
     }
-    if (pathname === "/api/bart") return handleBart(request);
+    if (pathname === "/api/bart") return handleBart(request, env);
     if (pathname === "/api/hometown") return handleHometown(request);
     if (pathname === "/api/headshot") return handleHeadshot(request);
     if (pathname === "/" || pathname === "/index.html") {
