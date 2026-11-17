@@ -2138,6 +2138,20 @@ html body .hl-arrow{padding:2px 12px!important;font-size:.8rem!important;margin:
 .hl-nav{display:flex;justify-content:space-between;gap:10px;margin-top:10px;}
 .hl-name{margin:0 6px 24px;}
 .hl-name label{display:block;margin-bottom:8px;font-weight:900;text-transform:uppercase;}
+
+html body #secAttr,html body #secPhys,html body #secAppear,html body #secGen,html body #secPreview{display:none!important;}
+.hl-sub{margin:14px 6px 8px;}
+.hl-countries{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:10px;margin:0 6px 16px;}
+.hl-country{background:var(--px-fill-dark);color:#fff;border:0;padding:8px 2px;text-align:center;cursor:pointer;font-family:"Press Start 2P",monospace;font-size:.5rem;line-height:1.6;box-shadow:0 -3px 0 var(--px),0 3px 0 var(--px),-3px 0 0 var(--px),3px 0 0 var(--px);opacity:.45;}
+.hl-country .fl{display:block;font-size:1.5rem;font-family:"Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif;}
+.hl-country.on{opacity:1;background:#1c60b7;box-shadow:0 -3px 0 var(--px-hi),0 3px 0 var(--px-hi),-3px 0 0 var(--px-hi),3px 0 0 var(--px-hi);}
+.hl-pager{height:min(52vh,430px);overflow:hidden;margin:0 6px;}
+.hl-list{display:flex;flex-direction:column;gap:6px;height:100%;}
+.hl-row{flex:1;min-height:0;display:grid;grid-template-columns:2.6em 1fr 2.6em 3.6em 2.2em;align-items:center;gap:6px;background:var(--px-fill-dark);padding:0 8px;font-size:.85rem;font-weight:700;animation:hlPageIn .3s steps(4) both;}
+.hl-row .n{font-family:"Press Start 2P",monospace;font-size:.5rem;}
+.hl-row .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.hl-pagebar{display:flex;justify-content:center;align-items:center;gap:20px;margin:14px 0 6px;font-family:"Press Start 2P",monospace;font-size:.65rem;}
+@media(min-width:700px){.hl-row{font-size:1rem;}}
 </style>
 </head>
 
@@ -2301,7 +2315,7 @@ html body .hl-arrow{padding:2px 12px!important;font-size:.8rem!important;margin:
   <div class="hl-page on" data-page="0">
     <div class="hl-page-title">STEP 1: NAME YOUR CLASS</div>
     <div class="hl-name" id="hlNameSlot"></div>
-    <div class="hl-nav"><span></span><button type="button" class="primary" id="hlToPage2">NEXT ▶</button></div>
+    <div class="hl-nav"><span></span><button type="button" class="primary" id="hlToPage2">START ▶</button></div>
   </div>
   <div class="hl-page" data-page="1">
     <div class="hl-page-title">STEP 2: CLASS SETTINGS</div>
@@ -2310,6 +2324,31 @@ html body .hl-arrow{padding:2px 12px!important;font-size:.8rem!important;margin:
       <button type="button" class="secondary" id="hlBack">◀ BACK</button>
       <button type="button" class="primary" id="hlNext">NEXT ▶</button>
     </div>
+  </div>
+  <div class="hl-page" data-page="2">
+    <div class="hl-page-title">STEP 3: ATTRIBUTE CONTROL</div>
+    <div id="hlAttrSlot"></div>
+    <div class="hl-nav"><button type="button" class="secondary" data-back="1">◀ BACK</button><button type="button" class="primary" data-go="3">CONTINUE ▶</button></div>
+  </div>
+  <div class="hl-page" data-page="3">
+    <div class="hl-page-title">STEP 4: PHYSICALS &amp; COUNTRIES</div>
+    <div id="hlPhysSlot"></div>
+    <div class="hl-q-label hl-sub">Countries</div>
+    <div id="hlCountries" class="hl-countries"></div>
+    <div id="hlStatusSlot"></div>
+    <div class="hl-nav"><button type="button" class="secondary" data-back="2">◀ BACK</button><button type="button" class="primary" id="hlSubmit">SUBMIT CLASS</button></div>
+  </div>
+  <div class="hl-page" data-page="4">
+    <div class="hl-page-title" id="hlResultTitle">YOUR CLASS</div>
+    <div id="hlPager" class="hl-pager">
+      <div class="hl-list" id="hlList"></div>
+    </div>
+    <div class="hl-pagebar">
+      <button type="button" class="secondary hl-arrow" id="hlPrev">◀</button>
+      <span id="hlPageNum">1/1</span>
+      <button type="button" class="secondary hl-arrow" id="hlNextPg">▶</button>
+    </div>
+    <div class="hl-nav"><button type="button" class="secondary" data-back="3">◀ BACK</button><button type="button" class="primary" id="hlDownload">DOWNLOAD CLASS</button></div>
   </div>
 </div>
 
@@ -2345,24 +2384,22 @@ html body .hl-arrow{padding:2px 12px!important;font-size:.8rem!important;margin:
   </div>
 </div>
   
-<section class="card">
+<section class="card" id="secAttr">
  <h2>Attribute Limits</h2>
 
   <p class="section-note">
-  Set maximum Actual and Potential limits for class generation. Potential cannot be lower than Actual. Speed, strength, and stamina are generated automatically.
+  Set maximum Actual and Potential limits for class generation. Potential cannot be lower than Actual.
 </p>
 
 
   <div id="attrGrid" class="grid attribute-limit-grid"></div>
 </section>
 
-<section class="card">
+<section class="card" id="secPhys">
   <h2>Physical Profile</h2>
 
   <p class="section-note">
     Height and weight are generated with position in mind.
-    Speed, strength, and stamina use the 8-20 scale and
-    do not count against the 144 core attribute points.
   </p>
 
   <div class="grid">
@@ -2413,14 +2450,10 @@ html body .hl-arrow{padding:2px 12px!important;font-size:.8rem!important;margin:
 
   </div>
 
-  <div class="notice">
-    SPD, STR, and STA will be generated automatically
-    from position, height, weight, and randomness.
-    Maximum speed will be intentionally rare.
-  </div>
+
 </section>
 
-<section class="card">
+<section class="card" id="secAppear">
   <h2>Appearance Framework</h2>
 
   <div class="grid">
@@ -2477,7 +2510,7 @@ html body .hl-arrow{padding:2px 12px!important;font-size:.8rem!important;margin:
   </p>
 </section>
 
-<section class="card">
+<section class="card" id="secGen">
   <h2>Generate</h2>
 
   <div class="actions">
@@ -2510,7 +2543,7 @@ html body .hl-arrow{padding:2px 12px!important;font-size:.8rem!important;margin:
 </section>
 
 
-<section class="card">
+<section class="card" id="secPreview">
   <h2>Class Preview</h2>
 
   <div
@@ -2659,20 +2692,28 @@ html body .hl-arrow{padding:2px 12px!important;font-size:.8rem!important;margin:
       page.classList.toggle("back",!!back);
     });
     if(window.hlPlayWipe)window.hlPlayWipe();
+    const stage=n<=1?0:n-1;
+    document.querySelectorAll("#wizardProgress .wizard-progress-item").forEach((item,i)=>{
+      item.classList.toggle("active",i===stage);
+      item.classList.toggle("complete",i<stage);
+    });
+    window.scrollTo({top:0});
   }
+  window.hlShowPage=showPage;
 
   $("hlToPage2").addEventListener("click",()=>{revealed=1;render();showPage(1,false);});
   $("hlBack").addEventListener("click",()=>showPage(0,true));
   next.addEventListener("click",()=>{
     if(revealed<order().length){revealed++;render();}
     else{
-      const target=$("wizardProgress")||document.querySelector("main > section:nth-of-type(2)");
-      if(target)target.scrollIntoView({behavior:"smooth"});
+      showPage(2,false);
     }
   });
   render();
 })();
 </script>
+
+
 
 
 
@@ -5888,9 +5929,7 @@ function buildInputs() {
   const attributeGrid =
     document.getElementById("attrGrid");
 
-  const defaults = {
-    DNK: [6, 8]
-  };
+  const defaults = {};
 
   const display =
     value =>
@@ -6057,7 +6096,7 @@ function renderBar(code) {
         potentialDefault
       ] =
         defaults[code] ||
-        [16, 20];
+        [20, 20];
 
       const card =
         document.createElement(
@@ -7396,7 +7435,9 @@ const height =
         sourcePlayer.country
       )
     : weightedChoice(
-        COUNTRIES
+        COUNTRIES.filter(
+          c => !window.ENABLED_COUNTRIES || window.ENABLED_COUNTRIES.has(c[0])
+        )
       );
 
 const gender =
@@ -10867,5 +10908,85 @@ classSizePlus.addEventListener(
 
 </script>
 
+
+<script>
+(function(){
+  const $=id=>document.getElementById(id);
+  $("hlAttrSlot").appendChild($("attrGrid"));
+  $("hlPhysSlot").appendChild($("secPhys").querySelector(".grid"));
+  $("hlStatusSlot").appendChild($("status"));
+  $("setupWizard").parentNode.insertBefore($("wizardProgress"),$("setupWizard"));
+
+  document.querySelectorAll("#setupWizard [data-back]").forEach(b=>
+    b.addEventListener("click",()=>window.hlShowPage(Number(b.dataset.back),true)));
+  document.querySelectorAll("#setupWizard [data-go]").forEach(b=>
+    b.addEventListener("click",()=>window.hlShowPage(Number(b.dataset.go),false)));
+
+  const flag=code=>{
+    const iso=code==="UK"?"GB":code;
+    return String.fromCodePoint(...[...iso].map(c=>127397+c.charCodeAt(0)));
+  };
+  window.ENABLED_COUNTRIES=new Set(COUNTRIES.map(c=>c[0]));
+  const box=$("hlCountries");
+  COUNTRIES.forEach(([code])=>{
+    const b=document.createElement("button");
+    b.type="button";
+    b.className="hl-country on";
+    b.innerHTML='<span class="fl">'+flag(code)+'</span>'+code;
+    b.addEventListener("click",()=>{
+      const set=window.ENABLED_COUNTRIES;
+      if(set.has(code)){
+        if(set.size===1)return;
+        set.delete(code);
+      }
+      else set.add(code);
+      b.classList.toggle("on",set.has(code));
+    });
+    box.appendChild(b);
+  });
+
+  let page=0;
+  const perPage=()=>window.innerWidth>=700?10:8;
+  function drawList(){
+    const size=perPage();
+    const pages=Math.max(1,Math.ceil(generated.length/size));
+    page=Math.min(Math.max(page,0),pages-1);
+    const list=$("hlList");
+    list.innerHTML="";
+    generated.slice(page*size,page*size+size).forEach((player,i)=>{
+      const pos=(POS.find(x=>Number(x[0])===player.pos)||[0,"?"])[1];
+      const row=document.createElement("div");
+      row.className="hl-row";
+      row.innerHTML='<span class="n"></span><span class="nm"></span><span></span><span></span><span></span>';
+      const cells=row.children;
+      cells[0].textContent="#"+(page*size+i+1);
+      cells[1].textContent=player.fn+" "+player.ln;
+      cells[2].textContent=pos;
+      cells[3].textContent=Number(player.currentStars).toFixed(1)+"★";
+      cells[4].textContent=player.age;
+      list.appendChild(row);
+    });
+    $("hlPageNum").textContent=(page+1)+"/"+pages;
+    $("hlPrev").disabled=page===0;
+    $("hlNextPg").disabled=page>=pages-1;
+  }
+  $("hlPrev").addEventListener("click",()=>{page--;drawList();});
+  $("hlNextPg").addEventListener("click",()=>{page++;drawList();});
+  window.addEventListener("resize",()=>{if(generated.length)drawList();});
+
+  $("hlSubmit").addEventListener("click",async()=>{
+    const btn=$("hlSubmit");
+    btn.disabled=true;
+    try{await generateClass();}finally{btn.disabled=false;}
+    if(generated.length&&!$("status").classList.contains("error")){
+      page=0;
+      $("hlResultTitle").textContent=($("className").value||"YOUR CLASS").toUpperCase();
+      drawList();
+      window.hlShowPage(4,false);
+    }
+  });
+  $("hlDownload").addEventListener("click",()=>$("downloadHoopLand").click());
+})();
+</script>
 </body>
 </html>
