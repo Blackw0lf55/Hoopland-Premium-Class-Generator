@@ -228,6 +228,55 @@ async function handleHometown(request) {
   return Response.json(result, { headers: { "cache-control": "public, max-age=86400" } });
 }
 
+const HEADSHOT_HOSTS = ["a.espncdn.com", "cdn.nba.com", "commons.wikimedia.org", "upload.wikimedia.org"];
+const VISION_MODEL = "@cf/meta/llama-3.2-11b-vision-instruct";
+const VISION_PROMPT = "Describe only the visible appearance of the basketball player in this photo as one comma-separated line using these fields in order. Skin tone: one of very light, light, light-medium, medium, medium-brown, brown, dark-brown, very dark, followed by the word skin. Hair color: black, dark brown, brown, light brown, red, dark blonde, blonde or gray, followed by the word hair. Hairstyle: choose from bald, buzz cut, fade, short curls, afro, braids, locs, twists, ponytail, bun, comb over, flat top, long hair, short hair, medium hair. Facial hair: clean shaven, stubble, goatee, mustache, short beard, full beard or long beard. Head accessory: none, headband, wide headband, goggles, glasses, bandana, visor or cap. Output only the line, no extra words.";
+
+async function runVision(env, dataUrl) {
+  const input = { messages: [{ role: "user", content: [{ type: "text", text: VISION_PROMPT }, { type: "image_url", image_url: { url: dataUrl } }] }], max_tokens: 80 };
+  try {
+    return await env.AI.run(VISION_MODEL, input);
+  } catch (error) {
+    if (!/5016|agree|license/i.test(String(error && error.message))) throw error;
+    await env.AI.run(VISION_MODEL, { prompt: "agree" });
+    return await env.AI.run(VISION_MODEL, input);
+  }
+}
+
+async function handleDescribe(request, env, ctx) {
+  const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
+  if (!env.AI) return json({ ok: false, error: "AI binding missing" });
+  const source = new URL(request.url).searchParams.get("src") || "";
+  let target;
+  try {
+    target = new URL(source);
+  } catch (error) {
+    return json({ ok: false, error: "bad src" }, 400);
+  }
+  if (target.protocol !== "https:" || !HEADSHOT_HOSTS.includes(target.hostname)) return json({ ok: false, error: "forbidden" }, 403);
+  const cache = caches.default;
+  const cacheKey = new Request("https://describe.local/?src=" + encodeURIComponent(target.toString()));
+  const cached = await cache.match(cacheKey);
+  if (cached) return cached;
+  try {
+    const image = await fetch(target.toString());
+    if (!image.ok) return json({ ok: false, error: "image " + image.status });
+    const bytes = new Uint8Array(await image.arrayBuffer());
+    if (bytes.length > 1500000) return json({ ok: false, error: "image too large" });
+    let binary = "";
+    for (let i = 0; i < bytes.length; i += 8192) binary += String.fromCharCode.apply(null, bytes.subarray(i, i + 8192));
+    const type = (image.headers.get("content-type") || "image/png").split(";")[0];
+    const result = await runVision(env, "data:" + type + ";base64," + btoa(binary));
+    const text = String((result && (result.response || result.description)) || "").toLowerCase().replace(/[^a-z, -]/g, " ").replace(/\s+/g, " ").trim().slice(0, 300);
+    if (!text) return json({ ok: false, error: "empty" });
+    const response = new Response(JSON.stringify({ ok: true, text }), { headers: { "content-type": "application/json", "cache-control": "public, max-age=2592000" } });
+    ctx.waitUntil(cache.put(cacheKey, response.clone()));
+    return response;
+  } catch (error) {
+    return json({ ok: false, error: String(error && error.message || error) });
+  }
+}
+
 async function handleHeadshot(request) {
   const source = new URL(request.url).searchParams.get("src") || "";
   let target;
@@ -236,7 +285,7 @@ async function handleHeadshot(request) {
   } catch (error) {
     return new Response("Bad request", { status: 400 });
   }
-  if (target.protocol !== "https:" || !["a.espncdn.com", "cdn.nba.com", "commons.wikimedia.org", "upload.wikimedia.org"].includes(target.hostname)) {
+  if (target.protocol !== "https:" || !HEADSHOT_HOSTS.includes(target.hostname)) {
     return new Response("Forbidden", { status: 403 });
   }
   const upstream = await fetch(target.toString());
@@ -404,6 +453,7 @@ window.__HOOPLAND_PREPARE_REAL_PLAYERS=async function(players,gender){
     ctx.drawImage(bitmap,0,0);
     return window.__HOOPLAND_SAMPLE_HEADSHOT(ctx.getImageData(0,0,canvas.width,canvas.height));
   };
+  const hasManualLook=p=>{try{return !!REAL_PLAYER_DESCRIPTIONS[normalizeAppearancePlayerName([p.fn,p.ln].filter(Boolean).join(" "))];}catch(e){return false;}};
   const worker=async()=>{
     while(queue.length){
       const p=queue.shift();
@@ -421,6 +471,9 @@ window.__HOOPLAND_PREPARE_REAL_PLAYERS=async function(players,gender){
         const shot=(d&&d.headshot)||p.headshot;
         if(shot&&!hasProfile(p)){
           try{p.headshotSample=await sampleImage(shot);}catch(e){console.warn('Headshot sampling failed for',[p.fn,p.ln].join(' '),e);}
+        }
+        if(shot&&!hasProfile(p)&&!hasManualLook(p)){
+          try{const r=await fetch("/api/describe?src="+encodeURIComponent(shot));const j=r.ok?await r.json():null;if(j&&j.ok&&j.text)p.lookText=j.text;}catch(e){}
         }
       }catch(e){}
     }
@@ -527,6 +580,7 @@ export default {
     if (pathname === "/api/stats") return handleStats(request, env);
     if (pathname === "/api/hometown") return handleHometown(request);
     if (pathname === "/api/headshot") return handleHeadshot(request);
+    if (pathname === "/api/describe") return handleDescribe(request, env, context);
     if (pathname === "/" || pathname === "/index.html") {
       return addLocationAssignment(request, env);
     }
