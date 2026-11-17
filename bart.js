@@ -184,6 +184,31 @@ function parseSeason(html) {
   return rows;
 }
 
+const BART_HEADERS = { "User-Agent": "Mozilla/5.0 (compatible; HooplandClassGenerator/1.0)" };
+
+async function fetchBartHtml(url) {
+  let response = await fetch(url, { headers: BART_HEADERS });
+  let html = await response.text();
+
+  // Barttorvik serves a browser-check form; posting it back returns the real page.
+  if (html.includes("js_test_submitted")) {
+    const cookie = (response.headers.get("set-cookie") || "").split(";")[0];
+
+    response = await fetch(url, {
+      method: "POST",
+      headers: {
+        ...BART_HEADERS,
+        "Content-Type": "application/x-www-form-urlencoded",
+        ...(cookie ? { Cookie: cookie } : {})
+      },
+      body: "js_test_submitted=1"
+    });
+    html = await response.text();
+  }
+
+  return { response, html };
+}
+
 function seasonUrl(year) {
   return (
     "https://barttorvik.com/playerstat.php?link=y&showfull=1" +
@@ -239,15 +264,13 @@ async function loadSeason(year) {
   const ttl = year >= current ? 60 * 60 * 12 : 60 * 60 * 24 * 30;
 
   return cached(`season/${year}`, ttl, async () => {
-    const response = await fetch(seasonUrl(year), {
-      headers: { "User-Agent": "Mozilla/5.0 (compatible; HooplandClassGenerator/1.0)" }
-    });
+    const { response, html } = await fetchBartHtml(seasonUrl(year));
 
     if (!response.ok) {
       return null;
     }
 
-    const rows = parseSeason(await response.text());
+    const rows = parseSeason(html);
 
     return rows.length ? rows : null;
   });
@@ -433,10 +456,7 @@ export async function handleBart(request) {
 
   try {
     if (url.searchParams.get("debug")) {
-      const response = await fetch(seasonUrl(year), {
-        headers: { "User-Agent": "Mozilla/5.0 (compatible; HooplandClassGenerator/1.0)" }
-      });
-      const html = await response.text();
+      const { response, html } = await fetchBartHtml(seasonUrl(year));
       const rows = parseSeason(html);
       const profiles = await bartProfiles(year, names);
 
