@@ -2232,17 +2232,10 @@ html body .hl-reveal{
   style="display:none;">
 
   <label for="draftYear">
-    Draft Year
+    Class Year
   </label>
 
-  <select id="draftYear">
-    <option
-      value="2026"
-      selected
-    >
-      2026
-    </option>
-  </select>
+  <select id="draftYear"></select>
 
 </div>
 
@@ -7785,10 +7778,7 @@ async function generateClass() {
     let realPlayers = [];
 
 
-    if (
-      mode === "real" &&
-      classType === "draft"
-    ) {
+    if (mode === "real") {
 
       const draftYear =
         document.getElementById(
@@ -7797,7 +7787,7 @@ async function generateClass() {
 
 
       setStatus(
-        `Loading ${draftYear} real draft prospects...`,
+        `Loading ${draftYear} real ${classType === "freshman" ? "freshman recruits" : "draft prospects"}...`,
         "ok"
       );
 
@@ -7811,7 +7801,7 @@ async function generateClass() {
       const apiUrl =
         `${CLASS_DATA_API}` +
         `?gender=${encodeURIComponent(genderParam)}` +
-        `&type=draft` +
+        `&type=${encodeURIComponent(classType)}` +
         `&year=${encodeURIComponent(draftYear)}`;
 
 
@@ -7876,10 +7866,7 @@ async function generateClass() {
     renderClass();
 
 
-    if (
-      mode === "real" &&
-      classType === "draft"
-    ) {
+    if (mode === "real") {
 
       const fictionalCount =
         classSize -
@@ -10562,6 +10549,7 @@ function downloadHoopLand() {
 
 
 function syncClassDefaults(){
+  populateClassYears();
   const freshman=document.getElementById("classType").value==="freshman";
   const women=document.getElementById("gender").value==="1";
   document.getElementById("classSize").value=freshman?300:(women?60:70);
@@ -10570,6 +10558,7 @@ function syncClassDefaults(){
 
 document.getElementById("classType").addEventListener("change",syncClassDefaults);
 document.getElementById("gender").addEventListener("change",syncClassDefaults);
+populateClassYears();
 
 document
   .getElementById(
@@ -10599,6 +10588,30 @@ document
     "click",
     downloadHoopLand
   );
+
+function populateClassYears() {
+
+  const select = document.getElementById("draftYear");
+  const freshman = document.getElementById("classType").value === "freshman";
+  const current = select.value || "2026";
+  const latest = freshman ? 2030 : 2026;
+  const earliest = freshman ? 2007 : 1990;
+
+  select.innerHTML = "";
+
+  for (let year = latest; year >= earliest; year--) {
+
+    const option = document.createElement("option");
+
+    option.value = String(year);
+    option.textContent = String(year);
+    select.appendChild(option);
+  }
+
+  select.value = Number(current) >= earliest && Number(current) <= latest
+    ? current
+    : "2026";
+}
 
 function updatePlayerPoolUI() {
 
