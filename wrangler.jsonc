@@ -1,13 +1,13 @@
 {
   "name": "hoopland-premium-class-generator",
-  "main": "worker.js",
+  "main": "location-worker.js",
   "compatibility_date": "2026-11-13",
 
   "assets": {
     "directory": ".",
     "binding": "ASSETS",
     "run_worker_first": [
-      "/api/*"
+      "/*"
     ]
   },
 
