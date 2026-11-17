@@ -89,18 +89,43 @@ async function fetchJSON(url) {
   }
 }
 
-async function findBirthPlace(name, gender) {
+async function findBirthPlace(name, gender, debug) {
   const wanted = normalizeName(name);
   const leagues = ESPN_LEAGUES[gender] || ESPN_LEAGUES.men;
-  const search = await fetchJSON(
-    "https://site.web.api.espn.com/apis/common/v3/search?limit=10&type=player&sport=basketball&query=" +
-      encodeURIComponent(name)
-  );
-  const items = ((search && (search.items || search.results)) || [])
-    .flatMap(item => (item && item.contents ? item.contents : [item]))
-    .filter(item => item && item.id && normalizeName(item.displayName || item.name) === wanted);
+  const query = encodeURIComponent(name);
+  const searchURLs = [
+    "https://site.web.api.espn.com/apis/common/v3/search?limit=10&type=player&query=" + query,
+    "https://site.api.espn.com/apis/common/v3/search?limit=10&type=player&query=" + query,
+    "https://site.web.api.espn.com/apis/search/v2?limit=10&query=" + query
+  ];
 
-  const ids = [...new Set(items.map(item => String(item.id)))];
+  const found = [];
+  for (const url of searchURLs) {
+    const search = await fetchJSON(url);
+    if (!search) {
+      debug.push("search failed");
+      continue;
+    }
+    const flat = [];
+    const walk = node => {
+      if (Array.isArray(node)) node.forEach(walk);
+      else if (node && typeof node === "object") {
+        if (node.id && (node.displayName || node.name)) flat.push(node);
+        Object.values(node).forEach(value => {
+          if (value && typeof value === "object") walk(value);
+        });
+      }
+    };
+    walk(search);
+    flat
+      .filter(item => normalizeName(item.displayName || item.name) === wanted)
+      .filter(item => !item.sport || String(item.sport).toLowerCase().includes("basketball"))
+      .forEach(item => found.push(String(item.id)));
+    if (found.length) break;
+  }
+
+  const ids = [...new Set(found)];
+  if (!ids.length) debug.push("no ESPN match");
   for (const id of ids) {
     for (const league of leagues) {
       const data = await fetchJSON(
@@ -110,6 +135,7 @@ async function findBirthPlace(name, gender) {
       const place = athlete && athlete.birthPlace;
       if (place && place.city) return place;
     }
+    debug.push("no birthPlace for " + id);
   }
   return null;
 }
@@ -132,8 +158,9 @@ async function geocode(city, state, countryCode) {
 }
 
 async function resolveHometown(name, gender, countryHint) {
-  const place = await findBirthPlace(name, gender);
-  if (!place) return {};
+  const debug = [];
+  const place = await findBirthPlace(name, gender, debug);
+  if (!place) return { debug };
 
   const rawCountry = String(place.country || place.countryAbbreviation || countryHint || "").trim();
   const countryCode = COUNTRY_CODES[rawCountry.toUpperCase()] ||
@@ -146,7 +173,7 @@ async function resolveHometown(name, gender, countryHint) {
 
   const home = [place.city, isUS ? stateName : rawCountry].filter(Boolean).join(", ");
   const point = await geocode(place.city, isUS ? stateName : "", countryCode);
-  if (!point) return { home };
+  if (!point) return { home, debug: ["geocode failed"] };
 
   return {
     home,
@@ -271,6 +298,7 @@ window.__HOOPLAND_PREPARE_REAL_PLAYERS=async function(players,gender){
         if(d&&d.home){p.hometown=d.home;}
         if(d&&Number.isFinite(d.x)&&Number.isFinite(d.y)){p.homeX=d.x;p.homeY=d.y;}
         if(d&&d.countryName)p.homeCountry=d.countryName;
+        if(d&&!d.home)console.warn('Hometown lookup failed for',[p.fn,p.ln].join(' '),d.debug);
       }catch(e){}
     }
   };
@@ -316,7 +344,11 @@ window.__HOOPLAND_RESOLVE_LOCATION=function(player){
     return {home,loc:{x:matching[0].x,y:matching[0].y}};
   }
 
-  // Keep the true hometown; never substitute a random location for a real player.
+  // No hometown coordinates found: keep the name but use a valid same-country catalog point instead of 0,0.
+  if(candidates.length){
+    const fallback=candidates[Math.floor(Math.random()*candidates.length)];
+    return {home,loc:{x:fallback.x,y:fallback.y}};
+  }
   return {home,loc:{x:0,y:0}};
 };
 </script>`;
