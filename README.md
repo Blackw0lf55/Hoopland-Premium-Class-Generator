@@ -5,8 +5,12 @@ Real-player looks are estimates. When available, up to three distinct permitted
 photo URLs are compared; unknown or conflicting features are flagged in the
 player preview rather than treated as confirmed. Often only one photo is
 available. Saved descriptions override photo estimates for the features they
-specify, and preview edits are included in the exported class. Getty Images is
-not used as a photo source.
+specify, and preview edits are included in the exported class. A partial saved
+profile does not replace photo estimates for its unspecified features. Skin
+shade numbers in descriptions correspond to the editor's numbered palette;
+missing or conflicting photo evidence is flagged for review. Awa Fam's source
+name variations are normalized before matching. Getty Images is not used as a
+photo source.
 
 Ratings are estimates, not measured pro-level ability. Each of the 12 core
 attributes starts at 1 (export value 2), and added points use the export's

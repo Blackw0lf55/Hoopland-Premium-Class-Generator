@@ -49,6 +49,48 @@ test("user-provided skin tones override estimates without overwriting other feat
   }
 });
 
+test("skin descriptions use the exact numbered editor palette shade", () => {
+  for (const group of palette) {
+    group.skins.forEach((skin, index) => {
+      const description = `skin: ${group.group} ${index + 1}`;
+      assert.equal(apply(base(), description, "1").skinC, skin, description);
+      assert.match(merge([description]).text, new RegExp(description));
+    });
+  }
+  assert.equal(parse("skin: bronze 6").skinExact, undefined);
+  assert.equal(merge(["skin: bronze 6"]).text, "");
+});
+
+test("Awa Thiam is normalized to Awa Fam without altering other names", () => {
+  const nameFunctions = html.slice(html.indexOf("  function normalizeAppearancePlayerName("), html.indexOf("  function hairMatchScore("));
+  const canonicalize = vm.runInNewContext(`${nameFunctions}\ncanonicalizeRealPlayer`);
+  assert.deepEqual(plain(canonicalize({ fn: "Awa", ln: "Thiam" })), { fn: "Awa", ln: "Fam" });
+  assert.deepEqual(plain(canonicalize({ fn: "Awa", ln: "Fam Thiam" })), { fn: "Awa", ln: "Fam" });
+  assert.deepEqual(plain(canonicalize({ fn: "Awa", ln: "Fam" })), { fn: "Awa", ln: "Fam" });
+  assert.deepEqual(plain(canonicalize({ fn: "Other", ln: "Thiam" })), { fn: "Other", ln: "Thiam" });
+});
+
+test("a partial hair profile retains photo-derived skin and curated hair", () => {
+  const helpers = html.slice(html.indexOf("  function findBestHairReference("), html.indexOf("const REAL_PLAYER_DESCRIPTIONS ="));
+  const generate = html.slice(html.indexOf("  function generateRealPlayerAppearance("), html.indexOf("const MEN_FACIAL_HAIR="));
+  const nameFunctions = html.slice(html.indexOf("  function normalizeAppearancePlayerName("), html.indexOf("  function hairMatchScore("));
+  const fn = vm.runInContext(`
+    ${nameFunctions}
+    ${helpers}
+    const REAL_PLAYER_APPEARANCE_PROFILES={azzifudd:{hairId:125,hairC:"202020"}};
+    function generateAppearance(){return ${JSON.stringify(base())};}
+    function harmonizeFaceColors(a){return a;}
+    function getPrimaryAccessoryReference(){return null;}
+    ${generate}
+    generateRealPlayerAppearance
+  `, context);
+  const player = {fn:"Azzi",ln:"Fudd",lookText:"skin: dark 4; hairstyle: bald"};
+  const result = fn(player,"1");
+  assert.equal(result.skinC, palette.find(p => p.group === "dark").skins[3]);
+  assert.equal(result.hair,"0125");
+  assert.equal(result.accessories[0].L_Elbow,result.skinC);
+});
+
 test("explicit hair descriptions are not randomly discarded for dark skin or gender", () => {
   const look = apply(base(), "skin: dark 4; hair color: blonde 2; hairstyle: bald", "1");
   assert.equal(look.hair, "0000");
@@ -118,4 +160,35 @@ test("real-player preparation compares distinct photos and excludes disputed ski
   assert.doesNotMatch(player.lookText,/skin:/);
   assert.match(player.lookText,/hairstyle: high-bun/);
   assert.ok(player.appearanceWarnings.some(w=>w.includes("Photos disagree on skin")));
+});
+
+test("a partial appearance profile still fetches and applies photo descriptions", async () => {
+  const {default:worker} = await import("../location-worker.js");
+  const csv = fs.readFileSync(path.join(__dirname, "..", "data/location-catalog.csv"),"utf8");
+  const env = {ASSETS:{fetch:async r=>new URL(r.url).pathname.endsWith(".csv")?new Response(csv):new Response(html)}};
+  const transformed = await (await worker.fetch(new Request("https://example.test/"),env)).text();
+  const script=transformed.match(/<script>\nwindow\.__HOOPLAND_LOCATION_RECORDS[\s\S]*?<\/script>/)[0].slice(8,-9);
+  const c=vm.createContext({
+    window:{},URL,URLSearchParams,console:{warn(){}},
+    REAL_PLAYER_APPEARANCE_PROFILES:{azzifudd:{hairId:125}},
+    REAL_PLAYER_DESCRIPTIONS:{},
+    normalizeAppearancePlayerName:name=>name.toLowerCase().replace(/[^a-z0-9]/g,""),
+    mergeLookDescriptions:merge,parseLookDescription:parse,
+    document:{
+      getElementById:()=>({value:"freshman"}),
+      createElement:()=>({getContext:()=>({drawImage(){},getImageData:()=>({})})})
+    },
+    createImageBitmap:async()=>({width:100,height:100}),
+    fetch:async url=>{
+      if(String(url).startsWith("/api/hometown"))return Response.json({headshot:"https://a.espncdn.com/azzi.png"});
+      if(String(url).startsWith("/api/headshot"))return new Response("photo");
+      if(String(url).startsWith("/api/describe"))return Response.json({ok:true,text:"skin: dark 4; hairstyle: bald"});
+      throw new Error("Unexpected request "+url);
+    }
+  });
+  vm.runInContext(script,c);
+  c.window.__HOOPLAND_SAMPLE_HEADSHOT=()=>({skin:[48,29,21]});
+  const player={fn:"Azzi",ln:"Fudd"};
+  await c.window.__HOOPLAND_PREPARE_REAL_PLAYERS([player],"1");
+  assert.match(player.lookText,/skin: dark 4/);
 });

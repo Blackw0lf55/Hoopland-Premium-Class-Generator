@@ -5160,6 +5160,15 @@ const REAL_PLAYER_APPEARANCE_PROFILES = {};
 
 }
 
+function canonicalizeRealPlayer(player) {
+  const name = normalizeAppearancePlayerName([player.fn, player.ln].filter(Boolean).join(" "));
+  if (name === "awathiam" || name === "awafamthiam") {
+    player.fn = "Awa";
+    player.ln = "Fam";
+  }
+  return player;
+}
+
   function hairMatchScore(
   catalogEntry,
   requested
@@ -5503,8 +5512,10 @@ function parseLookDescription(text) {
 
   const skinField = t.match(/(?:^|;)\s*skin\s*:\s*([^;]+)/);
   const skinText = skinField ? skinField[1] : t.replace(/(?:hair color|hair colour)\s*:\s*[^;]+/g, "");
-  const exactSkin = skinText.match(/\b(light|medium|bronze|dark)\s*(?:skin\s*)?(?:tone\s*|shade\s*)?([1-5])\b/);
-  if (exactSkin) look.skinExact = { group: exactSkin[1], shade: +exactSkin[2] };
+  const exactSkin = skinText.match(/\b(light|medium|bronze|dark)\s*(?:skin\s*)?(?:tone\s*|shade\s*)?([1-6])\b/);
+  if (exactSkin && +exactSkin[2] <= APPEARANCE_PALETTES.find(group => group.group === exactSkin[1]).skins.length) {
+    look.skinExact = { group: exactSkin[1], shade: +exactSkin[2] };
+  }
   const colorField = t.match(/(?:^|;)\s*hair colou?r\s*:\s*([^;]+)/);
   const colorText = colorField ? colorField[1] : t;
   const exactHair = colorText.match(/\b(blonde|brunette|red|black)\s*(?:hair\s*)?(?:shade\s*)?([1-5])\b/);
@@ -5601,7 +5612,11 @@ function mergeLookDescriptions(texts) {
       if (!match) continue;
       const [, field, value] = match;
       const v = value.trim();
-      const valid = field === "skin" ? /^(light|medium|bronze|dark)\s+[1-5]$/.test(v)
+      const valid = field === "skin" ? (() => {
+        const match = v.match(/^(light|medium|bronze|dark)\s+([1-6])$/);
+        const group = match && APPEARANCE_PALETTES.find(item => item.group === match[1]);
+        return Boolean(group && Number(match[2]) <= group.skins.length);
+      })()
         : field === "hair color" ? /^(blonde|brunette|red|black)\s+[1-5]$/.test(v)
         : field === "hairstyle" ? allowedStyles.has(v)
         : field === "facial hair" ? /^(clean shaven|chin patch|mustache|goatee|short beard|full beard|long beard)$/.test(v)
@@ -5682,7 +5697,7 @@ function applyLookDescription(baseAppearance, text, gender) {
     const oldSkin = result.skinC;
     if (look.skinExact) {
       const exact = APPEARANCE_PALETTES.find(group => group.group === look.skinExact.group);
-      result.skinC = spread(exact.skins, look.skinExact.shade);
+      result.skinC = exact.skins[look.skinExact.shade - 1];
     } else {
       result.skinC = sortedSkins[Math.round(look.skin / 19 * (sortedSkins.length - 1))];
     }
@@ -5752,7 +5767,7 @@ function appearanceSourceFor(sourcePlayer) {
     structure so every required export field exists.
   */
 
-  const baseAppearance =
+  let baseAppearance =
     generateAppearance(
       gender
     );
@@ -5779,26 +5794,13 @@ function appearanceSourceFor(sourcePlayer) {
     ];
 
 
-  /*
-    A real prospect without a curated profile keeps
-    the compatible fallback appearance rather than
-    receiving an incomplete or invalid object.
-  */
+  baseAppearance = applyHeadshotSample(baseAppearance, sourcePlayer && sourcePlayer.headshotSample);
+  const lookText = (sourcePlayer && sourcePlayer.lookText) || "";
+  const manualText = REAL_PLAYER_DESCRIPTIONS[nameKey] || "";
+  if (lookText) baseAppearance = applyLookDescription(baseAppearance, lookText, gender);
+  if (manualText) baseAppearance = applyLookDescription(baseAppearance, manualText, gender);
 
-  if (!profile) {
-
-    const sampled = applyHeadshotSample(
-      baseAppearance,
-      sourcePlayer && sourcePlayer.headshotSample
-    );
-    const lookText = (sourcePlayer && sourcePlayer.lookText) || "";
-    const manualText = REAL_PLAYER_DESCRIPTIONS[nameKey] || "";
-    const described = lookText ? applyLookDescription(sampled, lookText, gender) : sampled;
-
-    return harmonizeFaceColors(
-      manualText ? applyLookDescription(described, manualText, gender) : described
-    );
-  }
+  if (!profile) return harmonizeFaceColors(baseAppearance);
 
 
   let hairId =
@@ -5939,7 +5941,7 @@ function appearanceSourceFor(sourcePlayer) {
       return next;
     });
 
-  return {
+  return harmonizeFaceColors({
     ...baseAppearance,
 
     skinC:
@@ -5972,7 +5974,7 @@ function appearanceSourceFor(sourcePlayer) {
 
     accessories:
       finalAccessories
-  };
+  });
   }
   
 const MEN_FACIAL_HAIR=
@@ -8516,6 +8518,7 @@ async function generateClass() {
         throw new Error("No real players were returned for this class. Try another year or class type.");
       }
 
+      data.players.forEach(canonicalizeRealPlayer);
 
       realPlayers =
         data.players.slice(
@@ -11853,7 +11856,7 @@ classSizePlus.addEventListener(
     const src=player.appearanceSource;
     let text="Mock-up approximation — the in-game look may differ.";
     if(src==="fictional")text="Fictional player — random look. "+text;
-    else if(src==="profile")text="Hand-built appearance profile. "+text;
+    else if(src==="profile")text="A saved profile supplies some features; others may be estimated or placeholders. "+text;
     else if(src==="manual")text="A saved description supplies some features; others may be estimated or placeholders. "+text;
     else if(src==="ai")text='Built from the headshot description: "'+player.lookText+'". '+text;
     else if(src==="photo")text="Colors were sampled from the headshot; hair style is a guess. Please check it. "+text;

@@ -11,7 +11,7 @@ test("vision endpoint sends the image in the documented field and invalidates ol
   try {
     global.fetch = async () => new Response(Uint8Array.from([1,2,3]), {headers:{"content-type":"image/png"}});
     global.caches = {default:{match:async request => {
-      assert.match(request.url, /version=2/);
+      assert.match(request.url, /version=3/);
       return null;
     }, put:async (...args) => {writes.push(args);}}};
     const env = {AI:{run:async (model,input) => {
@@ -28,6 +28,12 @@ test("vision endpoint sends the image in the documented field and invalidates ol
     assert.equal(calls[0].input.image,"data:image/png;base64,AQID");
     assert.equal(typeof calls[0].input.messages[0].content,"string");
     assert.match(calls[0].input.messages[0].content,/unknown/);
+    const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
+    const paletteCode = html.slice(html.indexOf("const APPEARANCE_PALETTES ="), html.indexOf("const MEN_HAIRS="));
+    const palette = vm.runInNewContext(`${paletteCode}\nAPPEARANCE_PALETTES`);
+    for (const group of palette) {
+      assert.ok(calls[0].input.messages[0].content.includes(`${group.group} 1-${group.skins.length}: ${group.skins.join(", ")}`));
+    }
     assert.equal(writes.length,1);
   } finally {
     global.fetch = previousFetch;
