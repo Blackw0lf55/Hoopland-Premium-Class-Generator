@@ -37,6 +37,13 @@ function readValidLocations(csv) {
     .filter(location => Number.isFinite(location.x) && Number.isFinite(location.y));
 }
 
+function setZeroPhysicalAttributes(html) {
+  return html
+    .replace(/(\bSTR\s*:\s*)\[\s*player\.physical\.STR\s*,\s*player\.physical\.STR\s*\]/, "$1[0, 0]")
+    .replace(/(\bSPD\s*:\s*)\[\s*player\.physical\.SPD\s*,\s*player\.physical\.SPD\s*\]/, "$1[0, 0]")
+    .replace(/(\bSTM\s*:\s*)\[\s*player\.physical\.STA\s*,\s*player\.physical\.STA\s*\]/, "$1[0, 0]");
+}
+
 async function addLocationAssignment(request, env) {
   const pageResponse = await env.ASSETS.fetch(request);
   if (!pageResponse.ok) return pageResponse;
@@ -52,14 +59,16 @@ async function addLocationAssignment(request, env) {
   const functionStart = html.indexOf("function makeHoopLandPlayer(");
   if (functionStart < 0) return pageResponse;
 
-  const locationPattern = /loc:\s*\{\s*x:\s*0,\s*y:\s*0\s*\}/;
   const functionTail = html.slice(functionStart);
+  const locationPattern = /loc:\s*\{\s*x:\s*0,\s*y:\s*0\s*\}/;
   if (!locationPattern.test(functionTail)) return pageResponse;
 
-  html = html.slice(0, functionStart) + functionTail.replace(
+  let transformedTail = functionTail.replace(
     locationPattern,
     "loc: window.__HOOPLAND_LOCATIONS[randomInteger(0, window.__HOOPLAND_LOCATIONS.length - 1)]"
   );
+  transformedTail = setZeroPhysicalAttributes(transformedTail);
+  html = html.slice(0, functionStart) + transformedTail;
 
   const locationDataScript =
     `<script>window.__HOOPLAND_LOCATIONS=${JSON.stringify(locations)};</script>`;
