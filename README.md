@@ -32,13 +32,37 @@ or an accurate appearance.
 
 Ratings are estimates, not measured pro-level ability. Each of the 12 core
 attributes starts at 1 (export value 2), and added points use the export's
-2–20 scale. Potential tiers of 2, 2.5, 3, 3.5, 4, 4.5 and 5 stars cap added
-points at 60, 74, 88, 102, 116, 130 and 144 respectively. Orange overall is
+2–20 scale. Potential tiers of 2.5, 3, 3.5, 4, 4.5 and 5 stars cap added
+points at 74, 88, 102, 116, 130 and 144 respectively. Orange overall is
 approximated at one half-star per 14 added points; growth is the potential cap
 minus current points. Tier names refer to potential, not guaranteed careers.
 
-For real draft picks, draft position provides a rough potential proxy; where
-college stats are available, a composite of era-relative shooting, passing,
+For past NBA and WNBA draft classes, the generator looks up professional
+regular-season player impact estimate (PIE) and ranks each qualifying season
+against its own league and year. The comparison group requires 400 NBA or 200
+WNBA minutes; smaller samples are shrunk toward a low baseline and flagged in
+the preview. It averages the percentile ranks of the best two available
+seasons (or one if that is all that qualifies) to estimate potential; the
+preview shows the seasons and flags incomplete history. Traded players use a
+combined season row, or a minutes-weighted approximation if only team stints
+are available. The search covers
+completed seasons from the draft through 23 years after it. For NBA seasons
+before 1996–97, when NBA advanced stats are unavailable, it instead uses a
+Game Score-style box-score impact per 36 minutes, omitting steals, blocks and
+offensive rebound splits before 1973–74 and turnovers before 1977–78. That is
+less complete than PIE and is labeled separately. The earliest NBA seasons may
+also lack minutes or other required data.
+
+The mapping from percentile to potential is 97th: 5 stars, 90th: 4.5, 75th:
+4, 55th: 3.5, 30th: 3 and below: 2.5. These are estimates, not a validated
+prediction or a direct conversion from PIE to Hoop Land stars. Active players'
+future peaks are unknown. Missing or ambiguous identities, insufficient
+minutes data, incomplete data, and unavailable services can prevent a peak match;
+the preview then identifies the draft-pick/tier fallback. Projected future
+drafts use draft-order tiers, with earlier picks never assigned lower potential
+than later picks. All classes have a minimum potential of 2.5 stars.
+
+For current ability, where college stats are available, a composite of era-relative shooting, passing,
 rebounding, steals and blocks estimates current ability and prioritizes
 attributes. It is not PIE, win shares, or a validated prediction. It shrinks
 toward average for small samples (up to 600 minutes), excludes dribbling and

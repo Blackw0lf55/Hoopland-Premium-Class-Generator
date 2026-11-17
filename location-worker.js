@@ -2,6 +2,7 @@ import existingWorker from "./worker.js";
 import { handleClassData, loadEspnDraftPhotos, attachEspnDraftPhotos } from "./class-sources.js";
 import { wikidataProfile, wikidataPhotos } from "./enrich.js";
 import { handleStats } from "./college-stats.js";
+import { handleProSeason } from "./pro-stats.js";
 
 function normalizeName(value) {
   return String(value || "")
@@ -479,6 +480,11 @@ window.__HOOPLAND_PREPARE_REAL_PLAYERS=async function(players,gender){
       }else console.warn("College stats unavailable",d&&d.error);
     }
   }catch(e){console.warn("College stats lookup failed",e);}
+  try{
+    const type=document.getElementById("classType").value;
+    const year=Number(document.getElementById("draftYear").value);
+    if(type==="draft"&&Number.isInteger(year))await prepareProfessionalPotential(players,gender,year);
+  }catch(e){console.warn("Professional potential lookup failed",e);}
   const queue=players.slice();
   const worker=async()=>{
     while(queue.length){
@@ -676,6 +682,7 @@ export default {
       return Response.json(body, { status: response.status, headers });
     }
     if (pathname === "/api/stats") return handleStats(request, env);
+    if (pathname === "/api/pro-season") return handleProSeason(request);
     if (pathname === "/api/hometown") return handleHometown(request);
     if (pathname === "/api/headshot") return handleHeadshot(request);
     if (pathname === "/api/describe") return handleDescribe(request, env, context);

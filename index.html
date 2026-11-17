@@ -6940,7 +6940,7 @@ const TIER_RULES = {
     name: "Replacement Level",
     currentMin: 1.0,
     currentMax: 2.5,
-    potentialMin: 2.0,
+    potentialMin: 2.5,
     potentialMax: 2.5
   }
 
@@ -7160,6 +7160,82 @@ function randomHalfStar(
   );
 }
 
+function proNameKey(value) {
+  return String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[’']/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+function proPotentialStars(percentile) {
+  return percentile >= 0.97 ? 5 : percentile >= 0.90 ? 4.5 : percentile >= 0.75 ? 4
+    : percentile >= 0.55 ? 3.5 : percentile >= 0.30 ? 3 : 2.5;
+}
+
+function lastCompletedProSeason(gender, now = new Date()) {
+  const year = now.getUTCFullYear(), month = now.getUTCMonth() + 1;
+  return gender === "1" ? year - (month < 10 ? 1 : 0) : year - (month < 7 ? 1 : 0);
+}
+
+async function prepareProfessionalPotential(players, gender, draftYear, now = new Date()) {
+  const completed = lastCompletedProSeason(gender, now);
+  const last = Math.min(completed, draftYear + 23);
+  const firstPossible = gender === "1" ? draftYear : draftYear + 1;
+  const first = Math.max(gender === "1" ? 1997 : 1947, firstPossible);
+  if (!Number.isInteger(draftYear)) return;
+  if (first > last) {
+    if (firstPossible <= completed) players.forEach(player => {
+      player.proPotentialStatus = "Pro peak unavailable; pick/tier estimate";
+    });
+    return;
+  }
+  const queue = Array.from({length: last - first + 1}, (_, index) => first + index);
+  const seasons = [];
+  let failures = 0;
+  const league = gender === "1" ? "women" : "men";
+  const load = async () => {
+    while (queue.length) {
+      const year = queue.shift();
+      try {
+        const response = await fetch(`/api/pro-season?gender=${league}&year=${year}`, {signal:AbortSignal.timeout(10000)});
+        const data = response.ok ? await response.json() : null;
+        if (!data || !data.ok || data.year !== year || data.gender !== league || !Array.isArray(data.rows)) {
+          throw new Error(`Professional season ${year} unavailable`);
+        }
+        seasons.push(data);
+      } catch (error) {
+        failures++;
+        console.warn("Professional potential lookup failed", year, error);
+      }
+    }
+  };
+  await Promise.all(Array.from({length: Math.min(6, queue.length)}, load));
+  const nameCounts = new Map();
+  for (const player of players) {
+    const key = proNameKey([player.fn, player.ln].filter(Boolean).join(" "));
+    nameCounts.set(key, (nameCounts.get(key) || 0) + 1);
+  }
+  for (const player of players) {
+    if (player.projectedPick && !player.draftPick) continue;
+    const key = proNameKey([player.fn, player.ln].filter(Boolean).join(" "));
+    const matches = seasons.flatMap(season => season.rows
+      .filter(row => player.proId ? String(row.id) === String(player.proId) : proNameKey(row.name) === key)
+      .map(row => ({...row, year:season.year, metric:season.metric})));
+    const ids = new Set(matches.map(row => String(row.id)));
+    if (!matches.length || (!player.proId && (ids.size !== 1 || nameCounts.get(key) !== 1))) {
+      player.proPotentialStatus = "Pro peak unavailable; pick/tier estimate";
+      continue;
+    }
+    const best = matches.sort((a, b) => b.percentile - a.percentile).slice(0, 2);
+    const percentile = best.reduce((sum, row) => sum + row.percentile, 0) / best.length;
+    player.proPotential = {
+      stars: proPotentialStars(percentile),
+      seasons: best.map(row => row.year),
+      metric: [...new Set(best.map(row => row.metric || "PIE"))].join(" + "),
+      limited: best.some(row => Number(row.minutes) > 0 && Number(row.minutes) < (gender === "1" ? 200 : 400)),
+      partial: failures > 0 || first > firstPossible
+    };
+  }
+}
+
 
 function qualityForTier(
   tierName,
@@ -7167,7 +7243,9 @@ function qualityForTier(
   gender = "0"
 ) {
 
-  const pickNumber = Number(sourcePlayer && sourcePlayer.draftPick);
+  const pickNumber = Number(sourcePlayer && (sourcePlayer.draftPick || sourcePlayer.projectedPick));
+  const measuredStars = Number(sourcePlayer && sourcePlayer.proPotential && sourcePlayer.proPotential.stars);
+  const validMeasured = [2.5, 3, 3.5, 4, 4.5, 5].includes(measuredStars);
   if (Number.isInteger(pickNumber) && pickNumber > 0) {
     const cutoffs = gender === "1" ? [3, 8, 18, 30] : [3, 10, 25, 45];
     tierName = pickNumber <= cutoffs[0] ? "hof"
@@ -7175,11 +7253,17 @@ function qualityForTier(
       : pickNumber <= cutoffs[2] ? "starter"
       : pickNumber <= cutoffs[3] ? "role" : "bad";
   }
+  if (validMeasured) {
+    tierName = measuredStars === 5 ? "hof" : measuredStars === 4.5 ? "allStar"
+      : measuredStars >= 3.5 ? "starter" : measuredStars === 3 ? "role" : "bad";
+  }
   const rule = TIER_RULES[tierName];
 
 
   let potentialStars =
-    randomHalfStar(
+    validMeasured ? measuredStars : Number.isInteger(pickNumber) && pickNumber > 0
+      ? (tierName === "starter" ? (pickNumber <= (gender === "1" ? 13 : 17) ? 4 : 3.5) : rule.potentialMin)
+      : randomHalfStar(
       rule.potentialMin,
       rule.potentialMax
     );
@@ -8281,7 +8365,12 @@ else {
 
     ratingSource:
       sourcePlayer
-        ? (ratingStatsProfile(sourcePlayer.bart) ? "College stats estimate" : "Tier estimate (no college stats)")
+        ? (ratingStatsProfile(sourcePlayer.bart) ? "College stats estimate" : "Tier estimate (no college stats)") +
+          (sourcePlayer.proPotential
+            ? " • Pro peak " + sourcePlayer.proPotential.metric + " " + sourcePlayer.proPotential.seasons.join("/") +
+              (sourcePlayer.proPotential.partial ? " (incomplete history)" : "") +
+              (sourcePlayer.proPotential.limited ? " (limited minutes)" : "")
+            : sourcePlayer.proPotentialStatus ? " • " + sourcePlayer.proPotentialStatus : "")
         : "Fictional tier",
 
     outlier:

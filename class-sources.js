@@ -246,6 +246,7 @@ async function loadNbaComDraft(gender, year) {
         roundPick: Number(row[column("ROUND_PICK")]) || null,
         team: [row[column("TEAM_CITY")], row[column("TEAM_NAME")]].filter(Boolean).join(" "),
         school: row[column("ORGANIZATION")] || "",
+        proId: /^\d+$/.test(String(personId || "")) ? String(personId) : undefined,
         headshot: personId
           ? `https://cdn.nba.com/headshots/${gender === "women" ? "wnba" : "nba"}/latest/1040x760/${personId}.png`
           : undefined,

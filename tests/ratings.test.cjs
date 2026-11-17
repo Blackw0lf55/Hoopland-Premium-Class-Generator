@@ -98,9 +98,21 @@ test("real statistics change budgets with sample shrinkage and avoid unreliable 
   assert.equal(low.currentBudget, 40);
 });
 
-test("draft position determines potential tier and conflicting limits fail explicitly", () => {
+test("draft position and professional peak determine potential, with a 2.5-star minimum", () => {
   assert.equal(api.qualityForTier("bad", {draftPick: 1}, "0").potentialStars, 5);
-  assert.equal(api.qualityForTier("hof", {draftPick: 60}, "0").potentialStars <= 2.5, true);
+  assert.equal(api.qualityForTier("hof", {draftPick: 60}, "0").potentialStars, 2.5);
+  assert.equal(api.qualityForTier("hof", {draftPick: 1, proPotential:{stars:2.5}}, "0").potentialStars, 2.5);
+  assert.equal(api.qualityForTier("bad", {draftPick: 60, proPotential:{stars:5}}, "0").potentialStars, 5);
+  for (const gender of ["0","1"]) {
+    const stars = Array.from({length: 70}, (_, i) =>
+      api.qualityForTier("bad", {projectedPick:i+1}, gender).potentialStars);
+    for (let i=1;i<stars.length;i++) assert.ok(stars[i-1] >= stars[i]);
+    assert.ok(stars.every(value => value >= 2.5));
+  }
+  for (let i=0;i<100;i++) assert.equal(api.qualityForTier("bad").potentialStars,2.5);
+});
+
+test("conflicting limits fail explicitly", () => {
   api.setBounds({ DNKp: [3, 20] });
   assert.throws(() => api.makeAttributeRatings(0, "1", null, quality(3, 2), weights), /limits/);
   api.setBounds({ LAYc: [2, 2], DNKc: [2, 2], INSc: [2, 2], MIDc: [2, 2], TPTc: [2, 2], FTSc: [2, 2], DRBc: [2, 2], PASc: [2, 2], OREc: [2, 2], DREc: [2, 2], STLc: [2, 2], BLKc: [2, 2] });
