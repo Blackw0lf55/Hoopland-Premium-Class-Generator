@@ -112,21 +112,27 @@ async function findCollegeTeamId(league, school) {
   return matches.length === 1 && /^\d{1,8}$/.test(String(matches[0].id)) ? String(matches[0].id) : "";
 }
 
-export async function collegeRosterHeadshot(name, gender, teamId, recruitYear, school = "") {
-  if (!Number.isInteger(recruitYear) || recruitYear < 1900 || recruitYear > 2100) return "";
+async function collegeRosterPlayer(name, gender, teamId, recruitYear, school = "") {
+  if (!Number.isInteger(recruitYear) || recruitYear < 1900 || recruitYear > 2100) return null;
   const league = gender === "women" ? "womens-college-basketball" : "mens-college-basketball";
   if (!teamId) teamId = await findCollegeTeamId(league, school);
-  if (!/^\d{1,8}$/.test(String(teamId))) return "";
+  if (!/^\d{1,8}$/.test(String(teamId))) return null;
   const key = `${league}:${teamId}`;
   const roster = await cachedCollegeData(collegeRosterCache, key,
     `https://site.api.espn.com/apis/site/v2/sports/basketball/${league}/teams/${teamId}/roster`);
   const season = Number(roster?.season?.year);
   if (String(roster?.team?.id) !== String(teamId) || !Number.isInteger(season) ||
-      season < recruitYear || season > recruitYear + 6 || !Array.isArray(roster.athletes)) return "";
+      season < recruitYear || season > recruitYear + 6 || !Array.isArray(roster.athletes)) return null;
   const athletes = roster.athletes.flatMap(item => Array.isArray(item?.items) ? item.items : [item]).filter(Boolean);
   const matches = athletes.filter(athlete => normalizePersonName(athlete.displayName || athlete.fullName) === normalizePersonName(name));
-  if (matches.length !== 1) return "";
-  const athlete = matches[0];
+  if (matches.length !== 1 || !/^\d+$/.test(String(matches[0].id || ""))) return null;
+  return matches[0];
+}
+
+export async function collegeRosterHeadshot(name, gender, teamId, recruitYear, school = "") {
+  const athlete = await collegeRosterPlayer(name, gender, teamId, recruitYear, school);
+  if (!athlete) return "";
+  const league = gender === "women" ? "womens-college-basketball" : "mens-college-basketball";
   const id = String(athlete.id || "");
   const image = athlete.headshot?.href;
   if (!/^\d+$/.test(id) || typeof image !== "string") return "";
@@ -150,7 +156,7 @@ async function fetchJSON(url) {
   }
 }
 
-async function findAthlete(name, gender, debug) {
+async function findAthlete(name, gender, debug, verifiedId = "") {
   const wanted = normalizeName(name);
   const leagues = ESPN_LEAGUES[gender] || ESPN_LEAGUES.men;
   const query = encodeURIComponent(name);
@@ -161,7 +167,7 @@ async function findAthlete(name, gender, debug) {
   ];
 
   const found = [];
-  for (const url of searchURLs) {
+  for (const url of verifiedId ? [] : searchURLs) {
     const search = await fetchJSON(url);
     if (!search) {
       debug.push("search failed");
@@ -181,86 +187,157 @@ async function findAthlete(name, gender, debug) {
     flat
       .filter(item => normalizeName(item.displayName || item.name) === wanted)
       .filter(item => !item.sport || String(item.sport).toLowerCase().includes("basketball"))
+      .filter(item => /^\d{1,10}$/.test(String(item.id)))
       .forEach(item => found.push(String(item.id)));
-    if (found.length) break;
   }
 
-  const ids = [...new Set(found)];
+  const ids = verifiedId ? [verifiedId] : [...new Set(found)];
   if (!ids.length) debug.push("no ESPN match");
-  let fallback = null;
+  const matches = [];
   for (const id of ids) {
+    const profiles = [];
     for (const league of leagues) {
-      const data = await fetchJSON(
-        "https://site.web.api.espn.com/apis/common/v3/sports/basketball/" + league + "/athletes/" + id
-      );
-      const athlete = data && (data.athlete || data);
-      if (!athlete) continue;
-      if (normalizeName(athlete.displayName || athlete.fullName || athlete.name) !== wanted) continue;
-      const headshot = (athlete.headshot && athlete.headshot.href) || "";
-      const place = athlete.birthPlace && athlete.birthPlace.city ? athlete.birthPlace : null;
-      if (place) return { place, headshot };
-      if (headshot && !fallback) fallback = { place: null, headshot };
+      for (const url of [
+        `https://site.web.api.espn.com/apis/common/v3/sports/basketball/${league}/athletes/${id}/overview`,
+        `https://sports.core.api.espn.com/v2/sports/basketball/leagues/${league}/athletes/${id}`
+      ]) {
+        const data = await fetchJSON(url);
+        const athlete = data && (data.athlete || data);
+        if (!athlete || normalizeName(athlete.displayName || athlete.fullName || athlete.name) !== wanted ||
+            (athlete.id && String(athlete.id) !== id)) continue;
+        profiles.push(athlete);
+        if (athlete.hometown || athlete.homeTown || athlete.birthPlace || athlete.birthplace) break;
+      }
     }
-    debug.push("no birthPlace for " + id);
+    if (profiles.length) matches.push({ id, profiles });
   }
-  return fallback;
+  if (matches.length !== 1) {
+    if (matches.length > 1) debug.push("ambiguous ESPN match");
+    return null;
+  }
+  const profiles = matches[0].profiles;
+  return {
+    homePlace: profiles.map(player => parsePlace(player.hometown || player.homeTown)).find(Boolean),
+    birthPlace: profiles.map(player => parsePlace(player.birthPlace || player.birthplace || player.birth_place || player.placeOfBirth)).find(Boolean),
+    headshot: profiles.map(player => player.headshot?.href).find(Boolean)
+  };
 }
 
-async function geocode(city, state, countryCode) {
+function placeText(value) {
+  return typeof value === "string" ? value.trim() : String(value?.displayName || value?.name || value?.abbreviation || "").trim();
+}
+
+function parsePlace(value) {
+  if (!value) return null;
+  if (typeof value === "string") {
+    const parts = value.split(",").map(part => part.trim()).filter(Boolean);
+    if (!parts.length) return null;
+    const region = parts[1] || "";
+    const isState = US_STATES[region.toUpperCase()] || Object.values(US_STATES).some(state => normalizeName(state) === normalizeName(region));
+    return { city: parts[0], state: parts[2] || isState ? region : "", country: parts[2] || (isState ? "US" : region) };
+  }
+  const city = placeText(value.city);
+  if (!city) return null;
+  return { city, state: placeText(value.state || value.region || value.province), country: placeText(value.country || value.countryAbbreviation) };
+}
+
+function countryCodeFor(country) {
+  const value = String(country || "").trim();
+  if (/^(united states(?: of america)?|u\.?s\.?a?\.?)$/i.test(value)) return "US";
+  if (/^(united kingdom|great britain)$/i.test(value)) return "GB";
+  return COUNTRY_CODES[value.toUpperCase()] || (/^[a-z]{2}$/i.test(value) ? value.toUpperCase() : "");
+}
+
+function countryNameFor(country) {
+  const code = countryCodeFor(country);
+  if (code === "US") return "United States";
+  if (code) return new Intl.DisplayNames(["en"], { type: "region" }).of(code) || "";
+  return country;
+}
+
+async function geocode(city, state, country) {
   const data = await fetchJSON(
     "https://geocoding-api.open-meteo.com/v1/search?count=20&language=en&format=json&name=" +
       encodeURIComponent(city)
   );
-  const results = (data && data.results) || [];
-  const sameCountry = countryCode
-    ? results.filter(result => result.country_code === countryCode)
-    : results;
-  const pool = sameCountry.length ? sameCountry : results;
-  const stateMatch = state
-    ? pool.find(result => normalizeName(result.admin1) === normalizeName(state))
-    : null;
-  const best = stateMatch || pool[0];
-  return best ? { lat: best.latitude, lon: best.longitude, countryCode: best.country_code } : null;
+  const countryCode = countryCodeFor(country);
+  const expandedState = (!country || countryCode === "US") ? US_STATES[String(state).toUpperCase()] || state : state;
+  const results = ((data && data.results) || []).filter(result =>
+    normalizeName(result.name) === normalizeName(city) &&
+    Number.isFinite(result.latitude) && Number.isFinite(result.longitude) &&
+    (!country || (countryCode ? result.country_code === countryCode : normalizeName(result.country) === normalizeName(country))) &&
+    (!state || normalizeName(result.admin1) === normalizeName(expandedState) ||
+      normalizeName(result.admin1_code) === normalizeName(state))
+  );
+  const regions = new Set(results.map(result => `${result.country_code}:${normalizeName(result.admin1)}`));
+  const best = regions.size === 1 ? results[0] : null;
+  return best ? { lat: best.latitude, lon: best.longitude, countryName: best.country } : null;
 }
 
-async function resolveHometown(name, gender, countryHint) {
+async function resolveHometown(name, gender, sourceHome, sourceBirth, rosterPlayer, recruit, espnId) {
   const debug = [];
-  const athlete = await findAthlete(name, gender, debug);
+  const verifiedId = rosterPlayer ? String(rosterPlayer.id) : espnId;
+  const rosterHome = parsePlace(rosterPlayer?.hometown || rosterPlayer?.homeTown);
+  const rosterBirth = parsePlace(rosterPlayer?.birthPlace || rosterPlayer?.birthplace || rosterPlayer?.birth_place || rosterPlayer?.placeOfBirth);
+  let athlete = null;
+  try {
+    athlete = (recruit && !verifiedId) || rosterHome ? null : await findAthlete(name, gender, debug, verifiedId);
+  } catch (error) {
+    console.warn("ESPN athlete lookup failed", name, error);
+    debug.push("ESPN lookup failed");
+  }
   const wikiFallback = async headshot => {
     try {
       const wiki = await wikidataProfile(name);
       if (!wiki) return { headshot, debug };
+      let point = Number.isFinite(wiki.lat) && Number.isFinite(wiki.lon)
+        ? { lat: wiki.lat, lon: wiki.lon } : null;
+      if (!point && wiki.city) {
+        try {
+          point = await geocode(wiki.city, wiki.region, wiki.country);
+        } catch (error) {
+          console.warn("Wikidata birthplace geocoding failed", name, error);
+        }
+        if (!point) debug.push("geocode failed");
+      }
       return {
         home: wiki.home || undefined,
         headshot,
-        x: Number.isFinite(wiki.lat) ? Math.round(wiki.lat * 100) : undefined,
-        y: Number.isFinite(wiki.lon) ? Math.round(wiki.lon * 100) : undefined,
-        countryName: wiki.country === "United States of America" ? "United States" : undefined,
-        debug: ["wikidata"]
+        x: point ? Math.round(point.lat * 100) : undefined,
+        y: point ? Math.round(point.lon * 100) : undefined,
+        countryName: wiki.country === "United States of America" ? "United States" : wiki.country || undefined,
+        locationSource: "Wikidata birthplace",
+        debug: debug.concat("wikidata")
       };
     } catch (error) {
       return { headshot, debug: debug.concat(String(error)) };
     }
   };
-  if (!athlete) return wikiFallback();
-  const place = athlete.place;
-  const headshot = athlete.headshot || undefined;
-  if (!place) return wikiFallback(headshot);
+  const place = parsePlace(sourceHome) || rosterHome || athlete?.homePlace || parsePlace(sourceBirth) || rosterBirth || athlete?.birthPlace;
+  const headshot = athlete?.headshot || undefined;
+  if (!place) {
+    if (debug.includes("ambiguous ESPN match")) return { headshot, debug };
+    return wikiFallback(headshot);
+  }
 
-  const rawCountry = String(place.country || place.countryAbbreviation || countryHint || "").trim();
-  const countryCode = COUNTRY_CODES[rawCountry.toUpperCase()] ||
-    (rawCountry.length === 2 ? rawCountry.toUpperCase() : "") ||
-    COUNTRY_CODES[String(countryHint || "").toUpperCase()] || "";
-  const isUS = countryCode === "US";
+  const rawCountry = place.country || (place.state && (US_STATES[place.state.toUpperCase()] || Object.values(US_STATES).includes(place.state)) ? "US" : "");
+  const isUS = countryCodeFor(rawCountry) === "US";
   const stateName = isUS
     ? US_STATES[String(place.state || "").toUpperCase()] || place.state || ""
     : place.state || "";
 
-  const home = [place.city, isUS ? stateName : rawCountry].filter(Boolean).join(", ");
-  const point = await geocode(place.city, isUS ? stateName : "", countryCode);
+  const home = sourceHome || [place.city, stateName, isUS ? "" : rawCountry].filter(Boolean).join(", ");
+  const locationSource = sourceHome ? "class source hometown" : rosterHome || athlete?.homePlace ? "ESPN hometown"
+    : sourceBirth ? "class source birthplace" : "ESPN birthplace";
+  let point;
+  try {
+    point = await geocode(place.city, stateName, rawCountry);
+  } catch (error) {
+    console.warn("Hometown geocoding failed", name, error);
+    debug.push("geocoding service failed");
+  }
   if (!point) {
-    const wiki = await wikiFallback(headshot);
-    return wiki.x !== undefined ? wiki : { home, headshot, debug: ["geocode failed"] };
+    return { home, headshot, countryName: countryNameFor(rawCountry), locationSource, debug: debug.concat("geocode failed") };
   }
 
   return {
@@ -268,7 +345,8 @@ async function resolveHometown(name, gender, countryHint) {
     headshot,
     x: Math.round(point.lat * 100),
     y: Math.round(point.lon * 100),
-    countryName: isUS ? "United States" : undefined
+    countryName: isUS ? "United States" : point.countryName,
+    locationSource
   };
 }
 
@@ -283,27 +361,33 @@ async function handleHometown(request) {
   const recruitYear = Number(params.get("recruitYear"));
   const verifiedPhotosOnly = params.get("recruit") === "1";
   const country = params.get("ctry") || "";
-  const key = [gender, normalizePersonName(name), teamId, normalizePersonName(school), recruitYear, verifiedPhotosOnly, country].join(":");
+  const sourceHome = (params.get("home") || "").trim();
+  const sourceBirth = (params.get("birthplace") || "").trim();
+  const espnId = /^\d{1,10}$/.test(params.get("espnId") || "") ? params.get("espnId") : "";
+  const key = JSON.stringify([gender, normalizePersonName(name), teamId, normalizePersonName(school), recruitYear, verifiedPhotosOnly, country, sourceHome, sourceBirth, espnId]);
   let entry = hometownCache.get(key);
   if (!entry || entry.expires <= Date.now()) {
-    const [hometown, photos, college] = await Promise.allSettled([
-      resolveHometown(name, gender, country),
-      wikidataPhotos(name),
-      collegeRosterHeadshot(name, gender, teamId, recruitYear, school)
-    ]);
+    const collegePromise = collegeRosterPlayer(name, gender, teamId, recruitYear, school);
+    const [college, photos] = await Promise.allSettled([collegePromise, wikidataPhotos(name)]);
+    const hometown = await Promise.allSettled([
+      resolveHometown(name, gender, sourceHome, sourceBirth, college.status === "fulfilled" ? college.value : null, verifiedPhotosOnly, espnId)
+    ]).then(results => results[0]);
     if (hometown.status === "rejected") console.warn("Hometown lookup failed", name, hometown.reason);
     if (photos.status === "rejected") console.warn("Wikimedia photo lookup failed", name, photos.reason);
-    if (college.status === "rejected") console.warn("College roster photo lookup failed", name, college.reason);
+    if (college.status === "rejected") console.warn("College roster lookup failed", name, college.reason);
+    const collegePhoto = college.status === "fulfilled" && college.value
+      ? await collegeRosterHeadshot(name, gender, teamId, recruitYear, school) : "";
     const hometownResult = hometown.status === "fulfilled" ? hometown.value : {};
     if (verifiedPhotosOnly) delete hometownResult.headshot;
     const result = {
       ...hometownResult,
       headshots: [
-        ...(college.status === "fulfilled" && college.value ? [college.value] : []),
+        ...(collegePhoto ? [collegePhoto] : []),
         ...(photos.status === "fulfilled" ? photos.value : [])
       ]
     };
-    const failed = hometown.status === "rejected" || photos.status === "rejected" || college.status === "rejected";
+    const failed = hometown.status === "rejected" || photos.status === "rejected" || college.status === "rejected" ||
+      hometownResult.debug?.some(message => message === "ESPN lookup failed" || message === "geocode failed");
     entry = { result, failed, expires: Date.now() + 60 * 60 * 1000 };
     if (!failed && (result.home || result.headshot || result.headshots.length)) hometownCache.set(key, entry);
     else hometownCache.delete(key);
@@ -434,7 +518,7 @@ function transformGenerator(html) {
   makePlayerCode = replaceOnce(
     makePlayerCode,
     playerObjectStart,
-    "const player = {\n    isReal: Boolean(sourcePlayer),\n    homeX: sourcePlayer ? sourcePlayer.homeX : undefined,\n    homeY: sourcePlayer ? sourcePlayer.homeY : undefined,"
+    "const player = {\n    isReal: Boolean(sourcePlayer),\n    homeX: sourcePlayer ? sourcePlayer.homeX : undefined,\n    homeY: sourcePlayer ? sourcePlayer.homeY : undefined,\n    homeCountry: sourcePlayer ? sourcePlayer.homeCountry : undefined,"
   );
   if (!makePlayerCode) return null;
 
@@ -477,7 +561,7 @@ function buildLocationScript(locations) {
       target: { x: 3888, y: -7711 }
     },
     oliviamiles: {
-      home: "New Jersey",
+      home: "Phillipsburg, New Jersey",
       country: "United States",
       // Phillipsburg, NJ in the catalog's integer coordinate scale (lat/lon × 100).
       target: { x: 4069, y: -7519 }
@@ -487,6 +571,7 @@ function buildLocationScript(locations) {
   return `<script>
 window.__HOOPLAND_LOCATION_RECORDS=${JSON.stringify(locations)};
 window.__HOOPLAND_REAL_PLAYER_HOMETOWNS=${JSON.stringify(realPlayerHometowns)};
+window.__HOOPLAND_US_STATES=${JSON.stringify(US_STATES)};
 window.__HOOPLAND_NORMALIZE_LOCATION_NAME=${normalizeName.toString()};
 window.__HOOPLAND_REAL_HOMETOWN=function(sourcePlayer){
   const fullName=[sourcePlayer&&sourcePlayer.fn,sourcePlayer&&sourcePlayer.ln].filter(Boolean).join(" ");
@@ -546,14 +631,14 @@ window.__HOOPLAND_PREPARE_REAL_PLAYERS=async function(players,gender){
       const p=queue.shift();
       let d=null;
       try{
-        const q=new URLSearchParams({name:[p.fn,p.ln].filter(Boolean).join(" "),gender:gender==="1"?"women":"men",ctry:String(p.ctry||p.country||""),team:String(p.collegeTeamId||""),college:String(p.committedCollege||""),recruitYear:String(p.recruitYear||""),recruit:p.recruitYear?"1":"",v:"3"});
+        const q=new URLSearchParams({name:[p.fn,p.ln].filter(Boolean).join(" "),gender:gender==="1"?"women":"men",ctry:String(p.ctry||p.country||""),home:window.__HOOPLAND_REAL_HOMETOWN(p),birthplace:String(p.birthplace||""),espnId:String(p.espnId||""),team:String(p.collegeTeamId||""),college:String(p.committedCollege||""),recruitYear:String(p.recruitYear||""),recruit:p.recruitYear?"1":"",v:"4"});
         const res=await fetch("/api/hometown?"+q);
         d=res.ok?await res.json():null;
       }catch(e){console.warn('Hometown and photo lookup failed for',[p.fn,p.ln].join(' '),e);}
       if(d){
         if(d.home&&!window.__HOOPLAND_REAL_HOMETOWN(p)){p.hometown=d.home;}
-        if(Number.isFinite(d.x)&&Number.isFinite(d.y)){p.homeX=d.x;p.homeY=d.y;}
-        if(d.countryName)p.homeCountry=d.countryName;
+        if(d.home===window.__HOOPLAND_REAL_HOMETOWN(p)&&Number.isFinite(d.x)&&Number.isFinite(d.y)){p.homeX=d.x;p.homeY=d.y;}
+        if(d.home===window.__HOOPLAND_REAL_HOMETOWN(p)&&d.countryName)p.homeCountry=d.countryName;
         if(!d.home)console.warn('Hometown lookup failed for',[p.fn,p.ln].join(' '),d.debug);
       }
       const extraShots=Array.isArray(p.headshots)?p.headshots:[];
@@ -662,14 +747,18 @@ window.__HOOPLAND_RESOLVE_LOCATION=function(player){
     return {home,loc:{x:nearest.x,y:nearest.y}};
   }
 
-  const hometownParts=home.split(",").map(normalize).filter(Boolean);
-  const matching=candidates.filter(record=>hometownParts.some(part=>part===normalize(record.city)||part===normalize(record.state)));
-  if(matching.length){
+  const hometownParts=home.split(",").map(part=>part.trim()).filter(Boolean);
+  const region=hometownParts[1]||"";
+  const expandedRegion=window.__HOOPLAND_US_STATES[region.toUpperCase()]||region;
+  const matching=candidates.filter(record=>normalize(hometownParts[0])===normalize(record.city)&&
+    (!region||normalize(expandedRegion)===normalize(record.state)||normalize(region)===normalize(record.country)));
+  if(matching.length===1){
     return {home,loc:{x:matching[0].x,y:matching[0].y}};
   }
 
   // No hometown coordinates found: keep the name but use a valid same-country catalog point instead of 0,0.
   if(candidates.length){
+    console.warn("Using approximate location: hometown coordinates unavailable",fullName,home);
     const fallback=candidates[Math.floor(Math.random()*candidates.length)];
     return {home,loc:{x:fallback.x,y:fallback.y}};
   }

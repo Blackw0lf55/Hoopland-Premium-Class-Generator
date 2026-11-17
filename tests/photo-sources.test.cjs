@@ -7,7 +7,7 @@ const espnDraft = {
   displayName: "2026 Women's National Basketball Association Draft",
   picks: [
     { overall: 1, status: "SELECTION_MADE", athlete: {
-      displayName: "Azzi Fudd",
+      id:"4433790",displayName: "Azzi Fudd",
       headshot: { href: "https://a.espncdn.com/i/headshots/womens-college-basketball/players/full/4433790.png" }
     } },
     { overall: 2, status: "SELECTION_MADE", athlete: {
@@ -33,9 +33,11 @@ test("ESPN draft portraits are matched by year, name, and pick", async () => {
   ];
   const result = attachEspnDraftPhotos(people, photos);
   assert.match(result[0].headshots[0], /4433790/);
+  assert.equal(result[0].espnId,"4433790");
   assert.match(result[1].headshots[0], /\/1\.png/);
   assert.equal(result[2].headshots, undefined);
   assert.equal(result[3].headshots, undefined);
+  assert.equal(result[3].espnId, undefined);
   const fam = attachEspnDraftPhotos([{fn:"Awa",ln:"Thiam",draftPick:3}],
     [{fn:"Awa",ln:"Fam",draftPick:3,headshot:"https://a.espncdn.com/fam.png"}]);
   assert.equal(fam[0].headshots[0], "https://a.espncdn.com/fam.png");

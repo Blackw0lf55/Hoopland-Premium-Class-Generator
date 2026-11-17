@@ -32,6 +32,24 @@ Name-only ESPN search photos are not used for recruits. Other independently
 matched photos may still be available, but this does not guarantee three photos
 or an accurate appearance.
 
+For real players in men's and women's draft and freshman classes, a sourced
+hometown takes precedence over a birthplace; birthplace is a fallback and is
+not necessarily where the player grew up. Explicit hometown and birthplace
+columns, ESPN basketball profiles, verified college rosters, and unambiguous
+exact-name Wikidata basketball profiles are used where available. Freshman ESPN
+profiles require a verified college roster match or draft identity. Name
+matching alone cannot guarantee identity, and sources may be missing or wrong.
+Olivia Miles's Phillipsburg hometown and Azzi Fudd's Arlington location are
+curated from [Miles's biography](https://en.wikipedia.org/wiki/Olivia_Miles)
+and [Fudd's ESPN bio](https://www.espn.com/wnba/player/bio/_/id/4433790/azzi-fudd).
+
+Open-Meteo coordinates must match the stated city and, when provided, state
+and country. The export uses the nearest available Hoop Land catalog location
+in the resolved country, not necessarily the exact city. If no reliable
+coordinates or exact catalog city are found, a catalog point is assigned as an
+approximation rather than `0,0`; it is not a verified hometown location. Where
+the country is unavailable in the catalog, the fallback may be elsewhere.
+
 Ratings are estimates, not measured pro-level ability. Each of the 12 core
 attributes starts at 1 (export value 2), and added points use the export's
 2–20 scale. Potential tiers of 2.5, 3, 3.5, 4, 4.5 and 5 stars cap added

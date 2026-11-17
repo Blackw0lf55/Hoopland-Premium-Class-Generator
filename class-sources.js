@@ -165,6 +165,8 @@ async function loadWikipediaDraft(gender, year) {
     const nationalityColumn = column(/^nationality|^country/);
     const teamColumn = column(/^(team|nba team|wnba team)/);
     const schoolColumn = column(/^school|^college|^club/);
+    const hometownColumn = column(/^home\s*town$/);
+    const birthplaceColumn = column(/^(?:birth\s*place|place of birth)$/);
 
     for (const row of rows) {
       if (row === headerRow || row.length < headers.length - 1) {
@@ -189,6 +191,8 @@ async function loadWikipediaDraft(gender, year) {
         position: positionColumn >= 0 ? row[positionColumn]?.text || "" : "",
         team: teamColumn >= 0 ? row[teamColumn]?.text || "" : "",
         school: schoolColumn >= 0 ? row[schoolColumn]?.text || "" : "",
+        hometown: hometownColumn >= 0 ? row[hometownColumn]?.text || "" : "",
+        birthplace: birthplaceColumn >= 0 ? row[birthplaceColumn]?.text || "" : "",
         country: normalizeCountry(nationalityColumn >= 0 ? row[nationalityColumn] : null),
         draftPick: pick,
         draftRound: round
@@ -315,6 +319,8 @@ async function loadMcDonaldsRoster(gender, year) {
     const heightColumn = column(/^(ht|height)/);
     const schoolColumn = column(/^(school|high school)/);
     const collegeColumn = column(/^(college|commitment|committed|college choice)$/);
+    const hometownColumn = column(/^home\s*town$/);
+    const birthplaceColumn = column(/^(?:birth\s*place|place of birth)$/);
 
     for (const row of rows) {
       if (row === headerRow) {
@@ -335,6 +341,8 @@ async function loadMcDonaldsRoster(gender, year) {
         height: heightColumn >= 0 ? heightInches(row[heightColumn]?.text) : null,
         school: schoolColumn >= 0 ? row[schoolColumn]?.text || "" : "",
         committedCollege: collegeColumn >= 0 ? row[collegeColumn]?.text || "" : "",
+        hometown: hometownColumn >= 0 ? row[hometownColumn]?.text || "" : "",
+        birthplace: birthplaceColumn >= 0 ? row[birthplaceColumn]?.text || "" : "",
         country: "United States"
       });
     }
@@ -366,6 +374,8 @@ function parseEspnRecruits(html) {
   for (const rows of parseTables(html)) {
     const header = rows.find(row => row.some(cell => cell.header));
     const commitmentColumn = header ? header.findIndex(cell => /^(college|commitment|committed|college choice)$/i.test(cell.text)) : -1;
+    const hometownColumn = header ? header.findIndex(cell => /^home\s*town$/i.test(cell.text)) : -1;
+    const birthplaceColumn = header ? header.findIndex(cell => /^(?:birth\s*place|place of birth)$/i.test(cell.text)) : -1;
     for (const row of rows) {
       if (row.some(cell => cell.header)) {
         continue;
@@ -406,6 +416,8 @@ function parseEspnRecruits(html) {
         school: schoolCell?.text || "",
         committedCollege: schoolIds.length > 1 ? "" : schoolCell?.text || "",
         collegeTeamId: schoolIds.length === 1 ? schoolIds[0] : undefined,
+        hometown: hometownColumn >= 0 ? row[hometownColumn]?.text || "" : "",
+        birthplace: birthplaceColumn >= 0 ? row[birthplaceColumn]?.text || "" : "",
         country: "United States"
       });
     }
@@ -462,7 +474,8 @@ function espnDraftPhotos(data, year) {
     } catch (error) {
       return [];
     }
-    return [{ ...name, draftPick: Number(pick.overall) || 0, headshot }];
+    const espnId = /^\d{1,10}$/.test(String(athlete.id || "")) ? String(athlete.id) : undefined;
+    return [{ ...name, draftPick: Number(pick.overall) || 0, headshot, espnId }];
   });
 }
 
@@ -496,7 +509,7 @@ function attachEspnDraftPhotos(players, photos) {
     if (!match || (player.draftPick && match.draftPick && Number(player.draftPick) !== match.draftPick)) return player;
     const existing = Array.isArray(player.headshots) ? player.headshots : [];
     const headshots = [...new Set([player.headshot, ...existing, match.headshot].filter(Boolean))];
-    return { ...player, headshots };
+    return { ...player, headshots, ...(match.espnId ? { espnId: match.espnId } : {}) };
   });
 }
 

@@ -246,6 +246,7 @@ test("freshman preparation uses verified roster photos and warns when only a nam
       if (request.pathname.includes("/athletes/72")) return Response.json({
         athlete:{displayName:"Missing Recruit",headshot:{href:wrong}}
       });
+      if (request.pathname.includes("/athletes/71")) return new Response("",{status:404});
       throw new Error("Unexpected request "+url);
     };
     const c=vm.createContext({

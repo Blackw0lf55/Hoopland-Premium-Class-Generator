@@ -74,27 +74,25 @@ export async function wikidataProfile(name) {
     limit: "10"
   });
 
+  const wanted = photoNameKey(name);
   const candidates = (search?.search || []).filter(item =>
-    /basketball/i.test(item.description || "")
+    /basketball/i.test(item.description || "") &&
+    [item.label, item.match?.text, ...(item.aliases || [])].some(value => photoNameKey(value) === wanted)
   );
 
-  if (!candidates.length) {
+  if (!wanted || candidates.length !== 1) {
     return null;
   }
 
   const found = await wd({
     action: "wbgetentities",
-    ids: candidates.slice(0, 5).map(item => item.id).join("|"),
+    ids: candidates[0].id,
     props: "claims|labels"
   });
 
-  const entities = candidates
-    .map(item => found?.entities?.[item.id])
-    .filter(entity => entity && claimId(entity, "P19"));
+  const person = found?.entities?.[candidates[0].id];
 
-  const person = entities[0];
-
-  if (!person) {
+  if (!person || !claimId(person, "P19")) {
     return null;
   }
 
