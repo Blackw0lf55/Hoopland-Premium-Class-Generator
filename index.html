@@ -2118,6 +2118,26 @@ html body .hl-reveal{
   html body .hl-reveal{animation:none;}
   #hlWipe{display:none;}
 }
+
+/* Setup wizard pages */
+html body .setup-panel .setup-grid{display:none!important;}
+#setupWizard{position:relative;min-height:260px;}
+.hl-page{display:none;}
+.hl-page.on{display:block;animation:hlPageIn .45s steps(6) both;}
+@keyframes hlPageIn{from{opacity:0;transform:translateX(40px);}to{opacity:1;transform:none;}}
+.hl-page.back.on{animation-name:hlPageInBack;}
+@keyframes hlPageInBack{from{opacity:0;transform:translateX(-40px);}to{opacity:1;transform:none;}}
+.hl-page-title{font-family:"Press Start 2P",monospace;font-size:.75rem;text-align:center;margin:0 0 18px;line-height:1.6;}
+.hl-q{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 6px 22px;animation:hlPageIn .4s steps(5) both;}
+.hl-q-label{font-weight:900;text-transform:uppercase;letter-spacing:.06em;font-size:.95rem;flex:1;}
+.hl-q-ctl{display:flex;align-items:center;gap:10px;}
+.hl-q-val{min-width:150px;text-align:center;font-family:"Press Start 2P",monospace;font-size:.7rem;line-height:1.6;background:var(--px-fill-dark);padding:14px 8px;box-shadow:0 -3px 0 var(--px),0 3px 0 var(--px),-3px 0 0 var(--px),3px 0 0 var(--px);}
+html body .hl-q-val input{width:100%;text-align:center;font-family:"Press Start 2P",monospace;font-size:.7rem;padding:0!important;box-shadow:none!important;background:transparent!important;margin:0;}
+.hl-arrows{display:flex;flex-direction:column;gap:12px;}
+html body .hl-arrow{padding:2px 12px!important;font-size:.8rem!important;margin:2px 4px!important;min-height:0;line-height:1.4;}
+.hl-nav{display:flex;justify-content:space-between;gap:10px;margin-top:10px;}
+.hl-name{margin:0 6px 24px;}
+.hl-name label{display:block;margin-bottom:8px;font-weight:900;text-transform:uppercase;}
 </style>
 </head>
 
@@ -2276,6 +2296,22 @@ html body .hl-reveal{
     </div>
 
   </div>
+
+<div id="setupWizard">
+  <div class="hl-page on" data-page="0">
+    <div class="hl-page-title">STEP 1: NAME YOUR CLASS</div>
+    <div class="hl-name" id="hlNameSlot"></div>
+    <div class="hl-nav"><span></span><button type="button" class="primary" id="hlToPage2">NEXT ▶</button></div>
+  </div>
+  <div class="hl-page" data-page="1">
+    <div class="hl-page-title">STEP 2: CLASS SETTINGS</div>
+    <div id="hlQuestions"></div>
+    <div class="hl-nav">
+      <button type="button" class="secondary" id="hlBack">◀ BACK</button>
+      <button type="button" class="primary" id="hlNext">NEXT ▶</button>
+    </div>
+  </div>
+</div>
 
 </section>
 
@@ -2534,6 +2570,7 @@ html body .hl-reveal{
     section.style.setProperty("--hl-i",index);
   });
 
+  window.hlPlayWipe=function(){playWipe();};
   function playWipe(){
     wipe.classList.remove("play");
     void wipe.offsetWidth;
@@ -2541,7 +2578,7 @@ html body .hl-reveal{
   }
 
   document.addEventListener("click",event=>{
-    if(event.target.closest("button.primary, button.secondary")){
+    if(event.target.closest("button.primary, button.secondary")&&!event.target.closest(".hl-arrow, #setupWizard")){
       playWipe();
     }
   });
@@ -2558,6 +2595,85 @@ html body .hl-reveal{
   }
 })();
 </script>
+
+<script>
+(function(){
+  const $=id=>document.getElementById(id);
+  const fire=el=>el.dispatchEvent(new Event("change",{bubbles:true}));
+  const nameSlot=$("hlNameSlot");
+  nameSlot.appendChild($("className").closest(".setup-control").querySelector("label"));
+  nameSlot.appendChild($("className"));
+
+  const selectStep=(label,id)=>({
+    label,id,
+    text:()=>{const sel=$(id);return sel.options[sel.selectedIndex].textContent.trim();},
+    move:dir=>{
+      const sel=$(id),n=sel.options.length;
+      sel.selectedIndex=(sel.selectedIndex+dir+n)%n;
+      fire(sel);
+    }
+  });
+  const steps={
+    gender:selectStep("Class Gender","gender"),
+    type:selectStep("Class Type","classType"),
+    pool:selectStep("Class Pool","mode"),
+    strength:selectStep("Class Strength","classStrength"),
+    year:selectStep("Class Year","draftYear"),
+    size:{label:"Class Size",id:"classSize",input:true,
+      move:dir=>{const el=$("classSize");el.value=Math.min(500,Math.max(1,(Number(el.value)||1)+dir));fire(el);}}
+  };
+  const order=()=>[steps.gender,steps.type,steps.pool,
+    $("mode").value==="fictional"?steps.strength:steps.year,steps.size];
+
+  let revealed=1;
+  const box=$("hlQuestions"),next=$("hlNext");
+
+  function render(){
+    const list=order();
+    revealed=Math.min(revealed,list.length);
+    box.innerHTML="";
+    list.slice(0,revealed).forEach((step,i)=>{
+      const row=document.createElement("div");
+      row.className="hl-q";
+      row.style.animation=i===revealed-1&&row.dataset.fresh!==""?"":"none";
+      row.innerHTML='<div class="hl-q-label"></div><div class="hl-q-ctl"><div class="hl-q-val"></div><div class="hl-arrows"><button type="button" class="secondary hl-arrow" data-d="1">▲</button><button type="button" class="secondary hl-arrow" data-d="-1">▼</button></div></div>';
+      row.querySelector(".hl-q-label").textContent=step.label;
+      const val=row.querySelector(".hl-q-val");
+      if(step.input){
+        const el=$("classSize");
+        val.appendChild(el);
+      }
+      else val.textContent=step.text();
+      row.querySelectorAll(".hl-arrow").forEach(btn=>{
+        const go=()=>{step.move(Number(btn.dataset.d));render();};
+        btn.addEventListener("click",go);
+      });
+      box.appendChild(row);
+    });
+    next.textContent=revealed<list.length?"NEXT ▶":"CONTINUE ▼";
+  }
+
+  function showPage(n,back){
+    document.querySelectorAll("#setupWizard .hl-page").forEach(page=>{
+      page.classList.toggle("on",Number(page.dataset.page)===n);
+      page.classList.toggle("back",!!back);
+    });
+    if(window.hlPlayWipe)window.hlPlayWipe();
+  }
+
+  $("hlToPage2").addEventListener("click",()=>{revealed=1;render();showPage(1,false);});
+  $("hlBack").addEventListener("click",()=>showPage(0,true));
+  next.addEventListener("click",()=>{
+    if(revealed<order().length){revealed++;render();}
+    else{
+      const target=$("wizardProgress")||document.querySelector("main > section:nth-of-type(2)");
+      if(target)target.scrollIntoView({behavior:"smooth"});
+    }
+  });
+  render();
+})();
+</script>
+
 
 
 <script>
