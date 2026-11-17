@@ -7738,6 +7738,32 @@ const hometown =
   );
 
 
+  if (sourcePlayer && sourcePlayer.bart && sourcePlayer.bart.attrs) {
+    const bart = sourcePlayer.bart;
+    const weight = Math.min(1, (bart.g || 0) / 20);
+    const bonus = { Fr: 4, So: 3, Jr: 2, Sr: 1 }[bart.yr] || 1;
+
+    ATTRS.forEach(([code]) => {
+      const measured = bart.attrs[code];
+
+      if (!Number.isFinite(measured)) {
+        return;
+      }
+
+      const bounds = attributeBounds(code, "c");
+      const potentialBounds = attributeBounds(code, "p");
+      const current = Math.round(
+        Math.min(bounds[1], Math.max(bounds[0], measured * weight + attributes[code][0] * (1 - weight)))
+      );
+      const potential = Math.round(
+        Math.min(potentialBounds[1], Math.max(current, potentialBounds[0], current + bonus))
+      );
+
+      attributes[code] = [current, Math.max(current, potential)];
+    });
+  }
+
+
   const classType=document.getElementById("classType").value;
   const international=country!=="US";
   let year;
@@ -7915,8 +7941,20 @@ else {
       generateRegressionAge(),
 
     tendencies:
-      generateAutomaticTendencies(
-        attributes
+      Object.assign(
+        generateAutomaticTendencies(
+          attributes
+        ),
+        sourcePlayer && sourcePlayer.bart && sourcePlayer.bart.tend
+          ? Object.fromEntries(
+              Object.entries(sourcePlayer.bart.tend).map(([key, value]) => {
+                const base = generateAutomaticTendencies(attributes)[key];
+                const weight = Math.min(1, (sourcePlayer.bart.g || 0) / 20);
+
+                return [key, Math.max(-5, Math.min(5, Math.round(value * weight + base * (1 - weight))))];
+              })
+            )
+          : {}
       ),
 
     appearance:
