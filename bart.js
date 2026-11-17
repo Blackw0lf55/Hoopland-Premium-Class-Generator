@@ -1,9 +1,9 @@
 const FIRST_SEASON = 2008;
 
 const ERAS = [
-  { id: 4, from: 2008, to: 2015, sample: [2009, 2012, 2015] },
-  { id: 5, from: 2016, to: 2021, sample: [2016, 2018, 2021] },
-  { id: 6, from: 2022, to: 2100, sample: [2022, 2024, 2025] }
+  { id: 4, from: 2008, to: 2015, sample: [2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015] },
+  { id: 5, from: 2016, to: 2021, sample: [2016, 2017, 2018, 2019, 2020, 2021] },
+  { id: 6, from: 2022, to: 2100, sample: [2022, 2023, 2024, 2025, 2026] }
 ];
 
 const LEAGUE = {
@@ -102,14 +102,11 @@ function adjusted(made, attempts, [league, strength]) {
   return (made + league * strength) / (attempts + strength);
 }
 
-function parseSeason(html) {
+function parseRows(cellRows) {
   const rows = [];
   let yrIndex = 2;
-  const trs = html.match(/<tr[\s\S]*?<\/tr>/gi) || [];
 
-  for (const tr of trs) {
-    const cells = (tr.match(/<t[dh][\s\S]*?<\/t[dh]>/gi) || []).map(text);
-
+  for (const cells of cellRows) {
     if (!cells.length) {
       continue;
     }
@@ -184,51 +181,6 @@ function parseSeason(html) {
   return rows;
 }
 
-const BART_HEADERS = {
-  "User-Agent":
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
-  Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-  "Accept-Language": "en-US,en;q=0.9"
-};
-
-async function fetchBartHtml(url, trace) {
-  let response = await fetch(url, { headers: BART_HEADERS });
-  let html = await response.text();
-  let cookies = [];
-
-  // Barttorvik serves a browser-check form; posting it back returns the real page.
-  for (let attempt = 0; attempt < 3 && html.includes("js_test_submitted"); attempt++) {
-    const setCookie = response.headers.get("set-cookie") || "";
-    cookies = cookies.concat(setCookie.split(/,(?=\s*[^;,]+=)/).map(part => part.split(";")[0].trim()).filter(Boolean));
-
-    response = await fetch(url, {
-      method: "POST",
-      headers: {
-        ...BART_HEADERS,
-        "Content-Type": "application/x-www-form-urlencoded",
-        Origin: "https://barttorvik.com",
-        Referer: url,
-        ...(cookies.length ? { Cookie: cookies.join("; ") } : {})
-      },
-      body: "js_test_submitted=1"
-    });
-    html = await response.text();
-
-    if (trace) {
-      trace.push({ attempt, status: response.status, length: html.length, cookies: cookies.length, start: html.slice(0, 120) });
-    }
-  }
-
-  return { response, html };
-}
-
-function seasonUrl(year) {
-  return (
-    "https://barttorvik.com/playerstat.php?link=y&showfull=1" +
-    `&year=${year}&start=${year - 1}1015&end=${year}0501`
-  );
-}
-
 async function cached(key, ttl, build) {
   if (memory.has(key)) {
     return memory.get(key);
@@ -272,21 +224,33 @@ async function cached(key, ttl, build) {
   return value;
 }
 
-async function loadSeason(year) {
-  const current = new Date().getFullYear() + (new Date().getMonth() >= 9 ? 1 : 0);
-  const ttl = year >= current ? 60 * 60 * 12 : 60 * 60 * 24 * 30;
+let dataset = null;
 
-  return cached(`season/${year}`, ttl, async () => {
-    const { response, html } = await fetchBartHtml(seasonUrl(year));
+async function loadDataset(env) {
+  if (dataset) {
+    return dataset;
+  }
 
-    if (!response.ok) {
-      return null;
-    }
+  const response = await env.ASSETS.fetch(new Request("https://assets.local/data/barttorvik.json"));
 
-    const rows = parseSeason(html);
+  if (!response.ok) {
+    return null;
+  }
 
-    return rows.length ? rows : null;
-  });
+  const raw = await response.json();
+  dataset = {};
+
+  for (const [year, cellRows] of Object.entries(raw)) {
+    dataset[year] = parseRows(cellRows);
+  }
+
+  return dataset;
+}
+
+async function loadSeason(year, env) {
+  const data = await loadDataset(env);
+
+  return data && data[year] && data[year].length ? data[year] : null;
 }
 
 function quantiles(values) {
@@ -346,9 +310,9 @@ function composite(features, weights, componentTables) {
   return total;
 }
 
-async function loadEra(era) {
+async function loadEra(era, env) {
   return cached(`era/${era.id}`, 60 * 60 * 24 * 30, async () => {
-    const seasons = await Promise.all(era.sample.map(loadSeason));
+    const seasons = await Promise.all(era.sample.map(year => loadSeason(year, env)));
     let pool = seasons.filter(Boolean).flat();
 
     if (!pool.length) {
@@ -392,14 +356,14 @@ function toTendency(p) {
   return Math.round(-5 + 10 * p);
 }
 
-export async function bartProfiles(year, names) {
+export async function bartProfiles(year, names, env) {
   const era = eraFor(year);
 
   if (!era) {
     return { ok: false, error: "Season outside Barttorvik coverage.", players: {} };
   }
 
-  const [rows, eraTables] = await Promise.all([loadSeason(year), loadEra(era)]);
+  const [rows, eraTables] = await Promise.all([loadSeason(year, env), loadEra(era, env)]);
 
   if (!rows || !eraTables) {
     return { ok: false, error: "Barttorvik data unavailable.", players: {} };
@@ -458,7 +422,7 @@ export async function bartProfiles(year, names) {
   };
 }
 
-export async function handleBart(request) {
+export async function handleBart(request, env) {
   const url = new URL(request.url);
   const year = Number(url.searchParams.get("year"));
   const names = (url.searchParams.get("names") || "").split("|").filter(Boolean).slice(0, 200);
@@ -469,28 +433,21 @@ export async function handleBart(request) {
 
   try {
     if (url.searchParams.get("debug")) {
-      const trace = [];
-      const { response, html } = await fetchBartHtml(seasonUrl(year), trace);
-      const rows = parseSeason(html);
-      const profiles = await bartProfiles(year, names);
+      const data = await loadDataset(env);
+      const rows = data && data[year] ? data[year] : [];
 
       return Response.json({
-        trace,
-        status: response.status,
-        htmlLength: html.length,
-        htmlStart: html.slice(0, 400),
-        tableRows: (html.match(/<tr/gi) || []).length,
-        parsedRows: rows.length,
+        seasons: data ? Object.fromEntries(Object.entries(data).map(([y, r]) => [y, r.length])) : null,
         sampleRow: rows[0] || null,
         match: rows.find(row => names.some(name => normalizeName(name) === normalizeName(row.name))) || null,
-        profiles
+        profiles: await bartProfiles(year, names, env)
       });
     }
 
-    return Response.json(await bartProfiles(year, names));
+    return Response.json(await bartProfiles(year, names, env));
   } catch (error) {
     return Response.json({ ok: false, error: String(error && error.message), players: {} });
   }
 }
 
-export { parseSeason };
+export { parseRows };
