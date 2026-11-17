@@ -52,6 +52,125 @@ function readValidLocations(csv) {
     .filter(location => Number.isInteger(location.x) && Number.isInteger(location.y));
 }
 
+
+const US_STATES = {
+  AL: "Alabama", AK: "Alaska", AZ: "Arizona", AR: "Arkansas", CA: "California", CO: "Colorado",
+  CT: "Connecticut", DE: "Delaware", DC: "District of Columbia", FL: "Florida", GA: "Georgia",
+  HI: "Hawaii", ID: "Idaho", IL: "Illinois", IN: "Indiana", IA: "Iowa", KS: "Kansas",
+  KY: "Kentucky", LA: "Louisiana", ME: "Maine", MD: "Maryland", MA: "Massachusetts",
+  MI: "Michigan", MN: "Minnesota", MS: "Mississippi", MO: "Missouri", MT: "Montana",
+  NE: "Nebraska", NV: "Nevada", NH: "New Hampshire", NJ: "New Jersey", NM: "New Mexico",
+  NY: "New York", NC: "North Carolina", ND: "North Dakota", OH: "Ohio", OK: "Oklahoma",
+  OR: "Oregon", PA: "Pennsylvania", RI: "Rhode Island", SC: "South Carolina", SD: "South Dakota",
+  TN: "Tennessee", TX: "Texas", UT: "Utah", VT: "Vermont", VA: "Virginia", WA: "Washington",
+  WV: "West Virginia", WI: "Wisconsin", WY: "Wyoming"
+};
+
+const COUNTRY_CODES = {
+  USA: "US", US: "US", CAN: "CA", AUS: "AU", FRA: "FR", GBR: "GB", ESP: "ES", GER: "DE",
+  DEU: "DE", SRB: "RS", BEL: "BE", NGA: "NG", BRA: "BR", ITA: "IT", TUR: "TR", JPN: "JP",
+  CHN: "CN", ARG: "AR", MEX: "MX", NZL: "NZ", SWE: "SE", FIN: "FI", LTU: "LT", GRE: "GR"
+};
+
+const ESPN_LEAGUES = {
+  women: ["womens-college-basketball", "wnba"],
+  men: ["mens-college-basketball", "nba"]
+};
+
+const hometownCache = new Map();
+
+async function fetchJSON(url) {
+  const response = await fetch(url, { headers: { accept: "application/json" } });
+  if (!response.ok) return null;
+  try {
+    return await response.json();
+  } catch (error) {
+    return null;
+  }
+}
+
+async function findBirthPlace(name, gender) {
+  const wanted = normalizeName(name);
+  const leagues = ESPN_LEAGUES[gender] || ESPN_LEAGUES.men;
+  const search = await fetchJSON(
+    "https://site.web.api.espn.com/apis/common/v3/search?limit=10&type=player&sport=basketball&query=" +
+      encodeURIComponent(name)
+  );
+  const items = ((search && (search.items || search.results)) || [])
+    .flatMap(item => (item && item.contents ? item.contents : [item]))
+    .filter(item => item && item.id && normalizeName(item.displayName || item.name) === wanted);
+
+  const ids = [...new Set(items.map(item => String(item.id)))];
+  for (const id of ids) {
+    for (const league of leagues) {
+      const data = await fetchJSON(
+        "https://site.web.api.espn.com/apis/common/v3/sports/basketball/" + league + "/athletes/" + id
+      );
+      const athlete = data && (data.athlete || data);
+      const place = athlete && athlete.birthPlace;
+      if (place && place.city) return place;
+    }
+  }
+  return null;
+}
+
+async function geocode(city, state, countryCode) {
+  const data = await fetchJSON(
+    "https://geocoding-api.open-meteo.com/v1/search?count=20&language=en&format=json&name=" +
+      encodeURIComponent(city)
+  );
+  const results = (data && data.results) || [];
+  const sameCountry = countryCode
+    ? results.filter(result => result.country_code === countryCode)
+    : results;
+  const pool = sameCountry.length ? sameCountry : results;
+  const stateMatch = state
+    ? pool.find(result => normalizeName(result.admin1) === normalizeName(state))
+    : null;
+  const best = stateMatch || pool[0];
+  return best ? { lat: best.latitude, lon: best.longitude, countryCode: best.country_code } : null;
+}
+
+async function resolveHometown(name, gender, countryHint) {
+  const place = await findBirthPlace(name, gender);
+  if (!place) return {};
+
+  const rawCountry = String(place.country || place.countryAbbreviation || countryHint || "").trim();
+  const countryCode = COUNTRY_CODES[rawCountry.toUpperCase()] ||
+    (rawCountry.length === 2 ? rawCountry.toUpperCase() : "") ||
+    COUNTRY_CODES[String(countryHint || "").toUpperCase()] || "";
+  const isUS = countryCode === "US";
+  const stateName = isUS
+    ? US_STATES[String(place.state || "").toUpperCase()] || place.state || ""
+    : place.state || "";
+
+  const home = [place.city, isUS ? stateName : rawCountry].filter(Boolean).join(", ");
+  const point = await geocode(place.city, isUS ? stateName : "", countryCode);
+  if (!point) return { home };
+
+  return {
+    home,
+    x: Math.round(point.lat * 100),
+    y: Math.round(point.lon * 100),
+    countryName: isUS ? "United States" : undefined
+  };
+}
+
+async function handleHometown(request) {
+  const params = new URL(request.url).searchParams;
+  const name = (params.get("name") || "").trim();
+  const gender = params.get("gender") === "women" ? "women" : "men";
+  if (!name) return Response.json({});
+
+  const key = gender + ":" + normalizeName(name);
+  if (!hometownCache.has(key)) {
+    hometownCache.set(key, resolveHometown(name, gender, params.get("ctry")).catch(() => ({})));
+  }
+  const result = await hometownCache.get(key);
+  if (!result.home) hometownCache.delete(key);
+  return Response.json(result, { headers: { "cache-control": "public, max-age=86400" } });
+}
+
 function replaceOnce(source, pattern, replacement) {
   if (!pattern.test(source)) return null;
   return source.replace(pattern, replacement);
@@ -78,9 +197,17 @@ function transformGenerator(html) {
   makePlayerCode = replaceOnce(
     makePlayerCode,
     playerObjectStart,
-    "const player = {\n    isReal: Boolean(sourcePlayer),"
+    "const player = {\n    isReal: Boolean(sourcePlayer),\n    homeX: sourcePlayer ? sourcePlayer.homeX : undefined,\n    homeY: sourcePlayer ? sourcePlayer.homeY : undefined,"
   );
   if (!makePlayerCode) return null;
+
+  let generateCode = html.slice(generateClassStart, exportStart);
+  generateCode = replaceOnce(
+    generateCode,
+    /(realPlayers\s*=\s*data\.players\.slice\(\s*0\s*,\s*classSize\s*\);)/,
+    "$1\n      await window.__HOOPLAND_PREPARE_REAL_PLAYERS(realPlayers, gender);"
+  );
+  if (!generateCode) return null;
 
   let exportCode = html.slice(exportStart);
   const exportHeader = /(function makeHoopLandPlayer\(\s*player\s*,\s*index\s*\)\s*\{\s*)return\s*\{/;
@@ -101,7 +228,7 @@ function transformGenerator(html) {
     .replace(/(\bSPD\s*:\s*)\[\s*player\.physical\.SPD\s*,\s*player\.physical\.SPD\s*\]/, "$1[0, 0]")
     .replace(/(\bSTM\s*:\s*)\[\s*player\.physical\.STA\s*,\s*player\.physical\.STA\s*\]/, "$1[0, 0]");
 
-  return html.slice(0, makePlayerStart) + makePlayerCode + html.slice(generateClassStart, exportStart) + exportCode;
+  return html.slice(0, makePlayerStart) + makePlayerCode + generateCode + exportCode;
 }
 
 function buildLocationScript(locations) {
@@ -130,6 +257,25 @@ window.__HOOPLAND_REAL_HOMETOWN=function(sourcePlayer){
   if(known&&known.home)return known.home;
   return String(sourcePlayer&&(sourcePlayer.hometown||sourcePlayer.home)||"").trim();
 };
+window.__HOOPLAND_PREPARE_REAL_PLAYERS=async function(players,gender){
+  const queue=players.slice();
+  const worker=async()=>{
+    while(queue.length){
+      const p=queue.shift();
+      if(window.__HOOPLAND_REAL_HOMETOWN(p))continue;
+      try{
+        const q=new URLSearchParams({name:[p.fn,p.ln].filter(Boolean).join(" "),gender:gender==="1"?"women":"men",ctry:String(p.ctry||p.country||"")});
+        const res=await fetch("/api/hometown?"+q);
+        if(!res.ok)continue;
+        const d=await res.json();
+        if(d&&d.home){p.hometown=d.home;}
+        if(d&&Number.isFinite(d.x)&&Number.isFinite(d.y)){p.homeX=d.x;p.homeY=d.y;}
+        if(d&&d.countryName)p.homeCountry=d.countryName;
+      }catch(e){}
+    }
+  };
+  await Promise.all(Array.from({length:Math.min(6,queue.length)},worker));
+};
 window.__HOOPLAND_RESOLVE_LOCATION=function(player){
   const records=window.__HOOPLAND_LOCATION_RECORDS||[];
   const normalize=window.__HOOPLAND_NORMALIZE_LOCATION_NAME;
@@ -143,12 +289,12 @@ window.__HOOPLAND_RESOLVE_LOCATION=function(player){
   const known=window.__HOOPLAND_REAL_PLAYER_HOMETOWNS[normalize(fullName)];
   const home=known&&known.home?known.home:String(player.home||"").trim();
   const countryNames={US:"United States",CA:"Canada",AU:"Australia",FR:"France",UK:"United Kingdom",GB:"United Kingdom",DE:"Germany",ES:"Spain",RS:"Serbia",BE:"Belgium"};
-  const country=(known&&known.country)||countryNames[String(player.ctry||"").toUpperCase()]||String(player.ctry||"");
+  const country=(known&&known.country)||player.homeCountry||countryNames[String(player.ctry||"").toUpperCase()]||String(player.ctry||"");
   let candidates=records.filter(record=>normalize(record.country)===normalize(country));
   if(!candidates.length)candidates=records;
 
   let target=known&&known.target?{x:Math.round(known.target.x),y:Math.round(known.target.y)}:null;
-  if(!target&&Number.isFinite(Number(player.homeX))&&Number.isFinite(Number(player.homeY))){
+  if(!target&&player.homeX!=null&&player.homeY!=null&&Number.isFinite(Number(player.homeX))&&Number.isFinite(Number(player.homeY))){
     target={x:Math.round(Number(player.homeX)),y:Math.round(Number(player.homeY))};
   }
 
@@ -212,6 +358,7 @@ async function addLocationAssignment(request, env) {
 export default {
   async fetch(request, env, context) {
     const { pathname } = new URL(request.url);
+    if (pathname === "/api/hometown") return handleHometown(request);
     if (pathname === "/" || pathname === "/index.html") {
       return addLocationAssignment(request, env);
     }
