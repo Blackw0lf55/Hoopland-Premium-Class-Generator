@@ -1,6 +1,7 @@
 import existingWorker from "./worker.js";
 import { handleClassData } from "./class-sources.js";
 import { wikidataProfile } from "./enrich.js";
+import { handleBart } from "./bart.js";
 
 function normalizeName(value) {
   return String(value || "")
@@ -366,6 +367,18 @@ window.__HOOPLAND_SAMPLE_HEADSHOT=function(image){
   return {skin,hair:colorOf(hairPixels)};
 };
 window.__HOOPLAND_PREPARE_REAL_PLAYERS=async function(players,gender){
+  try{
+    const type=document.getElementById("classType").value;
+    const year=Number(document.getElementById("draftYear").value);
+    if(type==="draft"&&gender!=="1"&&year>=2008){
+      const names=players.map(p=>[p.fn,p.ln].filter(Boolean).join(" "));
+      const res=await fetch("/api/bart?year="+year+"&names="+encodeURIComponent(names.join("|")));
+      const d=res.ok?await res.json():null;
+      if(d&&d.ok){
+        players.forEach((p,i)=>{if(d.players[names[i]])p.bart=d.players[names[i]];});
+      }else console.warn("Barttorvik unavailable",d&&d.error);
+    }
+  }catch(e){console.warn("Barttorvik lookup failed",e);}
   const queue=players.slice();
   const hasProfile=p=>typeof REAL_PLAYER_APPEARANCE_PROFILES!=="undefined"&&typeof normalizeAppearancePlayerName==="function"&&REAL_PLAYER_APPEARANCE_PROFILES[normalizeAppearancePlayerName([p.fn,p.ln].filter(Boolean).join(" "))];
   const sampleImage=async url=>{
@@ -499,6 +512,7 @@ export default {
         return handleClassData(request);
       }
     }
+    if (pathname === "/api/bart") return handleBart(request);
     if (pathname === "/api/hometown") return handleHometown(request);
     if (pathname === "/api/headshot") return handleHeadshot(request);
     if (pathname === "/" || pathname === "/index.html") {
