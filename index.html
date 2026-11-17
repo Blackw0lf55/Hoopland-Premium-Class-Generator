@@ -8014,26 +8014,24 @@ async function generateClass() {
         );
 
 
-      if (!response.ok) {
+      let data = { players: [] };
 
-        throw new Error(
-          `Real-player data request failed (${response.status}).`
-        );
+      if (response.ok) {
+
+        try {
+          data = await response.json();
+        }
+        catch (error) {
+          data = { players: [] };
+        }
       }
-
-
-      const data =
-        await response.json();
-
 
       if (
         !data ||
         !Array.isArray(data.players)
       ) {
 
-        throw new Error(
-          "Real-player data returned an invalid player list."
-        );
+        data = { players: [] };
       }
 
 
@@ -10798,8 +10796,9 @@ function populateClassYears() {
   const freshman = document.getElementById("classType").value === "freshman";
   const current = select.value || "2026";
   const thisYear = new Date().getFullYear();
-  const latest = thisYear + 5;
-  const earliest = freshman ? 2007 : 1990;
+  const women = document.getElementById("gender").value === "1";
+  const latest = thisYear + (freshman ? 10 : 5);
+  const earliest = freshman ? 1900 : (women ? 1997 : 1947);
 
   select.innerHTML = "";
 
