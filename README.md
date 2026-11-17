@@ -33,3 +33,6 @@ displayed. The list is incomplete, and absence is not proof a player has
 never dunked. The exceptions use player name and school, based on reports
 from [NCAA.com](https://www.ncaa.com/news/basketball-women/article/2023-02-15/every-womens-college-basketball-player-dunk-game)
 and [ESPN](https://www.espn.com/womens-college-basketball/story/_/id/42896118/how-many-women-dunked-college-basketball).
+The women's dunk controls default to 1 actual and potential. A listed dunker
+can exceed that untouched default automatically; manually adjusted limits
+apply to them too.

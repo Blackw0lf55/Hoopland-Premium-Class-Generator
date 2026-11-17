@@ -2171,7 +2171,7 @@ html,body{overflow-x:hidden;}
   .wizard-progress-item{font-size:.6rem!important;padding:6px 2px!important;}
 }
 @media(orientation:landscape) and (max-height:500px){
-  html body .hl-header,.hl-screen-title,#wizardProgress,.hl-page-title{display:none!important;}
+  html body .hl-header,#wizardProgress{display:none!important;}
   html body .card,html body section{margin:6px 10px 18px!important;padding:10px 14px!important;}
   .hl-q{margin-bottom:14px;}
   .hl-countries{grid-template-columns:repeat(9,1fr);}
@@ -2381,12 +2381,10 @@ html{background-color:#06143a!important;}
 
 <div id="setupWizard">
   <div class="hl-page on" data-page="0">
-    <div class="hl-page-title">STEP 1: NAME YOUR CLASS</div>
     <div class="hl-name" id="hlNameSlot"></div>
     <div class="hl-nav"><span></span><button type="button" class="primary" id="hlToPage2">START ▶</button></div>
   </div>
   <div class="hl-page" data-page="1">
-    <div class="hl-page-title">STEP 2: CLASS SETTINGS</div>
     <div id="hlQuestions"></div>
     <div class="hl-nav">
       <button type="button" class="secondary" id="hlBack">◀ BACK</button>
@@ -2394,12 +2392,10 @@ html{background-color:#06143a!important;}
     </div>
   </div>
   <div class="hl-page" data-page="2">
-    <div class="hl-page-title">STEP 3: ATTRIBUTE CONTROL</div>
     <div id="hlAttrSlot"></div>
     <div class="hl-nav"><button type="button" class="secondary" data-back="1">◀ BACK</button><button type="button" class="primary" data-go="3">CONTINUE ▶</button></div>
   </div>
   <div class="hl-page" data-page="3">
-    <div class="hl-page-title">STEP 4: PHYSICALS &amp; COUNTRIES</div>
     <p id="hlPhysHint" class="section-note"></p>
     <div id="hlPhysSlot"></div>
     <div class="hl-q-label hl-sub">Countries</div>
@@ -2418,6 +2414,7 @@ html{background-color:#06143a!important;}
       <span id="hlPageNum">1/1</span>
       <button type="button" class="secondary hl-arrow" id="hlNextPg">▶</button>
     </div>
+    <div id="hlResultStatus" aria-live="polite"></div>
     <div class="hl-nav"><button type="button" class="secondary" data-back="3">◀ BACK</button><button type="button" class="primary" id="hlDownload">DOWNLOAD CLASS</button></div>
   </div>
 </div>
@@ -2734,6 +2731,8 @@ html{background-color:#06143a!important;}
   function render(){
     const list=order();
     revealed=Math.min(revealed,list.length);
+    const sizeInput=$("classSize");
+    if(box.contains(sizeInput)) $("classSizePlus").before(sizeInput);
     box.innerHTML="";
     list.slice(0,revealed).forEach((step,i)=>{
       const row=document.createElement("div");
@@ -2795,16 +2794,16 @@ html{background-color:#06143a!important;}
       applyRecommended(key!==physAppliedFor);
     }
     const title=$("hlScreenTitle");
-    if(title)title.textContent=n===4?"CLASS PREVIEW":"CREATE NEW CLASS";
+    if(title)title.textContent=["CREATE NEW CLASS","CLASS SETUP","ATTRIBUTE CONTROL","PHYSICALS AND SPECS","CLASS PREVIEW"][n];
     return baseShowPage(n,back);
   };
 
-  $("hlToPage2").addEventListener("click",()=>{revealed=1;render();showPage(1,false);});
-  $("hlBack").addEventListener("click",()=>showPage(0,true));
+  $("hlToPage2").addEventListener("click",()=>{revealed=1;render();window.hlShowPage(1,false);});
+  $("hlBack").addEventListener("click",()=>window.hlShowPage(0,true));
   next.addEventListener("click",()=>{
     if(revealed<order().length){revealed++;render();}
     else{
-      showPage(2,false);
+      window.hlShowPage(2,false);
     }
   });
   render();
@@ -6515,6 +6514,9 @@ function renderBar(code) {
         potentialInput.value
       );
 
+    if (code === "DNK") {
+      actualInput.dataset.userModified = "true";
+    }
 
     if (side === "actual") {
 
@@ -6562,7 +6564,7 @@ function renderBar(code) {
         potentialDefault
       ] =
         defaults[code] ||
-        [20, 20];
+        (code === "DNK" && document.getElementById("gender").value === "1" ? [2, 2] : [20, 20]);
 
       const card =
         document.createElement(
@@ -6652,6 +6654,14 @@ function renderBar(code) {
     renderBar(code);
   });
 
+  document.getElementById("gender").addEventListener("change", () => {
+    const defaultDunk = document.getElementById("gender").value === "1" ? 2 : 20;
+    const actual = document.getElementById("DNKcmax");
+    actual.value = defaultDunk;
+    delete actual.dataset.userModified;
+    document.getElementById("DNKpmax").value = defaultDunk;
+    renderBar("DNK");
+  });
 
   attributeGrid.addEventListener(
     "click",
@@ -7342,13 +7352,15 @@ function makeAttributeRatings(position, gender, sourcePlayer, quality, weights) 
   ATTRS.forEach(([code], index) => {
     const [currentMin, currentMax] = attributeBounds(code, "c");
     const [potentialMin, potentialMax] = attributeBounds(code, "p");
+    const defaultDunker = index === dunkIndex && gender === "1" && reportedDunk &&
+      document.getElementById("DNKcmax").dataset.userModified !== "true";
     currentMinimums.push(currentMin);
-    currentMaximums.push(currentMax);
+    currentMaximums.push(defaultDunker ? 10 : currentMax);
     potentialMinimums.push(potentialMin);
-    potentialMaximums.push(potentialMax);
+    potentialMaximums.push(defaultDunker ? 10 : potentialMax);
     if (index === dribbleIndex) potentialMaximums[index] = Math.min(potentialMax, dribbleCaps[position]);
     if (index === dunkIndex && gender === "1") {
-      potentialMaximums[index] = Math.min(potentialMax, reportedDunk ? 10 : 2);
+      potentialMaximums[index] = Math.min(potentialMaximums[index], reportedDunk ? 10 : 2);
       if (!reportedDunk) currentMaximums[index] = Math.min(currentMax, 2);
     }
     currentMaximums[index] = Math.min(currentMaximums[index], potentialMaximums[index]);
@@ -8032,9 +8044,11 @@ const position =
 
   const sourceHeight =
   sourcePlayer &&
+  sourcePlayer.height != null &&
+  sourcePlayer.height !== "" &&
   Number.isFinite(
     Number(sourcePlayer.height)
-  )
+  ) && Number(sourcePlayer.height) > 0
     ? Math.round(
         Number(sourcePlayer.height)
       )
@@ -8494,24 +8508,12 @@ async function generateClass() {
         );
 
 
-      let data = { players: [] };
-
-      if (response.ok) {
-
-        try {
-          data = await response.json();
-        }
-        catch (error) {
-          data = { players: [] };
-        }
+      if (!response.ok) {
+        throw new Error(`Real class data could not be loaded (HTTP ${response.status}).`);
       }
-
-      if (
-        !data ||
-        !Array.isArray(data.players)
-      ) {
-
-        data = { players: [] };
+      const data = await response.json();
+      if (!data || !Array.isArray(data.players) || data.players.length === 0) {
+        throw new Error("No real players were returned for this class. Try another year or class type.");
       }
 
 
@@ -11170,10 +11172,28 @@ function downloadHoopLand() {
     );
 
 
-  const fileText =
-    JSON.stringify(
-      exportFile
-    );
+  function invalidExportValue(value, path) {
+    if (value === null || value === undefined || (typeof value === "number" && !Number.isFinite(value))) return path;
+    if (typeof value !== "object") return "";
+    if (Array.isArray(value)) {
+      for (let index = 0; index < value.length; index++) {
+        const invalid = invalidExportValue(value[index], `${path}.${index}`);
+        if (invalid) return invalid;
+      }
+      return "";
+    }
+    for (const [key, child] of Object.entries(value)) {
+      const invalid = invalidExportValue(child, `${path}.${key}`);
+      if (invalid) return invalid;
+    }
+    return "";
+  }
+  const invalidPath = invalidExportValue(exportFile, "class");
+  if (invalidPath) {
+    setStatus(`Cannot download: missing or invalid export value at ${invalidPath}.`, "error");
+    return;
+  }
+  const fileText = JSON.stringify(exportFile);
 
 
   const fileBlob =
@@ -11532,7 +11552,11 @@ classSizePlus.addEventListener(
       drawList();
     }
   });
-  $("hlDownload").addEventListener("click",()=>$("downloadHoopLand").click());
+  $("hlDownload").addEventListener("click",()=>{
+    $("downloadHoopLand").click();
+    $("hlResultStatus").textContent=$("status").textContent;
+    $("hlResultStatus").className=$("status").className;
+  });
 })();
 </script>
 <div id="hlPreview" class="hl-modal hidden" role="dialog" aria-modal="true" aria-labelledby="hlPvName">

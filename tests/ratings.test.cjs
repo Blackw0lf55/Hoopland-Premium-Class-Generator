@@ -12,6 +12,8 @@ const api = vm.runInContext(`
   const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
   let rng = Math.random;
   const randomInteger = (min, max) => min + Math.floor(rng() * (max - min + 1));
+  const dunkInput = { dataset: {} };
+  const document = { getElementById: () => dunkInput };
   let bounds = {};
   function attributeBounds(code, type) { return bounds[code + type] || [2, 20]; }
   ${section("function budgetForStars(", "function starText(")}
@@ -20,7 +22,8 @@ const api = vm.runInContext(`
   ${section("function randomHalfStar(", "function generateRegressionAge(")}
   ({ budgetForStars, starsForBudget, qualityForTier, ratingStatsProfile,
      makeAttributeRatings, isReportedWomanDunker,
-     setBounds(value) { bounds = value; } })
+     setBounds(value) { bounds = value; },
+     setDunkEdited(edited) { dunkInput.dataset.userModified = edited ? "true" : ""; } })
 `, context);
 
 const codes = ["LAY", "DNK", "INS", "MID", "TPT", "FTS", "DRB", "PAS", "ORE", "DRE", "STL", "BLK"];
@@ -67,6 +70,14 @@ test("women dunk only with a sourced name and matching school, and stay below 5"
     const result = api.makeAttributeRatings(6, "1", watkins, quality(4, 3), weights);
     assert.ok(result.attributes.DNK[1] <= 10);
   }
+  api.setBounds({ DNKc: [2, 2], DNKp: [2, 2] });
+  assert.ok(Array.from({ length: 20 }, () => api.makeAttributeRatings(6, "1", watkins, quality(4, 3), weights))
+    .some(result => result.attributes.DNK[1] > 2));
+  api.setDunkEdited(true);
+  const limited = api.makeAttributeRatings(6, "1", watkins, quality(4, 3), weights);
+  assert.deepEqual(Array.from(limited.attributes.DNK), [2, 2]);
+  api.setDunkEdited(false);
+  api.setBounds({});
 });
 
 test("real statistics change budgets with sample shrinkage and avoid unreliable zones", () => {
