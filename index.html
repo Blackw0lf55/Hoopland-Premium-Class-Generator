@@ -11585,6 +11585,7 @@ classSizePlus.addEventListener(
     const outline="#11101a";
     const path=(d,extra="")=>`<path d="${d}" fill="${color}" stroke="${outline}" stroke-width="1" stroke-linejoin="round" ${extra}/>`;
     const highlight=(d,opacity=.19)=>`<path d="${d}" fill="none" stroke="#fff" stroke-opacity="${opacity}" stroke-width="1" stroke-linecap="square"/>`;
+    const detail=(d,opacity=.5)=>`<path d="${d}" fill="none" stroke="${outline}" stroke-opacity="${opacity}" stroke-width="1" stroke-linecap="square"/>`;
     const tied=/bun|knot|puff|ponytail|tail|gathered|bunch/.test(text);
     const braided=texture==="braided"||texture==="loc-like"||/braid|locs|twist/.test(shape);
     const coiled=texture==="coiled";
@@ -11615,35 +11616,62 @@ classSizePlus.addEventListener(
     if(!tied&&len==="long"){
       back.push(path("M20 15 L24 17 L23 37 L22 49 L15 50 L14 32 L15 20 Z"));
       back.push(path("M44 15 L40 17 L41 37 L42 49 L49 50 L50 32 L49 20 Z"));
-      back.push(highlight("M17 23 L17 43 M47 23 L47 43",.14));
+      back.push(highlight("M17 23 L17 34 L16 42 M20 26 L19 38 L19 45 M47 23 L47 34 L48 42 M44 26 L45 38 L45 45",.18));
+      back.push(detail("M18 28 L18 40 M46 28 L46 40"));
     }else if(!tied&&len==="medium"){
       back.push(path("M20 16 L24 19 L22 34 L18 37 L16 29 L16 21 Z"));
       back.push(path("M44 16 L40 19 L42 34 L46 37 L48 29 L48 21 Z"));
     }
 
     if(coiled){
-      const big=/large|halo|full|broad/.test(shape);
-      const left=big?10:16, right=64-left, upper=big?3:volume===1?10:7, bottom=big?31:24;
-      const cap=`M${left} 20 L${left+2} 13 L${left+5} 13 L${left+5} 9 L${left+10} 9 L${left+10} ${upper+2} L27 ${upper+2} L30 ${upper} L36 ${upper} L39 ${upper+2} L${right-10} ${upper+2} L${right-10} 9 L${right-5} 9 L${right-5} 13 L${right-2} 13 L${right} 20 L${right} ${bottom} L${right-5} ${bottom+2} L${right-5} 21 L${left+5} 21 L${left+5} ${bottom+2} L${left} ${bottom} Z`;
+      const big=/large|halo|full/.test(shape);
+      const wide=big||/broad/.test(shape), tall=/tall|crown/.test(shape);
+      const left=big?10:wide?13:16, right=big?54:wide?51:48;
+      const upper=big?3:tall?5:volume===1?11:8, bottom=big?30:24;
+      const cap=`M${left} 22 L${left} 17 L${left+2} 17 L${left+2} 13 L${left+5} 13 L${left+5} ${upper+4} L${left+9} ${upper+4} L${left+9} ${upper+2} L25 ${upper+2} L25 ${upper} L39 ${upper} L39 ${upper+2} L${right-9} ${upper+2} L${right-9} ${upper+4} L${right-5} ${upper+4} L${right-5} 13 L${right-2} 13 L${right-2} 17 L${right} 17 L${right} ${bottom} L${right-5} ${bottom+2} L${right-5} 21 L${left+5} 21 L${left+5} ${bottom+2} L${left} ${bottom} Z`;
       back.push(path(cap));
-      for(let y=upper+3;y<20;y+=4){
-        for(let x=left+5+((y/4|0)%2)*2;x<right-3;x+=5){
-          back.push(rect(x,y,2,2,outline,'opacity=".65"'),rect(x+1,y,1,1,"#fff",'opacity=".22"'));
+      for(let y=upper+3;y<19;y+=4){
+        const row=(y-upper-3)/4;
+        const inset=y<upper+6?10:y<14?6:3;
+        for(let x=left+inset+(row%2)*2;x<right-inset;x+=5){
+          back.push(detail(`M${x} ${y+1} L${x+1} ${y} L${x+3} ${y+1} L${x+3} ${y+2}`,.7));
+          back.push(highlight(`M${x+1} ${y} L${x+2} ${y}`,.25));
         }
       }
-      front.push(path("M20 20 L20 17 L23 17 L23 15 L27 15 L29 17 L33 15 L36 17 L40 15 L44 18 L44 21 L41 20 L38 21 L35 20 L32 22 L29 20 L26 21 L23 20 Z"));
+      front.push(path(`M19 21 L19 16 L22 16 L22 ${upper+4} L26 ${upper+4} L26 ${upper+2} L38 ${upper+2} L38 ${upper+4} L42 ${upper+4} L42 16 L45 16 L45 21 Z`));
+      for(let y=upper+5;y<17;y+=4){
+        for(let x=23+((y-upper)%2)*2;x<41;x+=5){
+          front.push(detail(`M${x} ${y+1} L${x+1} ${y} L${x+3} ${y+1} L${x+3} ${y+2}`,.7));
+          front.push(highlight(`M${x+1} ${y} L${x+2} ${y}`,.25));
+        }
+      }
+      if(/side/.test(shape))front.push(path("M18 20 L19 15 L23 12 L29 11 L36 12 L42 15 L46 17 L45 22 L41 21 L38 19 L34 20 L31 19 L28 21 L25 20 L21 22 Z"));
+      else front.push(path("M20 21 L20 18 L23 17 L23 16 L26 16 L28 18 L31 16 L34 18 L37 16 L40 17 L43 16 L44 19 L44 22 L41 21 L38 22 L35 20 L32 22 L29 20 L26 22 L23 20 Z"));
+      front.push(highlight("M22 18 L24 17 M30 18 L32 17 M38 18 L40 17",.26));
     }else if(braided){
       back.push(path(`M18 21 L18 15 L22 ${top+2} L27 ${top} L37 ${top} L42 ${top+2} L46 15 L46 24 L43 26 L21 26 Z`));
       const end=len==="long"?45:len==="medium"?34:27;
-      const strand=(x,y,n,target)=>{
-        target.push(path(`M${x} ${y} L${x+3} ${y-1} L${x+4} ${y+3} L${x+4} ${n-2} L${x+2} ${n} L${x} ${n-1} Z`));
-        for(let sy=y+3;sy<n-2;sy+=4)target.push(highlight(`M${x+1} ${sy} L${x+3} ${sy+1}`,.28));
+      const strand=(x,y,n,target,lean=0)=>{
+        const endX=x+lean;
+        target.push(path(`M${x} ${y} L${x+3} ${y-1} L${x+4} ${y+3} L${endX+4} ${n-2} L${endX+2} ${n} L${endX} ${n-1} Z`));
+        for(let sy=y+3;sy<n-2;sy+=4){
+          const sx=Math.round(x+lean*(sy-y)/(n-y));
+          target.push(highlight(`M${sx+1} ${sy} L${sx+3} ${sy+1}`,.28));
+          if(texture==="braided")target.push(detail(`M${sx+3} ${sy+2} L${sx+1} ${sy+3}`,.65));
+        }
       };
-      if(!tied){strand(16,18,end,back);strand(19,16,end-2,back);strand(41,16,end-2,back);strand(44,18,end,back);}
+      if(!tied){
+        const leftEnd=/side/.test(shape)?Math.max(26,end-8):end;
+        strand(16,18,leftEnd,back,-2);strand(19,16,leftEnd-2,back,-1);
+        strand(41,16,end-2,back,1);strand(44,18,end,back,2);
+      }
       if(/tail|ponytail|knot/.test(text)){strand(43,15,43,back);strand(46,17,40,back);}
-      const frontEnd=/front|hanging|face-framing|center/.test(shape)?27:23;
+      const frontEnd=/front|hanging|face-framing|center/.test(shape)?25:21;
       const strands=/center|symmetrical/.test(shape)?[20,24,27,34,37,41]:[20,24,28,33,37,41];
-      for(const x of strands)strand(x,top+4,frontEnd+(x%3),front);
+      for(const x of strands){
+        const lean=/center|symmetrical/.test(shape)?(x<32?-2:2):/side|sweep/.test(shape)?2:0;
+        strand(x,top+4,frontEnd+(x%3),front,lean);
+      }
     }else if(/flat-top|flat-crop|square/.test(shape)){
       const y=volume>=2?5:volume===1?9:13;
       front.push(path(`M19 22 L19 ${y+2} L21 ${y} L43 ${y} L45 ${y+2} L45 22 L42 21 L22 21 Z`));
@@ -11652,7 +11680,11 @@ classSizePlus.addEventListener(
       front.push(path(`M27 20 L28 ${top+3} L31 ${Math.max(3,top-3)} L34 ${top} L37 ${top+4} L37 20 Z`));
       front.push(highlight(`M31 ${top+1} L30 17`));
     }else if(/spik|pointed|upright|tousled/.test(shape)||(/messy/.test(shape)&&/spik|point/.test(text))){
+      if(/side-extended|long-side/.test(shape)){
+        front.push(path(`M18 22 L17 16 L20 16 L19 11 L23 12 L25 ${top+1} L29 ${top+4} L32 ${Math.max(3,top-2)} L35 ${top+3} L40 ${top} L41 ${top+4} L50 ${top+3} L46 13 L52 15 L45 18 L46 22 L42 23 L38 20 L34 22 L30 20 L26 22 L23 21 Z`));
+      }else{
       front.push(path(`M18 22 L17 16 L20 17 L19 11 L23 13 L23 ${top+1} L27 ${top+4} L30 ${Math.max(3,top-2)} L33 ${top+3} L38 ${top} L39 ${top+5} L44 ${top+3} L43 15 L47 14 L46 22 L42 23 L39 20 L36 22 L33 20 L30 22 L27 20 L23 23 Z`));
+      }
       front.push(highlight(`M22 17 L24 14 M28 16 L30 ${top+4} M36 16 L39 13 M42 18 L44 16`));
     }else{
       const y=len==="very-short"?14:top;
@@ -11726,8 +11758,9 @@ classSizePlus.addEventListener(
       <polygon points="4,64 8,53 20,48 25,47 39,47 44,48 56,53 60,64" fill="${skin}"/>
       <path d="M18 49 L25 47 L32 53 L39 47 L46 49 L50 64 L14 64 Z" fill="#17171d" stroke="#08080b" stroke-width="1"/>
       <path d="M24 47 L32 54 L40 47 M18 49 L21 58 M46 49 L43 58" fill="none" stroke="#fff" stroke-width="2"/>
-      <path d="M32 13 C24 13 20 18 20 25 L20 30 C20 38 25 44 32 46 C39 44 44 38 44 30 L44 25 C44 18 40 13 32 13 Z" fill="${skin}"/>
-      ${rect(18,27,2,6,skinD)}${rect(44,27,2,6,skinD)}
+      ${rect(18,27,3,6,skinD,'stroke="#17131a" stroke-width="1"')}${rect(43,27,3,6,skinD,'stroke="#17131a" stroke-width="1"')}
+      <path d="M32 13 C24 13 20 18 20 25 L20 30 C20 38 25 44 32 46 C39 44 44 38 44 30 L44 25 C44 18 40 13 32 13 Z" fill="${skin}" stroke="#17131a" stroke-width="1"/>
+      ${rect(22,20,2,6,"#fff",'opacity=".12"')}${rect(23,35,2,3,skinD,'opacity=".55"')}${rect(39,35,2,3,skinD,'opacity=".55"')}
       ${facialSvg(Number(a.fHair),hex(a.fHairC)||hair)}
       ${rect(28,39,8,1,mouth)}
       ${rect(24,28,5,3,"#fff")}${rect(35,28,5,3,"#fff")}
@@ -11744,12 +11777,19 @@ classSizePlus.addEventListener(
   function setChoice(field,output,options,current){
     const matches=option=>String(option[3]||option[0]).toUpperCase()===String(current).toUpperCase();
     if(!options.some(matches)){
-      options.unshift([current,"Current"]);
+      const colorField=field==="skin"||field==="hairColor";
+      const swatch=colorField&&/^[0-9a-f]{6}$/i.test(String(current))?current:undefined;
+      options.unshift([current,swatch?"Custom color #"+swatch:"Current",swatch]);
     }
     choices[field]={options,current};
     const option=options.find(matches);
     const el=$(output);
-    el.textContent=option[1];
+    const colorField=field==="skin"||field==="hairColor";
+    el.textContent=colorField?"":String(option[0]).toLowerCase()==="none"?"0":String(Number(option[0]));
+    if(!colorField&&!Number.isFinite(Number(option[0]))&&String(option[0]).toLowerCase()!=="none")el.textContent=option[0];
+    el.setAttribute("aria-label",colorField
+      ?option[1]+(option[2]?" #"+option[2]:"")
+      :option[1]);
     el.style.background=option[2]?"#"+option[2]:"";
     el.style.color=option[2]&&lumOf(option[2])>120?"#000":"";
   }

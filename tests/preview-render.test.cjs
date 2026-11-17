@@ -42,6 +42,9 @@ test("swept, tied and textured hairstyles follow their catalog features", () => 
   assert.match(draw(130).back, /opacity/, "coils have texture even with black hair");
   assert.notEqual(draw(125).back, draw(64).back, "high bun differs from loose long hair");
   assert.notEqual(draw(153).front, draw(73).front, "center-parted locs differ from hanging locs");
+  assert.notEqual(draw(165).front, draw(164).front, "side-swept spikes have a different silhouette");
+  assert.notEqual(draw(130).back, draw(112).back, "large afro differs from close coils");
+  assert.notEqual(draw(24).front, draw(71).front, "side-swept braids differ from rounded braids");
 });
 
 test("preview renders a black jersey with white trim", () => {
@@ -50,4 +53,28 @@ test("preview renders a black jersey with white trim", () => {
   assert.match(svg, /fill="#17171d"/);
   assert.match(svg, /stroke="#fff" stroke-width="2"/);
   assert.doesNotMatch(svg, /#d93a3a/);
+});
+
+test("editor displays color swatches and numeric style IDs without losing accessible labels", () => {
+  const editor = html.slice(html.indexOf("  const lumOf="), html.indexOf("  function buildChoices("));
+  const { setChoice, elements } = vm.runInNewContext(`
+    const elements={};
+    const $=id=>elements[id]||(elements[id]={style:{},setAttribute(name,value){this[name]=value;}});
+    ${editor}
+    ({setChoice,elements});
+  `);
+  setChoice("skin","skin",[["BF8C6B","Medium 1","BF8C6B"]],"BF8C6B");
+  assert.equal(elements.skin.textContent,"");
+  assert.equal(elements.skin.style.background,"#BF8C6B");
+  assert.match(elements.skin["aria-label"],/Medium 1/);
+  setChoice("hairColor","color",[["202020","Black 1","202020"]],"ABCDEF");
+  assert.equal(elements.color.textContent,"");
+  assert.equal(elements.color.style.background,"#ABCDEF");
+  setChoice("hair","hair",[["0012","#12 Dense textured crop"]],"0012");
+  assert.equal(elements.hair.textContent,"12");
+  assert.match(elements.hair["aria-label"],/Dense textured crop/);
+  setChoice("facial","facial",[["0004","#4 Beard"]],"0004");
+  assert.equal(elements.facial.textContent,"4");
+  setChoice("accessory","accessory",[["none","#0 No accessory"]],"none");
+  assert.equal(elements.accessory.textContent,"0");
 });
