@@ -11619,15 +11619,43 @@ classSizePlus.addEventListener(
   $("hlNextPg").addEventListener("click",()=>{page++;drawList();});
   window.addEventListener("resize",()=>{if(generated.length)drawList();});
 
+  function createLoadingMessages(){
+    const messages=[
+      ["Lacing up the kicks..."],
+      ["Putting up some shots..."],
+      ["Watching film..."],
+      ["Studying the playbook..."],
+      ["Taping up the ankles..."],
+      ["Checking the scouting reports..."],
+      ["Stretching in the layup line..."],
+      ["Drawing up a play..."],
+      ["Polishing the hardwood..."],
+      ["Running the draft board..."],
+      ["Giving KoalityGame a back rub..."],
+      ["Browsing Hoop Land Discord..."],
+      ["Warming up from downtown..."],
+      ["Practicing the pick and roll..."],
+      ["Checking the box scores..."],
+      ["Calling a timeout..."],
+      ["Counting championship rings..."],
+      ["What team does Polan Stronk play for?", "Answer: LA Stars."]
+    ];
+    let index=Math.floor(Math.random()*messages.length), part=0;
+    return ()=>{
+      const text=messages[index][part++];
+      if(part===messages[index].length){index=(index+1)%messages.length;part=0;}
+      return text;
+    };
+  }
+
   $("hlSubmit").addEventListener("click",async()=>{
     const btn=$("hlSubmit");
     btn.disabled=true;
     const overlay=$("hlLoading"),msg=$("hlLoadingText");
-    const lines=["Lacing up the kicks...","Putting up some shots...","Watching film...","Studying the playbook...","Taping up the ankles...","Checking the scouting reports...","Stretching in the layup line...","Drawing up a play...","Polishing the hardwood...","Running the draft board..."];
-    let i=Math.floor(Math.random()*lines.length);
-    msg.textContent=lines[i];
+    const nextMessage=createLoadingMessages();
+    msg.textContent=nextMessage();
     overlay.classList.remove("hidden");
-    const timer=setInterval(()=>{i=(i+1)%lines.length;msg.textContent=lines[i];},1400);
+    const timer=setInterval(()=>{msg.textContent=nextMessage();},3000);
     try{await generateClass();}finally{clearInterval(timer);overlay.classList.add("hidden");btn.disabled=false;}
     if(generated.length&&!$("status").classList.contains("error")){
       page=0;

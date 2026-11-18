@@ -74,3 +74,20 @@ test("export validation identifies null, non-finite, missing and sparse values",
   assert.equal(validate({ attr: [undefined] }, "class"), "class.attr.0");
   assert.equal(validate({ attr: new Array(1) }, "class"), "class.attr.0");
 });
+
+test("loading trivia always shows its answer immediately after the question", () => {
+  const start = html.indexOf("  function createLoadingMessages(){");
+  const end = html.indexOf('  $("hlSubmit").addEventListener', start);
+  const create = vm.runInNewContext(html.slice(start, end) + "\ncreateLoadingMessages");
+  const next = create();
+  const messages = Array.from({ length: 40 }, () => next());
+  const question = "What team does Polan Stronk play for?";
+  const answer = "Answer: LA Stars.";
+  assert.ok(messages.includes(question));
+  assert.ok(messages.includes("Giving KoalityGame a back rub..."));
+  assert.ok(messages.includes("Browsing Hoop Land Discord..."));
+  messages.forEach((message, index) => {
+    if (message === question && index + 1 < messages.length) assert.equal(messages[index + 1], answer);
+    if (message === answer && index > 0) assert.equal(messages[index - 1], question);
+  });
+});
