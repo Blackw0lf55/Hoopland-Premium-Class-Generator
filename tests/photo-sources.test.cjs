@@ -219,6 +219,32 @@ test("college roster portraits require correct gender, team, season, exact uniqu
   } finally { global.fetch = original; }
 });
 
+test("draft roster portraits require the correct historical season and college", async () => {
+  const { collegeRosterHeadshot } = await import("../location-worker.js");
+  const original = global.fetch;
+  const calls = [];
+  const image = id => `https://a.espncdn.com/i/headshots/womens-college-basketball/players/full/${id}.png`;
+  try {
+    global.fetch = async url => {
+      const request = new URL(url);
+      calls.push(request);
+      const id = request.pathname.match(/\/teams\/(\d+)\/roster$/)?.[1];
+      assert.ok(id);
+      const name = id === "39101" ? "Laura Ziegler" : "Laila Phelia";
+      const athleteId = id === "39101" ? "60001" : "60002";
+      const year = Number(request.searchParams.get("season"));
+      return Response.json({team:{id},season:{year:year === 2025 ? 2024 : year},athletes:[
+        {id:athleteId,displayName:name,headshot:{href:image(athleteId)}}
+      ]});
+    };
+    assert.equal(await collegeRosterHeadshot("Laura Ziegler","women","39101",0,"Louisville Cardinals",2026),image("60001"));
+    assert.equal(await collegeRosterHeadshot("Laila Phelia","women","39102",0,"Syracuse Orange",2026),image("60002"));
+    assert.equal(await collegeRosterHeadshot("Laura Ziegler","women","39102",0,"Syracuse Orange",2026),"");
+    assert.equal(await collegeRosterHeadshot("Laura Ziegler","women","39101",0,"Louisville Cardinals",2025),"");
+    assert.ok(calls.some(url => url.searchParams.get("season") === "2026"));
+  } finally { global.fetch = original; }
+});
+
 test("the McDonald's fallback distinguishes college commitments from high schools", async () => {
   const { handleClassData } = await import("../class-sources.js");
   const original = global.fetch;

@@ -112,25 +112,27 @@ async function findCollegeTeamId(league, school) {
   return matches.length === 1 && /^\d{1,8}$/.test(String(matches[0].id)) ? String(matches[0].id) : "";
 }
 
-async function collegeRosterPlayer(name, gender, teamId, recruitYear, school = "") {
-  if (!Number.isInteger(recruitYear) || recruitYear < 1900 || recruitYear > 2100) return null;
+async function collegeRosterPlayer(name, gender, teamId, recruitYear, school = "", draftYear = 0) {
+  const isDraft = Number.isInteger(draftYear) && draftYear >= 1900 && draftYear <= 2100;
+  if (!isDraft && (!Number.isInteger(recruitYear) || recruitYear < 1900 || recruitYear > 2100)) return null;
   const league = gender === "women" ? "womens-college-basketball" : "mens-college-basketball";
   if (!teamId) teamId = await findCollegeTeamId(league, school);
   if (!/^\d{1,8}$/.test(String(teamId))) return null;
-  const key = `${league}:${teamId}`;
+  const key = `${league}:${teamId}:${isDraft ? draftYear : "current"}`;
   const roster = await cachedCollegeData(collegeRosterCache, key,
-    `https://site.api.espn.com/apis/site/v2/sports/basketball/${league}/teams/${teamId}/roster`);
+    `https://site.api.espn.com/apis/site/v2/sports/basketball/${league}/teams/${teamId}/roster` +
+      (isDraft ? `?season=${draftYear}` : ""));
   const season = Number(roster?.season?.year);
   if (String(roster?.team?.id) !== String(teamId) || !Number.isInteger(season) ||
-      season < recruitYear || season > recruitYear + 6 || !Array.isArray(roster.athletes)) return null;
+      (isDraft ? season !== draftYear : season < recruitYear || season > recruitYear + 6) ||
+      !Array.isArray(roster.athletes)) return null;
   const athletes = roster.athletes.flatMap(item => Array.isArray(item?.items) ? item.items : [item]).filter(Boolean);
   const matches = athletes.filter(athlete => normalizePersonName(athlete.displayName || athlete.fullName) === normalizePersonName(name));
   if (matches.length !== 1 || !/^\d+$/.test(String(matches[0].id || ""))) return null;
   return matches[0];
 }
 
-export async function collegeRosterHeadshot(name, gender, teamId, recruitYear, school = "") {
-  const athlete = await collegeRosterPlayer(name, gender, teamId, recruitYear, school);
+function verifiedCollegeHeadshot(athlete, gender) {
   if (!athlete) return "";
   const league = gender === "women" ? "womens-college-basketball" : "mens-college-basketball";
   const id = String(athlete.id || "");
@@ -144,6 +146,11 @@ export async function collegeRosterHeadshot(name, gender, teamId, recruitYear, s
     return "";
   }
   return image;
+}
+
+export async function collegeRosterHeadshot(name, gender, teamId, recruitYear, school = "", draftYear = 0) {
+  const athlete = await collegeRosterPlayer(name, gender, teamId, recruitYear, school, draftYear);
+  return verifiedCollegeHeadshot(athlete, gender);
 }
 
 async function fetchJSON(url) {
@@ -360,14 +367,15 @@ async function handleHometown(request) {
   const school = params.get("college") || "";
   const recruitYear = Number(params.get("recruitYear"));
   const verifiedPhotosOnly = params.get("recruit") === "1";
+  const draftYear = verifiedPhotosOnly ? 0 : Number(params.get("draftYear"));
   const country = params.get("ctry") || "";
   const sourceHome = (params.get("home") || "").trim();
   const sourceBirth = (params.get("birthplace") || "").trim();
   const espnId = /^\d{1,10}$/.test(params.get("espnId") || "") ? params.get("espnId") : "";
-  const key = JSON.stringify([gender, normalizePersonName(name), teamId, normalizePersonName(school), recruitYear, verifiedPhotosOnly, country, sourceHome, sourceBirth, espnId]);
+  const key = JSON.stringify([gender, normalizePersonName(name), teamId, normalizePersonName(school), recruitYear, draftYear, verifiedPhotosOnly, country, sourceHome, sourceBirth, espnId]);
   let entry = hometownCache.get(key);
   if (!entry || entry.expires <= Date.now()) {
-    const collegePromise = collegeRosterPlayer(name, gender, teamId, recruitYear, school);
+    const collegePromise = collegeRosterPlayer(name, gender, teamId, recruitYear, school, draftYear);
     const [college, photos] = await Promise.allSettled([collegePromise, wikidataPhotos(name)]);
     const hometown = await Promise.allSettled([
       resolveHometown(name, gender, sourceHome, sourceBirth, college.status === "fulfilled" ? college.value : null, verifiedPhotosOnly, espnId)
@@ -375,8 +383,7 @@ async function handleHometown(request) {
     if (hometown.status === "rejected") console.warn("Hometown lookup failed", name, hometown.reason);
     if (photos.status === "rejected") console.warn("Wikimedia photo lookup failed", name, photos.reason);
     if (college.status === "rejected") console.warn("College roster lookup failed", name, college.reason);
-    const collegePhoto = college.status === "fulfilled" && college.value
-      ? await collegeRosterHeadshot(name, gender, teamId, recruitYear, school) : "";
+    const collegePhoto = college.status === "fulfilled" ? verifiedCollegeHeadshot(college.value, gender) : "";
     const hometownResult = hometown.status === "fulfilled" ? hometown.value : {};
     if (verifiedPhotosOnly) delete hometownResult.headshot;
     const result = {
@@ -639,9 +646,9 @@ window.__HOOPLAND_VISION_SHEET=async function(source){
   }finally{if(typeof bitmap.close==="function")bitmap.close();}
 };
 window.__HOOPLAND_PREPARE_REAL_PLAYERS=async function(players,gender){
+  const type=document.getElementById("classType").value;
+  const year=Number(document.getElementById("draftYear").value);
   try{
-    const type=document.getElementById("classType").value;
-    const year=Number(document.getElementById("draftYear").value);
     if(type==="draft"&&year>=2008){
       const names=players.map(p=>[p.fn,p.ln].filter(Boolean).join(" "));
       const res=await fetch("/api/stats?gender="+(gender==="1"?"women":"men")+"&year="+year+"&names="+encodeURIComponent(names.join("|")));
@@ -652,8 +659,6 @@ window.__HOOPLAND_PREPARE_REAL_PLAYERS=async function(players,gender){
     }
   }catch(e){console.warn("College stats lookup failed",e);}
   try{
-    const type=document.getElementById("classType").value;
-    const year=Number(document.getElementById("draftYear").value);
     if(type==="draft"&&Number.isInteger(year))await prepareProfessionalPotential(players,gender,year);
   }catch(e){console.warn("Professional potential lookup failed",e);}
   const queue=players.slice();
@@ -662,7 +667,7 @@ window.__HOOPLAND_PREPARE_REAL_PLAYERS=async function(players,gender){
       const p=queue.shift();
       let d=null;
       try{
-        const q=new URLSearchParams({name:[p.fn,p.ln].filter(Boolean).join(" "),gender:gender==="1"?"women":"men",ctry:String(p.ctry||p.country||""),home:window.__HOOPLAND_REAL_HOMETOWN(p),birthplace:String(p.birthplace||""),espnId:String(p.espnId||""),team:String(p.collegeTeamId||""),college:String(p.committedCollege||""),recruitYear:String(p.recruitYear||""),recruit:p.recruitYear?"1":"",v:"4"});
+        const q=new URLSearchParams({name:[p.fn,p.ln].filter(Boolean).join(" "),gender:gender==="1"?"women":"men",ctry:String(p.ctry||p.country||""),home:window.__HOOPLAND_REAL_HOMETOWN(p),birthplace:String(p.birthplace||""),espnId:String(p.espnId||""),team:String(p.collegeTeamId||""),college:String(p.committedCollege||(type==="draft"&&(p.school||(p.bart&&p.bart.team)))||""),recruitYear:String(p.recruitYear||""),recruit:p.recruitYear?"1":"",draftYear:type==="draft"?String(year):"",v:"5"});
         const res=await fetch("/api/hometown?"+q);
         d=res.ok?await res.json():null;
       }catch(e){console.warn('Hometown and photo lookup failed for',[p.fn,p.ln].join(' '),e);}

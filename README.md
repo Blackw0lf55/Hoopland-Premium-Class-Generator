@@ -25,6 +25,9 @@ Draft classes also check ESPN's draft endpoint for headshots and attach them
 only when the returned year, player name, and (where provided) draft pick
 match. This includes the separately sourced 2026 women's class. If ESPN returns
 another year or a source fails, no photo is substituted from that response.
+Draft players with a known college also check that college's ESPN roster for
+the draft-year season. The team, season, exact unique player name and athlete
+headshot must all match; unavailable or ambiguous rosters are not used.
 
 For men's and women's freshman classes, an ESPN recruiting commitment (or an
 explicit college column in the McDonald's roster) can identify a college team.

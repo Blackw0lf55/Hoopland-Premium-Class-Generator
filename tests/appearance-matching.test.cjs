@@ -261,6 +261,40 @@ test("a partial appearance profile still fetches and applies photo descriptions"
   assert.ok(player.appearanceWarnings.some(w=>w.includes("fewer than three")));
 });
 
+test("draft photo lookup receives the season and college from the stats profile", async () => {
+  const {default:worker} = await import("../location-worker.js");
+  const csv = fs.readFileSync(path.join(__dirname, "..", "data/location-catalog.csv"),"utf8");
+  const env = {ASSETS:{fetch:async r=>new URL(r.url).pathname.endsWith(".csv")?new Response(csv):new Response(html)}};
+  const transformed = await (await worker.fetch(new Request("https://example.test/"),env)).text();
+  const script=transformed.match(/<script>\nwindow\.__HOOPLAND_LOCATION_RECORDS[\s\S]*?<\/script>/)[0].slice(8,-9);
+  const lookups=[];
+  const c=vm.createContext({
+    window:{},URL,URLSearchParams,console:{warn(){}},
+    REAL_PLAYER_APPEARANCE_PROFILES:{},REAL_PLAYER_DESCRIPTIONS:{},
+    normalizeAppearancePlayerName:name=>name.toLowerCase().replace(/[^a-z0-9]/g,""),
+    mergeLookDescriptions:merge,parseLookDescription:parse,
+    prepareProfessionalPotential:async()=>{},
+    document:{getElementById:id=>({value:id==="classType"?"draft":"2026"})},
+    fetch:async url=>{
+      if(String(url).startsWith("/api/stats"))return Response.json({ok:true,players:{
+        "Laura Ziegler":{team:"Louisville Cardinals"},"Laila Phelia":{team:"Syracuse Orange"}
+      }});
+      if(String(url).startsWith("/api/hometown")){
+        lookups.push(new URL(String(url),"https://example.test").searchParams);
+        return Response.json({headshots:[]});
+      }
+      throw new Error("Unexpected request "+url);
+    }
+  });
+  vm.runInContext(script,c);
+  await c.window.__HOOPLAND_PREPARE_REAL_PLAYERS([
+    {fn:"Laura",ln:"Ziegler"},{fn:"Laila",ln:"Phelia"}
+  ],"1");
+  assert.deepEqual(lookups.map(p=>[p.get("name"),p.get("college"),p.get("draftYear")]),[
+    ["Laura Ziegler","Louisville Cardinals","2026"],["Laila Phelia","Syracuse Orange","2026"]
+  ]);
+});
+
 test("photo service failures are reported instead of looking like successful matches", async () => {
   const {default:worker} = await import("../location-worker.js");
   const csv = fs.readFileSync(path.join(__dirname, "..", "data/location-catalog.csv"),"utf8");
