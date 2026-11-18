@@ -2193,6 +2193,11 @@ html body button{transition:none!important;}
 main{padding-bottom:calc(100px + env(safe-area-inset-bottom));}
 .hl-modal{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;padding:8px;}
 .hl-modal.hidden{display:none;}
+.hl-loading{position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.82);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;color:#fff;text-align:center;padding:20px;}
+.hl-loading.hidden{display:none;}
+.hl-loading-ball{font-size:3rem;animation:hlBounce .6s ease-in-out infinite alternate;}
+.hl-loading-text{font-size:1.1rem;min-height:1.5em;}
+@keyframes hlBounce{from{transform:translateY(0);}to{transform:translateY(-28px);}}
 .hl-modal-card{background:var(--px-fill-dark);color:#fff;width:min(520px,100%);max-height:calc(100dvh - 16px);display:flex;flex-direction:column;overflow:hidden;padding:12px;box-shadow:0 -3px 0 var(--px-hi),0 3px 0 var(--px-hi),-3px 0 0 var(--px-hi),3px 0 0 var(--px-hi);}
 .hl-pv-content{min-height:0;overflow:auto;overscroll-behavior:contain;}
 .hl-pv-compare{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:8px;}
@@ -8017,56 +8022,30 @@ const position =
     POS_PROFILE[position];
 
 
-  const minimumHeight =
-    Math.max(
-      numberValue(
-        "minHt",
-        63
-      ),
-      profile[0]
-    );
+  const userMinHt = numberValue("minHt", 63);
+  const userMaxHt = numberValue("maxHt", 80);
+  const userMinWt = numberValue("minWt", 120);
+  const userMaxWt = numberValue("maxWt", 230);
 
-
-  const maximumHeight =
-    Math.min(
-      numberValue(
-        "maxHt",
-        80
-      ),
-      profile[1]
-    );
-
-
-  const minimumWeight =
-    Math.max(
-      numberValue(
-        "minWt",
-        120
-      ),
-      profile[2]
-    );
-
-
-  const maximumWeight =
-    Math.min(
-      numberValue(
-        "maxWt",
-        230
-      ),
-      profile[3]
-    );
-
-
-  if (
-    minimumHeight >
-      maximumHeight
-    ||
-    minimumWeight >
-      maximumWeight
-  ) {
+  if (userMinHt > userMaxHt || userMinWt > userMaxWt) {
     throw new Error(
-      "Height or weight limits conflict with an allowed position."
+      "Minimum height or weight is greater than the maximum."
     );
+  }
+
+  // Position norms only narrow the user's range; if they don't overlap, the user's range wins.
+  let minimumHeight = Math.max(userMinHt, profile[0]);
+  let maximumHeight = Math.min(userMaxHt, profile[1]);
+  if (minimumHeight > maximumHeight) {
+    minimumHeight = userMinHt;
+    maximumHeight = userMaxHt;
+  }
+
+  let minimumWeight = Math.max(userMinWt, profile[2]);
+  let maximumWeight = Math.min(userMaxWt, profile[3]);
+  if (minimumWeight > maximumWeight) {
+    minimumWeight = userMinWt;
+    maximumWeight = userMaxWt;
   }
 
 
@@ -8110,8 +8089,8 @@ const height =
   const weight =
     giantOutlier
       ? randomInteger(
-          Math.max(minimumWeight, womenClass ? 200 : 240),
-          Math.max(maximumWeight, womenClass ? 250 : 300)
+          Math.min(userMaxWt, Math.max(minimumWeight, womenClass ? 200 : 240)),
+          userMaxWt
         )
       : randomInteger(
           minimumWeight,
@@ -11581,7 +11560,13 @@ classSizePlus.addEventListener(
   $("hlSubmit").addEventListener("click",async()=>{
     const btn=$("hlSubmit");
     btn.disabled=true;
-    try{await generateClass();}finally{btn.disabled=false;}
+    const overlay=$("hlLoading"),msg=$("hlLoadingText");
+    const lines=["Lacing up the kicks...","Putting up some shots...","Watching film...","Studying the playbook...","Taping up the ankles...","Checking the scouting reports...","Stretching in the layup line...","Drawing up a play...","Polishing the hardwood...","Running the draft board..."];
+    let i=Math.floor(Math.random()*lines.length);
+    msg.textContent=lines[i];
+    overlay.classList.remove("hidden");
+    const timer=setInterval(()=>{i=(i+1)%lines.length;msg.textContent=lines[i];},1400);
+    try{await generateClass();}finally{clearInterval(timer);overlay.classList.add("hidden");btn.disabled=false;}
     if(generated.length&&!$("status").classList.contains("error")){
       page=0;
       const resultTitle=$("hlResultTitle");
@@ -11598,6 +11583,7 @@ classSizePlus.addEventListener(
   });
 })();
 </script>
+<div id="hlLoading" class="hl-loading hidden" role="status" aria-live="polite"><div class="hl-loading-ball">🏀</div><div class="hl-loading-text" id="hlLoadingText"></div></div>
 <div id="hlPreview" class="hl-modal hidden" role="dialog" aria-modal="true" aria-labelledby="hlPvName">
   <div class="hl-modal-card">
     <div class="hl-pv-head"><b id="hlPvName"></b><button type="button" class="secondary" id="hlPvClose" aria-label="Close">✕</button></div>
