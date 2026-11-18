@@ -417,6 +417,18 @@ function normalizeVisionResponse(answer) {
   return output.join("; ");
 }
 
+function salvageVisionResponse(raw) {
+  const text = String(raw || "").toLowerCase().replace(/\s+/g, " ").trim();
+  const skin = text.match(/\bskin[^a-z0-9]{0,12}(?:swatch |code )?([lmbd][1-9])\b/)?.[1] || text.match(/\b([lmbd][1-9])\b/)?.[1];
+  const hair = text.match(/\bhair[^;]{0,25}?\b([htrk][1-9])\b/)?.[1] || text.match(/\b([htrk][1-9])\b/)?.[1];
+  const style = text.match(/hair\s*style\s*:\s*([^;]+)/)?.[1]?.trim();
+  const fields = [];
+  if (skin) fields.push("skin: " + skin);
+  if (hair) fields.push("hair color: " + hair);
+  if (style && !/^(unknown|unclear)/.test(style)) fields.push("hairstyle: " + style);
+  return fields.join("; ");
+}
+
 async function handleDescribe(request, env, ctx) {
   const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
   if (!env.AI) return json({ ok: false, error: "AI binding missing" });
@@ -444,13 +456,32 @@ async function handleDescribe(request, env, ctx) {
     if (cached) return cached;
     let binary = "";
     for (let i = 0; i < bytes.length; i += 8192) binary += String.fromCharCode.apply(null, bytes.subarray(i, i + 8192));
-    const result = await env.AI.run(VISION_MODEL, {
-      task:"query", image:"data:image/jpeg;base64," + btoa(binary),
-      question:VISION_PROMPT, reasoning:false, max_tokens:180
-    });
-    const text = normalizeVisionResponse(result?.answer);
-    if (!text || text.split("; ").every(field => /:\s*(unknown|unclear|not visible)$/.test(field))) {
-      return json({ ok: false, error: "unusable vision response" });
+    const image = "data:image/jpeg;base64," + btoa(binary);
+    const ask = async question => {
+      const result = await env.AI.run(VISION_MODEL, { task:"query", image, question, reasoning:false, max_tokens:180 });
+      const raw = result?.answer ?? result?.response ?? result?.text ?? (typeof result === "string" ? result : "");
+      return String(raw || "");
+    };
+    const usable = value => value && !value.split("; ").every(field => /:\s*(unknown|unclear|not visible)$/.test(field));
+    const rawFull = await ask(VISION_PROMPT);
+    let text = normalizeVisionResponse(rawFull);
+    if (!usable(text)) text = salvageVisionResponse(rawFull);
+    let rawParts = "";
+    if (!usable(text)) {
+      const [skin, hairColor, hairstyle] = await Promise.all([
+        ask("The left side is a photo of a person. The right side has labeled skin swatches (L, M, B, D rows). Which single skin swatch code best matches the person's face? Answer with only the code, like M2."),
+        ask("The left side is a photo of a person. The right side has labeled hair color swatches (H, T, R, K rows). Which single hair swatch code best matches the person's hair? Answer with only the code, like K1."),
+        ask("Describe this person's hairstyle in a few simple words (length, texture, braids, locs, curls, bun, ponytail).")
+      ]);
+      rawParts = [skin, hairColor, hairstyle].join(" | ");
+      text = salvageVisionResponse([
+        "skin: " + (skin.match(/\b[lmbd][1-9]\b/i)?.[0] || "unknown"),
+        "hair color: " + (hairColor.match(/\b[htrk][1-9]\b/i)?.[0] || "unknown"),
+        "hairstyle: " + (hairstyle.replace(/[^a-zA-Z ,-]/g, " ").trim().slice(0, 120) || "unknown")
+      ].join("; "));
+    }
+    if (!usable(text)) {
+      return json({ ok: false, error: "unusable vision response: " + String(rawFull || rawParts).slice(0, 160) });
     }
     const response = new Response(JSON.stringify({ ok: true, text }), { headers: { "content-type": "application/json", "cache-control": "public, max-age=2592000" } });
     ctx.waitUntil(cache.put(cacheKey, response.clone()));
