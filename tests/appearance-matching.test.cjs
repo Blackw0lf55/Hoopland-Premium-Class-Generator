@@ -104,6 +104,17 @@ test("explicit hair descriptions are not randomly discarded for dark skin or gen
   assert.equal(frieda.hairC, "D5A07D");
 });
 
+test("distinct photo observations produce distinct appearances", () => {
+  const first = merge(["skin: dark brown; hair color: black; hairstyle: long braids", "skin: unknown"]);
+  const second = merge(["skin: light; hair color: blonde; hairstyle: bald", "skin: unknown"]);
+  const a = apply(base(), first.text, "1");
+  const b = apply(base(), second.text, "1");
+  assert.notEqual(a.skinC, b.skinC);
+  assert.notEqual(a.hairC, b.hairC);
+  assert.notEqual(a.hair, b.hair);
+  assert.ok(first.unconfirmed.includes("skin"));
+});
+
 test("multiple photo descriptions use agreement and flag conflicts or missing evidence", () => {
   const a = "skin: dark 4; hair color: black 2; hairstyle: high-bun; accessory: none";
   const b = "skin: dark 3; hair color: black 2; hairstyle: high-bun; accessory: none";
@@ -117,6 +128,14 @@ test("multiple photo descriptions use agreement and flag conflicts or missing ev
   assert.ok(disputed.conflicts.includes("hairstyle"));
   assert.doesNotMatch(disputed.text, /skin:|hair color:|hairstyle:/);
   assert.deepEqual(plain(merge([a,"skin: unknown"])).unconfirmed, ["skin","hair color","hairstyle","accessory"]);
+  const partial = merge([a, "skin: unknown; hair color: unknown; hairstyle: unknown"]);
+  assert.match(partial.text, /skin: dark 4/);
+  assert.match(partial.text, /hairstyle: high-bun/);
+  assert.ok(partial.unconfirmed.includes("skin"));
+  const named = merge(["skin: dark brown; hair color: black; hairstyle: long braids"]);
+  assert.match(named.text, /skin: dark 3/);
+  assert.match(named.text, /hair color: black \d/);
+  assert.notEqual(apply(base(), named.text, "1").skinC, base().skinC);
   const duplicate = plain(merge(["skin: dark 4; skin: dark 4","skin: light 1"]));
   assert.deepEqual(duplicate.conflicts, ["skin"]);
   const majority = plain(merge([a,b,"skin: light 1; hairstyle: long-loose"]));
@@ -240,6 +259,30 @@ test("a partial appearance profile still fetches and applies photo descriptions"
   assert.match(player.lookText,/skin: dark 4/);
   assert.ok(player.appearanceWarnings.some(w=>w.includes("1 of 1 attempted photos")));
   assert.ok(player.appearanceWarnings.some(w=>w.includes("fewer than three")));
+});
+
+test("photo service failures are reported instead of looking like successful matches", async () => {
+  const {default:worker} = await import("../location-worker.js");
+  const csv = fs.readFileSync(path.join(__dirname, "..", "data/location-catalog.csv"),"utf8");
+  const env = {ASSETS:{fetch:async r=>new URL(r.url).pathname.endsWith(".csv")?new Response(csv):new Response(html)}};
+  const transformed = await (await worker.fetch(new Request("https://example.test/"),env)).text();
+  const script=transformed.match(/<script>\nwindow\.__HOOPLAND_LOCATION_RECORDS[\s\S]*?<\/script>/)[0].slice(8,-9);
+  const c=vm.createContext({
+    window:{},URL,URLSearchParams,console:{warn(){}},
+    REAL_PLAYER_APPEARANCE_PROFILES:{},REAL_PLAYER_DESCRIPTIONS:{},
+    normalizeAppearancePlayerName:name=>name.toLowerCase().replace(/[^a-z0-9]/g,""),
+    mergeLookDescriptions:merge,parseLookDescription:parse,
+    document:{getElementById:()=>({value:"freshman"})},
+    fetch:async url=>String(url).startsWith("/api/hometown")
+      ? Response.json({headshot:"https://a.espncdn.com/player.png"})
+      : Response.json({ok:false,error:"AI binding missing"})
+  });
+  vm.runInContext(script,c);
+  c.window.__HOOPLAND_VISION_SHEET=async()=>new Blob(["sheet"],{type:"image/jpeg"});
+  const player={fn:"Example",ln:"Player"};
+  await c.window.__HOOPLAND_PREPARE_REAL_PLAYERS([player],"1");
+  assert.equal(player.lookText,"");
+  assert.ok(player.appearanceWarnings.some(w=>w.includes("AI binding missing") && w.includes("placeholders")));
 });
 
 test("freshman preparation uses verified roster photos and warns when only a name-search photo exists", async () => {

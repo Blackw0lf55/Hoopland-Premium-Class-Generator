@@ -58,6 +58,10 @@ test("all positions and tiers honor budgets, growth, and women’s dunk default"
           assert.ok(current >= 2 && current <= potential && potential <= 20, code);
         }
         if (gender === "1") assert.deepEqual(Array.from(result.attributes.DNK), [2, 2]);
+        else {
+          assert.ok(result.attributes.LAY[1] >= 10);
+          assert.ok(result.attributes.DNK[1] >= 8);
+        }
       }
     }
   }
@@ -180,6 +184,10 @@ test("draft position and professional peak determine potential, with a 2.5-star 
 });
 
 test("conflicting limits fail explicitly", () => {
+  api.setBounds({ LAYp: [2, 9] });
+  assert.throws(() => api.makeAttributeRatings(0, "0", null, quality(3, 2), weights), /limits/);
+  api.setBounds({ DNKp: [2, 7] });
+  assert.throws(() => api.makeAttributeRatings(0, "0", null, quality(3, 2), weights), /limits/);
   api.setBounds({ DNKp: [3, 20] });
   assert.throws(() => api.makeAttributeRatings(0, "1", null, quality(3, 2), weights), /limits/);
   api.setBounds({ LAYc: [2, 2], DNKc: [2, 2], INSc: [2, 2], MIDc: [2, 2], TPTc: [2, 2], FTSc: [2, 2], DRBc: [2, 2], PASc: [2, 2], OREc: [2, 2], DREc: [2, 2], STLc: [2, 2], BLKc: [2, 2] });

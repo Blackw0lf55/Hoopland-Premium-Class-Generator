@@ -5559,11 +5559,22 @@ function mergeLookDescriptions(texts) {
         v = v.replace(/\s*\([^)]*\)\s*$/, "").trim();
         const code = v.match(/^([lmbd])\s*([1-6])$/);
         if (code) v = ({l:"light",m:"medium",b:"bronze",d:"dark"})[code[1]] + " " + code[2];
+        else {
+          const named = v.match(/^(light|medium|bronze|dark)(?: brown)?(?: skin(?: tone)?)?$/);
+          if (named) v = named[1] + " 3";
+        }
       }
       if (field === "hair color") {
         v = v.replace(/\s*\([^)]*\)\s*$/, "").trim();
         const code = v.match(/^([htrk])\s*([1-6])$/);
         if (code) v = ({h:"blonde",t:"brunette",r:"red",k:"black"})[code[1]] + " " + code[2];
+        else {
+          const named = v.match(/^(black|brown|brunette|blond|blonde|red)(?: hair)?$/);
+          if (named) {
+            const group = named[1] === "brown" ? "brunette" : named[1] === "blond" ? "blonde" : named[1];
+            v = group + " " + Math.ceil(appearanceHairPalette(group).length / 2);
+          }
+        }
       }
       if (field === "hairstyle" && !allowedStyles.has(v) && v !== "unknown") {
         const parsed = parseLookDescription("hairstyle: " + v);
@@ -5596,7 +5607,6 @@ function mergeLookDescriptions(texts) {
     if (!candidates.length) continue;
     if (texts.length > 1 && candidates.length < 2) {
       unconfirmed.push(field);
-      continue;
     }
     if (field === "skin") {
       const all = APPEARANCE_PALETTES.flatMap(group => group.skins.map((_, i) => group.group + " " + (i + 1)));
@@ -7397,7 +7407,11 @@ function makeAttributeRatings(position, gender, sourcePlayer, quality, weights, 
     currentMinimums.push(isGoat && !(index === dunkIndex && gender === "1")
       ? Math.max(currentMin, 8) : currentMin);
     currentMaximums.push(defaultDunker ? 10 : currentMax);
-    potentialMinimums.push(potentialMin);
+    const maleFloor = gender === "0" ? (code === "LAY" ? 10 : code === "DNK" ? 8 : 2) : 2;
+    if (maleFloor > potentialMax) {
+      throw new Error(`${code} potential limits conflict with the male minimum of ${maleFloor / 2}. Increase the potential maximum.`);
+    }
+    potentialMinimums.push(Math.max(potentialMin, maleFloor));
     potentialMaximums.push(defaultDunker ? 10 : potentialMax);
     if (index === dribbleIndex) {
       const bonus = arc === "Playmaking Big" || arc === "Point Forward" ? 2 : 0;
@@ -7427,6 +7441,24 @@ function makeAttributeRatings(position, gender, sourcePlayer, quality, weights, 
   const current = allocatePoints(currentBudget, currentMinimums, currentMaximums, adjustedWeights);
   if (!current) {
     throw new Error("Current-rating limits cannot fit the selected point budget and position/gender limits. Increase the limits or change the class settings.");
+  }
+  // Reserve enough potential points for mandatory floors without changing the current budget.
+  const floorFor = index => Math.max(
+    potentialMinimums[index],
+    isGoat && !(index === dunkIndex && gender === "1") ? 16 : 2
+  );
+  const growthFor = index => index === dribbleIndex ? growth : 0;
+  const requiredTotal = () => current.reduce(
+    (sum, value, index) => sum + Math.max(floorFor(index), value + growthFor(index)) - 2, 0
+  );
+  while (requiredTotal() > potentialBudget) {
+    const receiver = current.findIndex((value, index) =>
+      value < currentMaximums[index] && value + growthFor(index) < floorFor(index));
+    const donor = current.findIndex((value, index) =>
+      value > currentMinimums[index] && value + growthFor(index) > floorFor(index));
+    if (receiver < 0 || donor < 0) break;
+    current[receiver]++;
+    current[donor]--;
   }
   const requiredPotential = potentialMinimums.map((value, index) => {
     const goatFloor = isGoat && !(index === dunkIndex && gender === "1") ? 16 : 2;
@@ -8559,6 +8591,11 @@ async function generateClass() {
           0,
           classSize
         );
+      if (typeof window.__HOOPLAND_PREPARE_REAL_PLAYERS !== "function") {
+        realPlayers.forEach(player => {
+          player.appearanceWarnings = ["Photo matching is unavailable: the application worker is not running. Unsaved features are placeholders."];
+        });
+      }
     }
 
 
@@ -8614,6 +8651,11 @@ async function generateClass() {
         );
       }
 
+      const unmatched = realPlayers.filter(player => !player.lookText).length;
+      if (unmatched) {
+        const status = document.getElementById("status");
+        status.textContent += ` Photo matching unavailable or inconclusive for ${unmatched} real players; open their previews for details.`;
+      }
     }
     else {
 
@@ -11592,6 +11634,8 @@ classSizePlus.addEventListener(
       const resultTitle=$("hlResultTitle");
       resultTitle.textContent=($("className").value||"").toUpperCase();
       resultTitle.style.display=resultTitle.textContent?"":"none";
+      $("hlResultStatus").textContent=$("status").textContent;
+      $("hlResultStatus").className=$("status").className;
       window.hlShowPage(4,false);
       drawList();
     }
@@ -11609,6 +11653,7 @@ classSizePlus.addEventListener(
     <div class="hl-pv-head"><b id="hlPvName"></b><button type="button" class="secondary" id="hlPvClose" aria-label="Close">✕</button></div>
     <div class="hl-pv-content">
     <div class="hl-pv-meta" id="hlPvMeta"></div>
+    <div class="hl-hint" id="hlPvWarnings" role="status"></div>
     <div class="hl-pv-compare">
     <div class="hl-pv-art" id="hlPvArt"></div>
     <div class="hl-pv-reference" id="hlPvReference" hidden>
@@ -11914,6 +11959,7 @@ classSizePlus.addEventListener(
     const pos=(POS.find(x=>Number(x[0])===p.pos)||[0,"?"])[1];
     $("hlPvName").textContent=p.fn+" "+p.ln;
     $("hlPvMeta").textContent=pos+" • "+p.arc+" • "+Math.floor(p.ht/12)+"'"+p.ht%12+'" • '+p.wt+" lb • age "+p.age+" • "+p.ctry;
+    $("hlPvWarnings").textContent=(p.appearanceWarnings||[]).join(" ");
     $("hlPvArt").innerHTML=renderArt(p);
     $("hlPvDesc").value="";
     buildChoices(p);

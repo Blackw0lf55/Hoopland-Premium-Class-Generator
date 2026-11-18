@@ -662,6 +662,7 @@ window.__HOOPLAND_PREPARE_REAL_PLAYERS=async function(players,gender){
       p.referencePhotos=shots;
       if(shots.length){
         const descriptions=[];
+        const failures=[];
         let attempted=0;
         for(const shot of shots){
           if(descriptions.length===4)break;
@@ -671,8 +672,15 @@ window.__HOOPLAND_PREPARE_REAL_PLAYERS=async function(players,gender){
             const r=await fetch("/api/describe?src="+encodeURIComponent(shot),{method:"POST",headers:{"content-type":"image/jpeg"},body:sheet});
             const j=r.ok?await r.json():null;
             if(j&&j.ok&&j.text)descriptions.push(j.text);
-            else console.warn('Headshot description unavailable for',[p.fn,p.ln].join(' '),j&&j.error||r.status);
-          }catch(e){console.warn('Headshot description failed for',[p.fn,p.ln].join(' '),e);}
+            else {
+              const reason=String(j&&j.error||("HTTP "+r.status));
+              failures.push(reason);
+              console.warn('Headshot description unavailable for',[p.fn,p.ln].join(' '),reason);
+            }
+          }catch(e){
+            failures.push(String(e&&e.message||e));
+            console.warn('Headshot description failed for',[p.fn,p.ln].join(' '),e);
+          }
         }
         const combined=mergeLookDescriptions(descriptions);
         p.lookText=combined.text;
@@ -684,7 +692,7 @@ window.__HOOPLAND_PREPARE_REAL_PLAYERS=async function(players,gender){
           p.appearanceWarnings.push('Only one photo identified '+combined.unconfirmed.join(', ')+'; those features need review.');
         }
         if(descriptions.length<2){
-          if(!descriptions.length)p.appearanceWarnings.push('Photo descriptions unavailable; unsaved features are placeholders.');
+          if(!descriptions.length)p.appearanceWarnings.push('Photo descriptions unavailable; unsaved features are placeholders. '+[...new Set(failures)].join('; '));
         }
         const parsed=parseLookDescription(combined.text);
         const saved=REAL_PLAYER_DESCRIPTIONS[normalizeAppearancePlayerName([p.fn,p.ln].filter(Boolean).join(" "))]||"";
@@ -698,7 +706,7 @@ window.__HOOPLAND_PREPARE_REAL_PLAYERS=async function(players,gender){
         if(parsed.hairId===undefined&&!parsed.hairStyle&&savedLook.hairId===undefined&&!savedLook.hairStyle){
           p.appearanceWarnings.push('Hair style was not identified and is a placeholder.');
         }
-        if(combined.conflicts.includes('skin')||combined.unconfirmed.includes('skin')){
+        if(combined.conflicts.includes('skin')){
           p.appearanceWarnings.push('No photo skin tone was selected; check the saved tone or placeholder.');
         }
       }else{
