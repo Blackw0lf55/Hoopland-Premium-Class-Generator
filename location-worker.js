@@ -477,7 +477,7 @@ async function handleDescribe(request, env, ctx) {
       text = salvageVisionResponse([
         "skin: " + (skin.match(/\b[lmbd][1-9]\b/i)?.[0] || "unknown"),
         "hair color: " + (hairColor.match(/\b[htrk][1-9]\b/i)?.[0] || "unknown"),
-        "hairstyle: " + (hairstyle.replace(/[^a-zA-Z ,-]/g, " ").trim().slice(0, 120) || "unknown")
+        "hairstyle: " + (/\b(hair|braid|loc|curl|afro|bun|pony|bald|short|long|straight|wavy|shaved|twist|fade|bangs|updo)/i.test(hairstyle) ? hairstyle.replace(/[^a-zA-Z ,-]/g, " ").trim().slice(0, 120) : "unknown")
       ].join("; "));
     }
     if (!usable(text)) {
