@@ -11,8 +11,13 @@ labels. It does not sample image pixels. Photo descriptions are combined, and
 unknown or conflicting features remain placeholders. A reference photo can be
 viewed beside the editable mock-up in Class Preview. Photos may be missing,
 lighting can distort colors, and neither the model's estimates nor the mock-up
-guarantee an exact in-game appearance. Saved descriptions override estimates
-for their specified features, and preview edits are included in the export.
+guarantee an exact in-game appearance. Photo-derived features take precedence
+over older unsourced profile defaults; the user-provided Awa Fam, Lauren Betts
+and Frieda Bühner color corrections still override estimates for those features.
+When no reliable feature is available, a neutral placeholder is used instead
+of a randomly generated skin, hairstyle, facial hair, tattoo or accessory.
+The placeholder is not a prediction of the player's appearance. Preview edits
+are included in the export.
 Awa Fam's source name variations are normalized before matching. Getty Images
 is not used as a photo source.
 
@@ -53,7 +58,8 @@ the country is unavailable in the catalog, the fallback may be elsewhere.
 Ratings are estimates, not measured pro-level ability. Each of the 12 core
 attributes starts at 1 (export value 2), and added points use the export's
 2–20 scale. Potential tiers of 2.5, 3, 3.5, 4, 4.5 and 5 stars cap added
-points at 74, 88, 102, 116, 130 and 144 respectively. Orange overall is
+points at 74, 88, 102, 116, 130 and 144 respectively, except for the rare
+GOAT archetype described below. Orange overall is
 approximated at one half-star per 14 added points; growth is the potential cap
 minus current points. Tier names refer to potential, not guaranteed careers.
 
@@ -90,8 +96,22 @@ dunking from the composite, and excludes shot-zone attributes when those data
 are absent. Players without usable stats fall back to the fictional tier
 estimate, as indicated in the preview.
 
-Maximum dribbling potential on the displayed 1–10 scale is PG/G 10, SG/GF 8,
-SF/F 7, PF/FC 6 and C 5. The generator reserves up to four displayed points
+Each generated player receives an archetype, also exported in `arc`: Floor
+General, Scoring Guard, Sharpshooter, Slasher, 3-and-D Wing, Shot-Creating
+Wing, Point Forward, Stretch Big, Post Scorer, Rim Runner, Rim Protector,
+Playmaking Big or GOAT. Position-appropriate archetypes prioritize different
+attributes within the player's tier budget; reliable college statistics help
+choose an archetype for real players, otherwise the choice is an estimate.
+For fictional 5-star prospects there is a 0.1% chance of GOAT, provided the
+selected attribute limits permit it. GOATs use 192 potential points, with at
+least 8/10 in each non-exempt attribute and at least 4/10 current ability;
+women's dunk restrictions still apply. Their exported `pot` remains 5 stars.
+Compatibility of over-144-point players with Hoop Land has not been verified.
+
+Maximum dribbling potential on the displayed 1–10 scale is PG 10, G 9, SG 8,
+GF 7, SF 6, and F/PF/FC/C 5. Point Forwards and Playmaking Bigs can exceed
+their position limit by one displayed point, up to 10; GOATs can reach 10.
+The generator reserves up to four displayed points
 of dribbling growth, subject to the selected limits. Women receive no added
 dunk points unless they match a small, sourced list of players reported to
 have dunked in a college game; in that case dunk potential is capped at 5

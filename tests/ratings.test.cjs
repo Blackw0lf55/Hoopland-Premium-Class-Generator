@@ -15,13 +15,15 @@ const api = vm.runInContext(`
   const dunkInput = { dataset: {} };
   const document = { getElementById: () => dunkInput };
   let bounds = {};
+  const pick = items => items[Math.floor(rng() * items.length)];
   function attributeBounds(code, type) { return bounds[code + type] || [2, 20]; }
   ${section("function budgetForStars(", "function starText(")}
-  ${section("function allocatePoints(", "function archetypeWeights(")}
+  ${section("function allocatePoints(", "const TIER_TARGETS = ")}
   ${section("const TIER_RULES = ", "function shuffle(")}
   ${section("function randomHalfStar(", "function generateRegressionAge(")}
   ({ budgetForStars, starsForBudget, qualityForTier, ratingStatsProfile,
-     makeAttributeRatings, isReportedWomanDunker,
+     makeAttributeRatings, isReportedWomanDunker, archetypeWeights, ARCHETYPES,
+     setRng(value) { rng = value; },
      setBounds(value) { bounds = value; },
      setDunkEdited(edited) { dunkInput.dataset.userModified = edited ? "true" : ""; } })
 `, context);
@@ -40,7 +42,7 @@ test("potential caps and overall use the requested point scale", () => {
 });
 
 test("all positions and tiers honor budgets, growth, and women’s dunk default", () => {
-  const caps = [20,20,16,16,14,14,12,12,10];
+  const caps = [20,18,16,14,12,10,10,10,10];
   for (const gender of ["0", "1"]) for (let position = 0; position < 9; position++) {
     for (const stars of [2, 2.5, 3, 3.5, 4, 4.5, 5]) {
       for (let i = 0; i < 10; i++) {
@@ -56,6 +58,69 @@ test("all positions and tiers honor budgets, growth, and women’s dunk default"
           assert.ok(current >= 2 && current <= potential && potential <= 20, code);
         }
         if (gender === "1") assert.deepEqual(Array.from(result.attributes.DNK), [2, 2]);
+      }
+    }
+  }
+});
+
+test("archetypes define position-appropriate priorities and real statistics select a fitting style", () => {
+  assert.equal(api.ARCHETYPES.length,13);
+  const stats = {attrs:{TPT:20,FTS:20,PAS:4,ORE:3,DRE:4,STL:4,BLK:3},g:30,mpg:30};
+  assert.equal(api.archetypeWeights(2,{bart:stats},quality(4)).arc,"Sharpshooter");
+  const floor = api.archetypeWeights(0,{arc:"Floor General"},quality(3));
+  assert.ok(floor.weights[codes.indexOf("PAS")] > floor.weights[codes.indexOf("BLK")]);
+  assert.equal(api.archetypeWeights(6,{arc:"Playmaking Big"},quality(3)).arc,"Playmaking Big");
+  assert.throws(()=>api.archetypeWeights(0,{arc:"GOAT"},quality(3)),/5-star/);
+});
+
+test("playmaking bigs can develop more handles than the position cap", () => {
+  let exceeds = false;
+  for (let i=0;i<80;i++) {
+    const style=api.archetypeWeights(8,{arc:"Playmaking Big"},quality(4));
+    const result=api.makeAttributeRatings(8,"0",null,quality(4,3),style.weights,style.arc);
+    assert.ok(result.attributes.DRB[1] <= 12);
+    if (result.attributes.DRB[1] > 10) exceeds = true;
+  }
+  assert.ok(exceeds);
+});
+
+test("archetype priorities change current and potential ratings within the same tier", () => {
+  const sample = arc => {
+    let totalCurrent = 0, totalPotential = 0;
+    for (let i=0;i<100;i++) {
+      const style=api.archetypeWeights(5,{arc},quality(4));
+      const ratings=api.makeAttributeRatings(5,"0",null,quality(4,3),style.weights,style.arc);
+      totalCurrent += ratings.attributes.TPT[0];
+      totalPotential += ratings.attributes.TPT[1];
+      assert.equal(sum(ratings.attributes,1),116);
+    }
+    return [totalCurrent,totalPotential];
+  };
+  const shooter=sample("Sharpshooter"), interior=sample("Post Scorer");
+  assert.ok(shooter[0]>interior[0]+100);
+  assert.ok(shooter[1]>interior[1]+100);
+});
+
+test("GOATs are rare, have unusually broad potential and respect women's dunk rules", () => {
+  api.setRng(()=>0.0005);
+  assert.equal(api.archetypeWeights(4,null,quality(5)).arc,"GOAT");
+  assert.notEqual(api.archetypeWeights(4,null,quality(4.5)).arc,"GOAT");
+  assert.notEqual(api.archetypeWeights(4,{fn:"Real",ln:"Player"},quality(5)).arc,"GOAT");
+  api.setBounds({ TPTp:[2,12] });
+  assert.notEqual(api.archetypeWeights(4,null,quality(5)).arc,"GOAT");
+  api.setBounds({});
+  api.setRng(Math.random);
+  for (const gender of ["0","1"]) for (let i=0;i<20;i++) {
+    const style=api.archetypeWeights(8,{arc:"GOAT"},quality(5));
+    const result=api.makeAttributeRatings(8,gender,null,quality(5,4),style.weights,style.arc);
+    assert.equal(result.potentialBudget,192);
+    assert.equal(sum(result.attributes,1),192);
+    assert.equal(sum(result.attributes,0),result.currentBudget);
+    for (const code of codes) {
+      if (gender==="1" && code==="DNK") assert.deepEqual(Array.from(result.attributes[code]),[2,2]);
+      else {
+        assert.ok(result.attributes[code][1]>=16,code);
+        assert.ok(result.attributes[code][0]>=8,code);
       }
     }
   }

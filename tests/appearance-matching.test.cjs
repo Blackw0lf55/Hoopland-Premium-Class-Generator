@@ -70,7 +70,7 @@ test("Awa Thiam is normalized to Awa Fam without altering other names", () => {
   assert.deepEqual(plain(canonicalize({ fn: "Other", ln: "Thiam" })), { fn: "Other", ln: "Thiam" });
 });
 
-test("a partial hair profile retains photo-derived skin and curated hair", () => {
+test("photo-derived features override an unverified profile, while missing features use it", () => {
   const helpers = html.slice(html.indexOf("  function findBestHairReference("), html.indexOf("const REAL_PLAYER_DESCRIPTIONS ="));
   const generate = html.slice(html.indexOf("  function generateRealPlayerAppearance("), html.indexOf("const MEN_FACIAL_HAIR="));
   const nameFunctions = html.slice(html.indexOf("  function normalizeAppearancePlayerName("), html.indexOf("  function hairMatchScore("));
@@ -87,8 +87,9 @@ test("a partial hair profile retains photo-derived skin and curated hair", () =>
   const player = {fn:"Azzi",ln:"Fudd",lookText:"skin: dark 4; hairstyle: bald"};
   const result = fn(player,"1");
   assert.equal(result.skinC, palette.find(p => p.group === "dark").skins[3]);
-  assert.equal(result.hair,"0125");
+  assert.equal(result.hair,"0000");
   assert.equal(result.accessories[0].L_Elbow,result.skinC);
+  assert.equal(fn({fn:"Azzi",ln:"Fudd",lookText:"skin: dark 4"},"1").hair,"0125");
 });
 
 test("explicit hair descriptions are not randomly discarded for dark skin or gender", () => {
@@ -96,8 +97,8 @@ test("explicit hair descriptions are not randomly discarded for dark skin or gen
   assert.equal(look.hair, "0000");
   assert.ok(palette[0].hair.blonde.includes(look.hairC));
   assert.equal(apply(base(), "hairstyle: large-coiled-halo", "0").hair, "0167");
-  assert.equal(parse(saved.cooperflagg).hairColor.group,"blonde");
-  assert.equal(parse(saved.oliviamiles).accessory,6);
+  assert.equal(saved.cooperflagg,undefined);
+  assert.equal(saved.oliviamiles,undefined);
   const frieda = apply(base(), saved.friedabuhner, "1");
   assert.equal(frieda.skinC, "F4D2C3");
   assert.equal(frieda.hairC, "D5A07D");
@@ -122,6 +123,10 @@ test("multiple photo descriptions use agreement and flag conflicts or missing ev
   assert.match(majority.text,/skin: dark 4/);
   assert.match(majority.text,/hairstyle: high-bun/);
   assert.deepEqual(plain(merge(["skin: dark 1","skin: dark 5"])).conflicts,["skin"]);
+  const annotated = merge(["skin: D4 (dark brown); hair color: K2 (black)"]);
+  assert.match(annotated.text,/skin: dark 4/);
+  assert.match(annotated.text,/hair color: black 2/);
+  assert.equal(merge(["skin: D4 or D3"]).text,"");
 });
 
 test("visual swatch codes map to selector colors and neighboring skin groups agree", () => {
@@ -136,12 +141,28 @@ test("visual swatch codes map to selector colors and neighboring skin groups agr
 });
 
 test("known hair colors survive harmonization for real-player appearances", () => {
-  const code=html.slice(html.indexOf("function colorLum("),html.indexOf("function generateAppearance(gender)"));
+  const code=html.slice(html.indexOf("function colorLum("),html.indexOf("function generateAppearance(gender,"));
   const harmonize=vm.runInContext(`${code}\nlet rng=()=>0; harmonizeFaceColors`,context);
   const hair="7A5A40";
   const input={skinC:"835444",hairC:hair,eyeC:"090502"};
   assert.notEqual(harmonize(input).hairC,hair);
   assert.equal(harmonize(input,true).hairC,hair);
+});
+
+test("real-player placeholders do not invent tattoos or accessories", () => {
+  const code=html.slice(html.indexOf("function buildAccessories("),html.indexOf("let rng = Math.random;"));
+  const fn=vm.runInNewContext(`
+    const rng=()=>0;
+    const shoeColorsEnabled=()=>false;
+    const BODY_SEGMENTS=["L_Shoulder"],PRIMARY_ACCESSORIES=[18],SECONDARY_ACCESSORIES=[5],SHOE_COLORS=["FFFFFF"];
+    const shuffled=items=>items,randomInteger=()=>1,pick=items=>items[0],padStyle=n=>String(n).padStart(4,"0");
+    ${code}
+    buildAccessories
+  `);
+  const real=fn("AD795C","000000","0","FFFFFF",false);
+  assert.ok(real.every(item=>item.headAcc==="none" && item.L_Shoulder==="AD795C" && item.L_Shin==="AD795C"));
+  const fictional=fn("AD795C","000000","0","FFFFFF");
+  assert.notEqual(fictional[0].headAcc,"none");
 });
 
 test("real-player preparation compares up to four distinct photo descriptions", async () => {

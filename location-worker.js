@@ -400,7 +400,7 @@ const VISION_MODEL = "@cf/moondream/moondream3.1-9B-A2B";
 const VISION_PROMPT = "The left side is a photo of a basketball player. The right side shows labeled skin and hair color swatches. Compare the player's visible face and hair directly to the swatches, allowing for lighting and shadows. Do not infer color from race or the background. Use unknown for an obscured or uncertain feature. Describe the visible hairstyle using simple words for length, texture, braids, locs, curls, buns or ponytail. Output only these semicolon-separated fields: skin: <skin swatch code such as L1 or D4 or unknown>; hair color: <hair swatch code such as H1, T2, R1, K2 or unknown>; hairstyle: <visible description or unknown>; facial hair: <clean shaven, chin patch, mustache, goatee, short beard, full beard, long beard or unknown>; accessory: <none, headband, wide headband, goggles, glasses, bandana, visor, cap or unknown>.";
 
 function normalizeVisionResponse(answer) {
-  const text = String(answer || "").toLowerCase().replace(/[^a-z0-9,;: -]/g, " ").replace(/\s+/g, " ").trim().slice(0, 1000);
+  const text = String(answer || "").toLowerCase().replace(/[^a-z0-9,;:() -]/g, " ").replace(/\s+/g, " ").trim().slice(0, 1000);
   const fields = [...text.matchAll(/\b(skin(?: tone)?|hair colou?r|hair\s*style|facial hair|accessory)\s*:\s*/g)];
   const output = [], seen = new Set();
   for (let i = 0; i < fields.length; i++) {
@@ -439,7 +439,7 @@ async function handleDescribe(request, env, ctx) {
     const digest = [...new Uint8Array(await crypto.subtle.digest("SHA-256", bytes))]
       .map(value => value.toString(16).padStart(2, "0")).join("");
     const cache = caches.default;
-    const cacheKey = new Request("https://describe.local/?version=4&src=" + encodeURIComponent(target.toString()) + "&image=" + digest);
+    const cacheKey = new Request("https://describe.local/?version=5&src=" + encodeURIComponent(target.toString()) + "&image=" + digest);
     const cached = await cache.match(cacheKey);
     if (cached) return cached;
     let binary = "";

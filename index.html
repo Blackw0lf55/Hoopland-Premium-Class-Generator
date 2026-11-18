@@ -5421,8 +5421,6 @@ function canonicalizeRealPlayer(player) {
   Traits not identified by a description remain placeholders.
 */
 const REAL_PLAYER_DESCRIPTIONS = {
-  oliviamiles: "very light skin, black hair, afro, goggles",
-  cooperflagg: "very light skin, dark blonde hair, front comb over",
   awafam: "dark 4 skin",
   laurenbetts: "bronze 3 skin",
   friedabuhner: "skin: light 1; hair color: blonde 1"
@@ -5553,10 +5551,12 @@ function mergeLookDescriptions(texts) {
       const [, field, value] = match;
       let v = value.trim();
       if (field === "skin") {
+        v = v.replace(/\s*\([^)]*\)\s*$/, "").trim();
         const code = v.match(/^([lmbd])\s*([1-6])$/);
         if (code) v = ({l:"light",m:"medium",b:"bronze",d:"dark"})[code[1]] + " " + code[2];
       }
       if (field === "hair color") {
+        v = v.replace(/\s*\([^)]*\)\s*$/, "").trim();
         const code = v.match(/^([htrk])\s*([1-6])$/);
         if (code) v = ({h:"blonde",t:"brunette",r:"red",k:"black"})[code[1]] + " " + code[2];
       }
@@ -5738,7 +5738,7 @@ function appearanceSourceFor(sourcePlayer) {
 
   let baseAppearance =
     generateAppearance(
-      gender
+      gender, true
     );
 
 
@@ -5909,7 +5909,7 @@ function appearanceSourceFor(sourcePlayer) {
       return next;
     });
 
-  return harmonizeFaceColors({
+  let finalAppearance = {
     ...baseAppearance,
 
     skinC:
@@ -5942,7 +5942,10 @@ function appearanceSourceFor(sourcePlayer) {
 
     accessories:
       finalAccessories
-  }, true);
+  };
+  if (lookText) finalAppearance = applyLookDescription(finalAppearance, lookText, gender);
+  if (manualText) finalAppearance = applyLookDescription(finalAppearance, manualText, gender);
+  return harmonizeFaceColors(finalAppearance, true);
   }
   
 const MEN_FACIAL_HAIR=
@@ -6095,9 +6098,9 @@ function shoeColorsEnabled(){
   return !checkbox||checkbox.checked;
 }
 
-function buildAccessories(skinC,tattooColor,gender,shoeC){
-const hasTattoos = rng() < 0.12;
-const usesAccessories = rng() < 0.28;
+function buildAccessories(skinC,tattooColor,gender,shoeC,fictional=true){
+const hasTattoos = fictional && rng() < 0.12;
+const usesAccessories = fictional && rng() < 0.28;
 
 const theme = shoeC;
 
@@ -6173,13 +6176,13 @@ const base = {
     }
   }
 
-  if(rng()<.14){
+  if(fictional&&rng()<.14){
     const c=pick(["FFFFFF","000000"]);
     base.L_Shin=c;
     base.R_Shin=c;
   }
 
-  if(rng()<.18){
+  if(fictional&&rng()<.18){
     base.sockC=pick(SHOE_COLORS);
   }
 
@@ -6813,103 +6816,65 @@ let pointsLeft =
 }
 
 
-function archetypeWeights(position) {
+const ARCHETYPES = [
+  { name: "Floor General", positions: [0, 1, 2], focus: ["PAS", "DRB"], secondary: ["LAY", "STL"] },
+  { name: "Scoring Guard", positions: [0, 1, 2, 3], focus: ["LAY", "MID", "DRB"], secondary: ["TPT", "FTS"] },
+  { name: "Sharpshooter", positions: [0, 1, 2, 3, 4, 5], focus: ["TPT", "FTS"], secondary: ["MID"] },
+  { name: "Slasher", positions: [0, 1, 2, 3, 4, 5], focus: ["LAY", "INS"], secondary: ["DRB", "DNK"] },
+  { name: "3-and-D Wing", positions: [2, 3, 4, 5], focus: ["TPT", "STL"], secondary: ["DRE", "BLK"] },
+  { name: "Shot-Creating Wing", positions: [2, 3, 4, 5], focus: ["MID", "LAY"], secondary: ["TPT", "DRB"] },
+  { name: "Point Forward", positions: [3, 4, 5, 6], focus: ["PAS", "DRB"], secondary: ["LAY", "DRE"] },
+  { name: "Stretch Big", positions: [5, 6, 7, 8], focus: ["TPT", "DRE"], secondary: ["MID", "BLK"] },
+  { name: "Post Scorer", positions: [5, 6, 7, 8], focus: ["INS", "ORE"], secondary: ["MID", "DRE"] },
+  { name: "Rim Runner", positions: [5, 6, 7, 8], focus: ["LAY", "ORE"], secondary: ["INS", "DNK", "DRE"] },
+  { name: "Rim Protector", positions: [5, 6, 7, 8], focus: ["BLK", "DRE"], secondary: ["ORE", "INS"] },
+  { name: "Playmaking Big", positions: [5, 6, 7, 8], focus: ["PAS", "DRE"], secondary: ["DRB", "INS"] },
+  { name: "GOAT", positions: [0, 1, 2, 3, 4, 5, 6, 7, 8], focus: [], secondary: [] }
+];
 
-  const weights =
-    ATTRS.map(() => 1);
-
-  function boost(codes, amount) {
-
-    codes.forEach(code => {
-
-      const index =
-        ATTRS.findIndex(
-          attribute =>
-            attribute[0] === code
-        );
-
-      if (index >= 0) {
-        weights[index] += amount;
-      }
-    });
+function archetypeWeights(position, sourcePlayer = null, quality = null, gender = "0") {
+  const explicit = ARCHETYPES.find(style => style.name === sourcePlayer?.arc);
+  if (explicit?.name === "GOAT" && quality?.potentialStars !== 5) {
+    throw new Error("GOAT archetypes require 5-star potential.");
   }
-
-
-  if (position <= 1) {
-
-    boost(
-      ["DRB", "PAS", "LAY", "TPT"],
-      2.2
-    );
-
+  const choices = ARCHETYPES.filter(style => style.name !== "GOAT" && style.positions.includes(position));
+  const profile = ratingStatsProfile(sourcePlayer?.bart);
+  let style = explicit;
+  if (!style && !sourcePlayer && quality?.potentialStars === 5 && rng() < 0.001) {
+    let potentialCapacity = 0, currentCapacity = 0, currentFloor = 0, compatible = true;
+    for (const [code] of ATTRS) {
+      const [cMin, cMax] = attributeBounds(code, "c");
+      const [pMin, pMax] = attributeBounds(code, "p");
+      const femaleDunk = gender === "1" && code === "DNK";
+      const max = femaleDunk ? Math.min(pMax, 2) : pMax;
+      const min = Math.max(pMin, femaleDunk ? 2 : 16);
+      const base = Math.max(cMin, femaleDunk ? 2 : 8);
+      const currentMax = Math.min(cMax, max, code === "DRB" ? max - 8 : max);
+      compatible &&= min <= max && base <= currentMax;
+      potentialCapacity += max - 2;
+      currentCapacity += currentMax - 2;
+      currentFloor += base - 2;
+    }
+    const budget = Math.max(108, budgetForStars(quality.currentStars));
+    if (compatible && potentialCapacity >= 192 && currentCapacity >= budget && currentFloor <= budget) {
+      style = ARCHETYPES.find(item => item.name === "GOAT");
+    }
   }
-  else if (position <= 3) {
-
-    boost(
-      ["LAY", "MID", "TPT", "STL"],
-      1.8
-    );
-
+  if (!style && profile && profile.confidence >= 0.25) {
+    const scored = choices.map(item => {
+      const observed = [...item.focus, ...item.secondary].filter(code =>
+        profile.codes.includes(code) && Number.isFinite(sourcePlayer.bart.attrs[code]));
+      const score = observed.length
+        ? observed.reduce((sum, code) => sum + sourcePlayer.bart.attrs[code] - 11, 0) / observed.length -
+          4 * (1 - item.focus.filter(code => observed.includes(code)).length / item.focus.length)
+        : -Infinity;
+      return { item, score };
+    }).sort((a, b) => b.score - a.score);
+    if (Number.isFinite(scored[0].score)) style = scored[0].item;
   }
-  else if (position <= 5) {
-
-    boost(
-      ["LAY", "INS", "MID", "DRE"],
-      1.5
-    );
-
-  }
-  else {
-
-    boost(
-      ["INS", "ORE", "DRE", "BLK"],
-      2.2
-    );
-  }
-
-
-  const styles = [
-
-    [
-      "Shooter",
-      ["TPT", "MID", "FTS"]
-    ],
-
-    [
-      "Slasher",
-      ["LAY", "DRB", "INS"]
-    ],
-
-    [
-      "Playmaker",
-      ["PAS", "DRB", "LAY"]
-    ],
-
-    [
-      "Defender",
-      ["STL", "BLK", "DRE"]
-    ],
-
-    [
-      "Interior",
-      ["INS", "ORE", "DRE", "BLK"]
-    ]
-
-  ];
-
-
-  const style = pick(styles);
-
-  boost(
-    style[1],
-    2.5
-  );
-
-
-  return {
-    weights: weights,
-    arc: style[0]
-  };
+  if (!style) style = pick(choices);
+  const weights = ATTRS.map(([code]) => style.focus.includes(code) ? 5 : style.secondary.includes(code) ? 2.5 : 1);
+  return { weights, arc: style.name };
 }
 
 
@@ -7390,17 +7355,20 @@ function isReportedWomanDunker(sourcePlayer) {
   return Boolean(WOMEN_DUNKERS[name] && WOMEN_DUNKERS[name].some(team => school.includes(team)));
 }
 
-function makeAttributeRatings(position, gender, sourcePlayer, quality, weights) {
-  const potentialBudget = budgetForStars(quality.potentialStars);
+function makeAttributeRatings(position, gender, sourcePlayer, quality, weights, arc = "") {
+  const isGoat = arc === "GOAT";
+  if (isGoat && quality.potentialStars !== 5) throw new Error("GOAT archetypes require 5-star potential.");
+  const potentialBudget = isGoat ? 192 : budgetForStars(quality.potentialStars);
   const profile = ratingStatsProfile(sourcePlayer && sourcePlayer.bart);
   const currentBudget = Math.min(
     potentialBudget - 8,
-    profile ? Math.round(40 + profile.score * 80) : budgetForStars(quality.currentStars)
+    isGoat ? Math.max(108, profile ? Math.round(40 + profile.score * 80) : budgetForStars(quality.currentStars))
+      : profile ? Math.round(40 + profile.score * 80) : budgetForStars(quality.currentStars)
   );
   const currentMinimums = [], currentMaximums = [], potentialMinimums = [], potentialMaximums = [];
   const dribbleIndex = ATTRS.findIndex(([code]) => code === "DRB");
   const dunkIndex = ATTRS.findIndex(([code]) => code === "DNK");
-  const dribbleCaps = [20, 20, 16, 16, 14, 14, 12, 12, 10];
+  const dribbleCaps = [20, 18, 16, 14, 12, 10, 10, 10, 10];
   const reportedDunk = isReportedWomanDunker(sourcePlayer);
 
   ATTRS.forEach(([code], index) => {
@@ -7408,11 +7376,15 @@ function makeAttributeRatings(position, gender, sourcePlayer, quality, weights) 
     const [potentialMin, potentialMax] = attributeBounds(code, "p");
     const defaultDunker = index === dunkIndex && gender === "1" && reportedDunk &&
       document.getElementById("DNKcmax").dataset.userModified !== "true";
-    currentMinimums.push(currentMin);
+    currentMinimums.push(isGoat && !(index === dunkIndex && gender === "1")
+      ? Math.max(currentMin, 8) : currentMin);
     currentMaximums.push(defaultDunker ? 10 : currentMax);
     potentialMinimums.push(potentialMin);
     potentialMaximums.push(defaultDunker ? 10 : potentialMax);
-    if (index === dribbleIndex) potentialMaximums[index] = Math.min(potentialMax, dribbleCaps[position]);
+    if (index === dribbleIndex) {
+      const bonus = arc === "Playmaking Big" || arc === "Point Forward" ? 2 : 0;
+      potentialMaximums[index] = Math.min(potentialMax, isGoat ? 20 : dribbleCaps[position] + bonus);
+    }
     if (index === dunkIndex && gender === "1") {
       potentialMaximums[index] = Math.min(potentialMaximums[index], reportedDunk ? 10 : 2);
       if (!reportedDunk) currentMaximums[index] = Math.min(currentMax, 2);
@@ -7438,9 +7410,10 @@ function makeAttributeRatings(position, gender, sourcePlayer, quality, weights) 
   if (!current) {
     throw new Error("Current-rating limits cannot fit the selected point budget and position/gender limits. Increase the limits or change the class settings.");
   }
-  const requiredPotential = potentialMinimums.map((value, index) =>
-    Math.max(value, current[index] + (index === dribbleIndex ? growth : 0))
-  );
+  const requiredPotential = potentialMinimums.map((value, index) => {
+    const goatFloor = isGoat && !(index === dunkIndex && gender === "1") ? 16 : 2;
+    return Math.max(value, goatFloor, current[index] + (index === dribbleIndex ? growth : 0));
+  });
   const potential = allocatePoints(potentialBudget, requiredPotential, potentialMaximums, adjustedWeights);
   if (!potential) {
     throw new Error("Potential limits cannot fit the selected point budget and position/gender limits. Increase the limits or change the class settings.");
@@ -7700,27 +7673,27 @@ function harmonizeFaceColors(a, preserveHair=false){
   return{...a,hairC,fHairC:hairC,browC,eyeC};
 }
 
-function generateAppearance(gender){
-  return harmonizeFaceColors(generateAppearanceRaw(gender));
+function generateAppearance(gender,real=false){
+  return harmonizeFaceColors(generateAppearanceRaw(gender,real),real);
 }
 
-function generateAppearanceRaw(gender) {
+function generateAppearanceRaw(gender,real=false) {
 
   const palette =
-    pick(APPEARANCE_PALETTES);
+    real ? APPEARANCE_PALETTES[1] : pick(APPEARANCE_PALETTES);
 
   const skinC =
-    pick(palette.skins);
+    real ? palette.skins[2] : pick(palette.skins);
 
   const hairChoice =
-    chooseHairColor(palette,gender);
+    real ? {group:"black",color:"202020"} : chooseHairColor(palette,gender);
 
   const hairC =
     hairChoice.color;
 
   const hair =
     padStyle(
-      chooseHairStyle(
+      real ? (gender === "1" ? 18 : 1) : chooseHairStyle(
         gender,
         palette,
         hairChoice.group
@@ -7733,7 +7706,7 @@ function generateAppearanceRaw(gender) {
       : "FFFFFF";
 
   let facialHair = 0;
-  if(gender==="0"&&rng()<.26)facialHair=pick(MEN_FACIAL_HAIR.filter(id=>id!==0));
+  if(!real&&gender==="0"&&rng()<.26)facialHair=pick(MEN_FACIAL_HAIR.filter(id=>id!==0));
 
   return {
     skinC,
@@ -7749,7 +7722,8 @@ function generateAppearanceRaw(gender) {
       skinC,
       pick(palette.tattoos),
       gender,
-      shoeC
+      shoeC,
+      !real
     )
   };
 }
@@ -8239,11 +8213,11 @@ const hometown =
 
   const archetype =
     archetypeWeights(
-      position
+      position, sourcePlayer, quality, gender
     );
 
   const { attributes, currentBudget, potentialBudget, reportedDunk } =
-    makeAttributeRatings(position, gender, sourcePlayer, quality, archetype.weights);
+    makeAttributeRatings(position, gender, sourcePlayer, quality, archetype.weights, archetype.arc);
   const currentStars = starsForBudget(currentBudget);
 
 
@@ -9489,7 +9463,7 @@ sec:
   6,
 
 arc:
-  "",
+  player.arc,
 
     pot:
       player.pot,
@@ -11931,7 +11905,7 @@ classSizePlus.addEventListener(
     const p=generated[idx];
     const pos=(POS.find(x=>Number(x[0])===p.pos)||[0,"?"])[1];
     $("hlPvName").textContent=p.fn+" "+p.ln;
-    $("hlPvMeta").textContent=pos+" • "+Math.floor(p.ht/12)+"'"+p.ht%12+'" • '+p.wt+" lb • age "+p.age+" • "+p.ctry;
+    $("hlPvMeta").textContent=pos+" • "+p.arc+" • "+Math.floor(p.ht/12)+"'"+p.ht%12+'" • '+p.wt+" lb • age "+p.age+" • "+p.ctry;
     $("hlPvArt").innerHTML=renderArt(p);
     $("hlPvDesc").value="";
     buildChoices(p);
