@@ -6632,14 +6632,15 @@ function renderBar(code) {
     renderBar(code);
   });
 
-  document.getElementById("gender").addEventListener("change", () => {
+  window.resetDunkLimits = () => {
     const defaultDunk = document.getElementById("gender").value === "1" ? 2 : 20;
     const actual = document.getElementById("DNKcmax");
     actual.value = defaultDunk;
     delete actual.dataset.userModified;
     document.getElementById("DNKpmax").value = defaultDunk;
     renderBar("DNK");
-  });
+  };
+  document.getElementById("gender").addEventListener("change", window.resetDunkLimits);
 
   attributeGrid.addEventListener(
     "click",
@@ -6821,28 +6822,40 @@ let pointsLeft =
 }
 
 
+// Hoop Land archetype ids: 1 None, 2 All Around, 3 Athletic Finisher, 4 Interior Defender,
+// 5 Perimeter Defender, 6 Playmaker, 7 Post Scorer, 8 Rebounder, 9 Sharpshooter, 10 Shot Creator, 11 Slasher.
+const DUNK_ARCHETYPE_IDS = [3];
+
+function archetypeUsesDunking(style) {
+  return DUNK_ARCHETYPE_IDS.includes(style.pri) || DUNK_ARCHETYPE_IDS.includes(style.sec) ||
+    style.focus.includes("DNK") || style.secondary.includes("DNK");
+}
+
 const ARCHETYPES = [
-  { name: "Floor General", positions: [0, 1, 2], focus: ["PAS", "DRB"], secondary: ["LAY", "STL"] },
-  { name: "Scoring Guard", positions: [0, 1, 2, 3], focus: ["LAY", "MID", "DRB"], secondary: ["TPT", "FTS"] },
-  { name: "Sharpshooter", positions: [0, 1, 2, 3, 4, 5], focus: ["TPT", "FTS"], secondary: ["MID"] },
-  { name: "Slasher", positions: [0, 1, 2, 3, 4, 5], focus: ["LAY", "INS"], secondary: ["DRB", "DNK"] },
-  { name: "3-and-D Wing", positions: [2, 3, 4, 5], focus: ["TPT", "STL"], secondary: ["DRE", "BLK"] },
-  { name: "Shot-Creating Wing", positions: [2, 3, 4, 5], focus: ["MID", "LAY"], secondary: ["TPT", "DRB"] },
-  { name: "Point Forward", positions: [3, 4, 5, 6], focus: ["PAS", "DRB"], secondary: ["LAY", "DRE"] },
-  { name: "Stretch Big", positions: [5, 6, 7, 8], focus: ["TPT", "DRE"], secondary: ["MID", "BLK"] },
-  { name: "Post Scorer", positions: [5, 6, 7, 8], focus: ["INS", "ORE"], secondary: ["MID", "DRE"] },
-  { name: "Rim Runner", positions: [5, 6, 7, 8], focus: ["LAY", "ORE"], secondary: ["INS", "DNK", "DRE"] },
-  { name: "Rim Protector", positions: [5, 6, 7, 8], focus: ["BLK", "DRE"], secondary: ["ORE", "INS"] },
-  { name: "Playmaking Big", positions: [5, 6, 7, 8], focus: ["PAS", "DRE"], secondary: ["DRB", "INS"] },
-  { name: "GOAT", positions: [0, 1, 2, 3, 4, 5, 6, 7, 8], focus: [], secondary: [] }
+  { name: "Floor General", pri: 6, sec: 5, positions: [0, 1, 2], focus: ["PAS", "DRB"], secondary: ["LAY", "STL"] },
+  { name: "Scoring Guard", pri: 10, sec: 9, positions: [0, 1, 2, 3], focus: ["LAY", "MID", "DRB"], secondary: ["TPT", "FTS"] },
+  { name: "Sharpshooter", pri: 9, sec: 1, positions: [0, 1, 2, 3, 4, 5], focus: ["TPT", "FTS"], secondary: ["MID"] },
+  { name: "Slasher", pri: 11, sec: 10, positions: [0, 1, 2, 3, 4, 5], focus: ["LAY", "INS"], secondary: ["DRB", "DNK"] },
+  { name: "3-and-D Wing", pri: 9, sec: 5, positions: [2, 3, 4, 5], focus: ["TPT", "STL"], secondary: ["DRE", "BLK"] },
+  { name: "Shot-Creating Wing", pri: 10, sec: 11, positions: [2, 3, 4, 5], focus: ["MID", "LAY"], secondary: ["TPT", "DRB"] },
+  { name: "Point Forward", pri: 6, sec: 8, positions: [3, 4, 5, 6], focus: ["PAS", "DRB"], secondary: ["LAY", "DRE"] },
+  { name: "Stretch Big", pri: 9, sec: 8, positions: [5, 6, 7, 8], focus: ["TPT", "DRE"], secondary: ["MID", "BLK"] },
+  { name: "Post Scorer", pri: 7, sec: 8, positions: [5, 6, 7, 8], focus: ["INS", "ORE"], secondary: ["MID", "DRE"] },
+  { name: "Rim Runner", pri: 3, sec: 8, positions: [5, 6, 7, 8], focus: ["LAY", "ORE"], secondary: ["INS", "DNK", "DRE"] },
+  { name: "Rim Protector", pri: 4, sec: 8, positions: [5, 6, 7, 8], focus: ["BLK", "DRE"], secondary: ["ORE", "INS"] },
+  { name: "Playmaking Big", pri: 6, sec: 4, positions: [5, 6, 7, 8], focus: ["PAS", "DRE"], secondary: ["DRB", "INS"] },
+  { name: "GOAT", pri: 2, sec: 1, positions: [0, 1, 2, 3, 4, 5, 6, 7, 8], focus: [], secondary: [] }
 ];
 
 function archetypeWeights(position, sourcePlayer = null, quality = null, gender = "0") {
-  const explicit = ARCHETYPES.find(style => style.name === sourcePlayer?.arc);
+  const women = gender === "1";
+  let explicit = ARCHETYPES.find(style => style.name === sourcePlayer?.arc);
+  if (women && explicit && archetypeUsesDunking(explicit)) explicit = undefined;
   if (explicit?.name === "GOAT" && quality?.potentialStars !== 5) {
     throw new Error("GOAT archetypes require 5-star potential.");
   }
-  const choices = ARCHETYPES.filter(style => style.name !== "GOAT" && style.positions.includes(position));
+  const choices = ARCHETYPES.filter(style => style.name !== "GOAT" && style.positions.includes(position) &&
+    !(women && archetypeUsesDunking(style)));
   const profile = ratingStatsProfile(sourcePlayer?.bart);
   let style = explicit;
   if (!style && !sourcePlayer && quality?.potentialStars === 5 && rng() < 0.001) {
@@ -6879,7 +6892,7 @@ function archetypeWeights(position, sourcePlayer = null, quality = null, gender 
   }
   if (!style) style = pick(choices);
   const weights = ATTRS.map(([code]) => style.focus.includes(code) ? 5 : style.secondary.includes(code) ? 2.5 : 1);
-  return { weights, arc: style.name };
+  return { weights, arc: style.name, pri: style.pri, sec: style.sec };
 }
 
 
@@ -8339,6 +8352,12 @@ else {
     arc:
       archetype.arc,
 
+    pri:
+      archetype.pri,
+
+    sec:
+      archetype.sec,
+
     tier:
       quality.tier,
 
@@ -9438,13 +9457,13 @@ function makeHoopLandPlayer(
       0,
 
     pri:
-  10,
+      player.pri ?? 1,
 
-sec:
-  6,
+    sec:
+      player.sec ?? 1,
 
-arc:
-  player.arc,
+    arc:
+      player.arc,
 
     pot:
       player.pot,
@@ -11278,6 +11297,7 @@ function syncClassDefaults(){
   const women=document.getElementById("gender").value==="1";
   document.getElementById("classSize").value=freshman?300:(women?60:70);
   document.getElementById("className").value=`${women?"Women's":"Men's"} ${freshman?"Freshman":"Draft"} Class`;
+  if(window.resetDunkLimits)window.resetDunkLimits();
 }
 
 document.getElementById("classType").addEventListener("change",syncClassDefaults);

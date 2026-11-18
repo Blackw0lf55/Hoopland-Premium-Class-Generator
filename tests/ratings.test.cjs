@@ -65,6 +65,8 @@ test("all positions and tiers honor budgets, growth, and women’s dunk default"
 
 test("archetypes define position-appropriate priorities and real statistics select a fitting style", () => {
   assert.equal(api.ARCHETYPES.length,13);
+  assert.ok(api.ARCHETYPES.every(style=>style.pri>=1&&style.pri<=11&&style.sec>=1&&style.sec<=11));
+  for(let i=0;i<300;i++){const w=api.archetypeWeights(6,null,quality(3),"1");assert.ok(![3].includes(w.pri)&&![3].includes(w.sec)&&w.arc!=="Rim Runner");}
   const stats = {attrs:{TPT:20,FTS:20,PAS:4,ORE:3,DRE:4,STL:4,BLK:3},g:30,mpg:30};
   assert.equal(api.archetypeWeights(2,{bart:stats},quality(4)).arc,"Sharpshooter");
   const floor = api.archetypeWeights(0,{arc:"Floor General"},quality(3));
