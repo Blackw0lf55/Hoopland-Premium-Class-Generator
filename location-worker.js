@@ -718,7 +718,11 @@ window.__HOOPLAND_RESOLVE_LOCATION=function(player){
   const normalize=window.__HOOPLAND_NORMALIZE_LOCATION_NAME;
   if(!player||!player.isReal){
     if(!records.length)return {home:"",loc:{x:0,y:0}};
-    const fictionalLocation=records[Math.floor(Math.random()*records.length)];
+    const fictionalCountries={US:"United States",CA:"Canada",AU:"Australia",FR:"France",UK:"United Kingdom",GB:"United Kingdom",DE:"Germany",ES:"Spain",RS:"Serbia",BE:"Belgium"};
+    const fictionalCountry=fictionalCountries[String(player&&player.ctry||"").toUpperCase()];
+    const sameCountry=fictionalCountry?records.filter(record=>normalize(record.country)===normalize(fictionalCountry)):[];
+    const pool=sameCountry.length?sameCountry:records;
+    const fictionalLocation=pool[Math.floor(Math.random()*pool.length)];
     return {home:"",loc:{x:fictionalLocation.x,y:fictionalLocation.y}};
   }
 

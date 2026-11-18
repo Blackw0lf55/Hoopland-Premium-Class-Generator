@@ -8545,7 +8545,9 @@ async function generateClass() {
 
 
       if (!response.ok) {
-        throw new Error(`Real class data could not be loaded (HTTP ${response.status}).`);
+        const failure = await response.json().catch(() => null);
+        const detail = failure && failure.diagnostics ? " " + JSON.stringify(failure.diagnostics).slice(0, 300) : "";
+        throw new Error(`Real class data could not be loaded (HTTP ${response.status}).${detail}`);
       }
       const data = await response.json();
       if (!data || !Array.isArray(data.players) || data.players.length === 0) {

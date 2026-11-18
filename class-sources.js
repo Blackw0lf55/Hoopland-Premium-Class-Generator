@@ -1,4 +1,4 @@
-const UA = "Mozilla/5.0 (compatible; Hoopland-Class-Generator/1.0)";
+const UA = "Mozilla/5.0 (compatible; Hoopland-Class-Generator/1.0; +https://github.com/Blackw0lf55/Hoopland-Premium-Class-Generator)";
 
 const decode = text =>
   String(text || "")
