@@ -470,8 +470,61 @@ function nameKey(player) {
 }
 
 function exclusionNameKey(player) {
-  return `${player.fn} ${player.ln}`.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+  const key = `${player.fn} ${player.ln}`.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
     .toLowerCase().replace(/[^a-z0-9]/g, "");
+  return key === "judeawatkins" ? "jujuwatkins" : key;
+}
+
+// Both schools identify these players as seniors in the 2026–27 season.
+const WOMEN_2027_PROSPECTS = [
+  {fn:"JuJu",ln:"Watkins",position:"G",school:"USC",committedCollege:"USC",collegeTeamId:"30",
+    seniorSource:"https://usctrojans.com/sports/womens-basketball/roster/watkins-juju/18627"},
+  {fn:"Hannah",ln:"Hidalgo",position:"PG",school:"Notre Dame",committedCollege:"Notre Dame",collegeTeamId:"87",
+    seniorSource:"https://fightingirish.com/sports/wbball/roster/season/2026-27"}
+];
+
+const domesticRegions = new Set(["US","PR","VI","GU","AS","MP","UM"]);
+const foreignRegions = (() => {
+  const names = new Intl.DisplayNames(["en"],{type:"region"});
+  const regions = new Set();
+  for (let first=65;first<=90;first++) for (let second=65;second<=90;second++) {
+    const code=String.fromCharCode(first,second);
+    if (domesticRegions.has(code) || code==="ZZ") continue;
+    const name=names.of(code);
+    if (name && name!==code && name!=="Unknown Region") {
+      regions.add(code.toLowerCase());
+      regions.add(name.toLowerCase());
+    }
+  }
+  return regions;
+})();
+
+export async function filterWomenDraftSeniors(players, year, verifySenior) {
+  let next = 0, unverified = 0, notSenior = 0, foreign = 0;
+  const results = new Array(players.length);
+  const inspect = async () => {
+    while (next < players.length) {
+      const index = next++;
+      const player = players[index];
+      const curated = year === 2027 && WOMEN_2027_PROSPECTS.some(candidate =>
+        exclusionNameKey(candidate) === exclusionNameKey(player));
+      const international = foreignRegions.has(String(player.country || "").trim().toLowerCase());
+      if (international) { results[index] = player; foreign++; continue; }
+      let verified = curated ? true : null;
+      if (!curated && typeof verifySenior === "function") {
+        try {
+          verified = await verifySenior(player, year);
+        } catch (error) {
+          console.warn("Women's senior verification failed", player.fn, player.ln, error);
+        }
+      }
+      if (verified === true) results[index] = player;
+      else if (verified === false) notSenior++;
+      else unverified++;
+    }
+  };
+  await Promise.all(Array.from({length:Math.min(8,players.length)},inspect));
+  return {players:results.filter(Boolean),unverified,notSenior,foreign};
 }
 
 async function loadEspnDraftHistory(gender, year) {
@@ -583,13 +636,13 @@ async function loadProjectedDraft(gender, year) {
   const pool = [];
   const diagnostics = [];
 
-  for (const back of [1, 2, 3, 4]) {
+  for (const back of gender === "women" ? [1, 2, 3, 4, 5, 6] : [1, 2, 3, 4]) {
     const loaded = await loadFreshmen(gender, year - back);
 
     diagnostics.push({ classYear: year - back, parsed: loaded.players.length });
 
     for (const player of loaded.players) {
-      pool.push({ ...player, projectedScore: player.rank * weights[back] });
+      pool.push({ ...player, projectedScore: player.rank * (weights[back] || weights[4]) });
     }
   }
 
@@ -614,6 +667,13 @@ async function loadProjectedDraft(gender, year) {
 
   const missingYears = pastDrafts.filter(draft => !draft.verified).map(draft => draft.year);
   if (missingYears.length) {
+    if (gender === "women" && year === 2027) {
+      const drafted = new Set(pastDrafts.flatMap(draft=>draft.players.map(exclusionNameKey)));
+      const players = WOMEN_2027_PROSPECTS.filter(player=>!drafted.has(exclusionNameKey(player)))
+        .map((player,index)=>({...player,recruitYear:2023,country:"United States",projectedPick:index+1,sourceOrder:index}));
+      return {players,diagnostics:{projected:true,classes:diagnostics,missingDraftYears:missingYears},
+        warning:`Prior draft results for ${missingYears.join(", ")} could not be verified; only school-verified 2027 prospects are included.`};
+    }
     return { players: [], diagnostics: { projected:true, classes:diagnostics, missingDraftYears:missingYears },
       error: `Cannot verify prior draft results for ${missingYears.join(", ")}. Please try again later.` };
   }
@@ -624,6 +684,12 @@ async function loadProjectedDraft(gender, year) {
   }
   for (const player of roster?.players || []) ineligible.add(exclusionNameKey(player));
 
+  if (gender === "women" && year === 2027) {
+    const priority = WOMEN_2027_PROSPECTS.map((player,index)=>({
+      ...player, recruitYear:2023, country:"United States", projectedScore:index-2
+    }));
+    pool.unshift(...priority);
+  }
   diagnostics.push({ priorDraftYears:draftYears, excludedNames:ineligible.size,
     ...(roster ? { nbaRoster:{ season:roster.season, status:roster.status, verified:roster.verified } } : {}) });
 
@@ -632,7 +698,7 @@ async function loadProjectedDraft(gender, year) {
     .filter(player => !ineligible.has(exclusionNameKey(player)))
     .sort((a, b) => a.projectedScore - b.projectedScore)
     .filter(player => {
-      const key = `${player.fn} ${player.ln}`.toLowerCase();
+      const key = exclusionNameKey(player);
 
       if (seen.has(key)) {
         return false;
@@ -648,7 +714,7 @@ async function loadProjectedDraft(gender, year) {
     warning: roster && !roster.verified ? "Current NBA roster could not be verified; undrafted NBA players may appear in this class." : "" };
 }
 
-export async function handleClassData(request) {
+export async function handleClassData(request, options = {}) {
   const url = new URL(request.url);
   const gender = url.searchParams.get("gender") === "women" ? "women" : "men";
   const type = url.searchParams.get("type") === "freshman" ? "freshman" : "draft";
@@ -684,6 +750,15 @@ export async function handleClassData(request) {
     loaded = await loadFreshmen(gender, year);
   }
 
+  if (gender === "women" && type === "draft" && loaded.players.length) {
+    const filtered = await filterWomenDraftSeniors(loaded.players, year, options.verifySenior);
+    loaded.players = filtered.players;
+    loaded.diagnostics.seniorVerification = {unverified:filtered.unverified,notSenior:filtered.notSenior,foreign:filtered.foreign};
+    if (filtered.unverified) loaded.warning = [loaded.warning,
+      `${filtered.unverified} prospect(s) were excluded because their senior status could not be verified.`].filter(Boolean).join(" ");
+    if (loaded.diagnostics.projected) loaded.players.forEach((player,index)=>{player.projectedPick=index+1;});
+    if (!loaded.players.length) loaded.error = `No verified senior prospects were available for the ${year} women's draft class.`;
+  }
   if (!loaded.players.length) {
     return Response.json(
       {

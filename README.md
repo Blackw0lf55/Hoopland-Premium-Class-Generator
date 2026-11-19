@@ -208,10 +208,22 @@ drafts use draft-order tiers, with earlier picks never assigned lower potential
 than later picks. All classes have a minimum potential of 2.5 stars.
 
 Projected drafts exclude names found in the prior four draft years. If a
-needed year's results cannot be verified, generation stops with an error.
+needed year's results cannot be verified, generation stops with an error,
+except for the limited 2027 women's fallback described below.
 Men's projections also check the current NBA season's player list; if it is
 unavailable, generation warns that undrafted NBA players might remain. These
 name-based checks can mistake different players with the same name.
+
+For real women's drafts, US prospects must be verified as seniors on their
+college roster for the draft season; prospects identified by the source as
+foreign can be included without senior status. Unverified US prospects are
+excluded, not assumed to be seniors. College rosters may be unavailable for
+historical or future seasons, so this can reduce or prevent a real class;
+any resulting fictional fill is reported. This is a generator rule, not the
+WNBA's complete eligibility criteria. The projected 2027 class places JuJu
+Watkins and Hannah Hidalgo first and second; their schools list both as
+2026–27 seniors. If prior draft results cannot be checked, only these
+school-verified prospects are used, with a warning.
 
 For current ability, where college stats are available, a composite of era-relative shooting, passing,
 rebounding, steals and blocks estimates current ability and prioritizes

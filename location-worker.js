@@ -1,5 +1,5 @@
 import existingWorker from "./worker.js";
-import { handleClassData, loadEspnDraftPhotos, attachEspnDraftPhotos } from "./class-sources.js";
+import { handleClassData, loadEspnDraftPhotos, attachEspnDraftPhotos, filterWomenDraftSeniors } from "./class-sources.js";
 import { wikidataProfile, wikidataPhotos } from "./enrich.js";
 import { handleStats } from "./college-stats.js";
 import { handleProSeason } from "./pro-stats.js";
@@ -151,6 +151,21 @@ function verifiedCollegeHeadshot(athlete, gender) {
 export async function collegeRosterHeadshot(name, gender, teamId, recruitYear, school = "", draftYear = 0) {
   const athlete = await collegeRosterPlayer(name, gender, teamId, recruitYear, school, draftYear);
   return verifiedCollegeHeadshot(athlete, gender);
+}
+
+export async function verifyWomenDraftSenior(player, year) {
+  const athlete = await collegeRosterPlayer(
+    [player.fn,player.ln].filter(Boolean).join(" "), "women",
+    player.collegeTeamId, player.recruitYear,
+    player.committedCollege || player.school || player.team || "", year
+  );
+  if (!athlete) return null;
+  const value = athlete.experience?.displayValue || athlete.experience?.abbreviation ||
+    athlete.class?.displayValue || athlete.class?.abbreviation || athlete.classYear ||
+    (typeof athlete.class === "string" ? athlete.class : "");
+  if (/^(?:senior|sr\.?)$/i.test(String(value).trim())) return true;
+  if (/^(?:freshman|sophomore|junior|graduate|fr\.?|so\.?|jr\.?|gr\.?)$/i.test(String(value).trim())) return false;
+  return null;
 }
 
 async function fetchJSON(url) {
@@ -1108,7 +1123,7 @@ export default {
         params.get("year") === "2026";
 
       if (!curated) {
-        return handleClassData(request);
+        return handleClassData(request, {verifySenior:verifyWomenDraftSenior});
       }
       const [response, espn] = await Promise.all([
         existingWorker.fetch(request, env, context),
@@ -1118,7 +1133,14 @@ export default {
       const body = await response.json();
       if (!Array.isArray(body.players)) return Response.json(body);
       body.players = attachEspnDraftPhotos(body.players, espn.players);
-      body.source = { ...body.source, espnPhotos: { status: espn.status, parsed: espn.players.length } };
+      const filtered = await filterWomenDraftSeniors(body.players, 2026, verifyWomenDraftSenior);
+      body.players = filtered.players;
+      body.source = { ...body.source, espnPhotos: { status: espn.status, parsed: espn.players.length },
+        seniorVerification:{unverified:filtered.unverified,notSenior:filtered.notSenior,foreign:filtered.foreign} };
+      if (filtered.unverified) body.warning = `${filtered.unverified} prospect(s) were excluded because their senior status could not be verified.`;
+      if (!body.players.length) return Response.json({
+        ok:false,error:"No verified senior prospects were available for the 2026 women's draft class.",diagnostics:body.source
+      },{status:502});
       const headers = new Headers(response.headers);
       headers.delete("content-length");
       headers.delete("content-encoding");

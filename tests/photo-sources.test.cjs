@@ -52,10 +52,21 @@ test("the curated 2026 WNBA route also attaches ESPN draft photos", async () => 
   const oldFetch = global.fetch, oldWorkerFetch = existingWorker.fetch;
   try {
     existingWorker.fetch = async () => Response.json({
-      players:[{fn:"Azzi",ln:"Fudd",draftPick:1}], source:{name:"WNBA board"}
+      players:[
+        {fn:"Azzi",ln:"Fudd",draftPick:1,collegeTeamId:"901"},
+        {fn:"Foreign",ln:"Prospect",draftPick:2,country:"France",birthYear:2007},
+        {fn:"Domestic",ln:"Sophomore",draftPick:3,collegeTeamId:"901"}
+      ], source:{name:"WNBA board"}
     });
     global.fetch = async url => {
       const request = new URL(url);
+      if (request.pathname.endsWith("/teams/901/roster")) return Response.json({
+        team:{id:"901"},season:{year:2026},
+        athletes:[
+          {id:"4433790",displayName:"Azzi Fudd",experience:{displayValue:"Senior"}},
+          {id:"42",displayName:"Domestic Sophomore",experience:{displayValue:"Sophomore"}}
+        ]
+      });
       assert.equal(request.pathname,"/apis/site/v2/sports/basketball/wnba/draft");
       assert.equal(request.searchParams.get("season"),"2026");
       return Response.json(espnDraft);
@@ -63,12 +74,104 @@ test("the curated 2026 WNBA route also attaches ESPN draft photos", async () => 
     const response = await worker.fetch(new Request("https://example.test/api/class-data?gender=women&type=draft&year=2026"),{});
     const body = await response.json();
     assert.match(body.players[0].headshots[0],/4433790/);
+    assert.deepEqual(body.players.map(p=>p.ln),["Fudd","Prospect"]);
+    assert.equal(body.source.seniorVerification.foreign,1);
+    assert.equal(body.source.seniorVerification.notSenior,1);
     assert.equal(body.source.espnPhotos.parsed,2);
     assert.equal(body.source.name,"WNBA board");
   } finally {
     global.fetch = oldFetch;
     existingWorker.fetch = oldWorkerFetch;
   }
+});
+
+test("2027 school-verified prospects remain available when draft history is unavailable", async () => {
+  const {default:worker}=await import("../location-worker.js");
+  const original=global.fetch;
+  try {
+    global.fetch=async()=>new Response("",{status:503});
+    const response=await worker.fetch(new Request("https://example.test/api/class-data?type=draft&year=2027&gender=women"),{});
+    const body=await response.json();
+    assert.equal(response.status,200);
+    assert.deepEqual(body.players.map(p=>[p.fn,p.ln,p.projectedPick]),[["JuJu","Watkins",1],["Hannah","Hidalgo",2]]);
+    assert.match(body.warning,/prior draft results.*could not be verified/i);
+  } finally { global.fetch=original; }
+});
+
+test("women's 2027 projections prioritize Watkins and Hidalgo and reject non-senior US players", async () => {
+  const { handleClassData } = await import("../class-sources.js");
+  const recruits = names => `<table><tr><th>Rank</th><th>Player</th></tr>${names.map((name,i)=>
+    `<tr><td>${i+1}</td><td><a href="/recruiting/player/${i+1}">${name}</a></td></tr>`).join("")}</table>`;
+  const original = global.fetch;
+  try {
+    global.fetch = async input => {
+      const url=new URL(input);
+      if (url.hostname==="www.espn.com") {
+        const year=Number(url.pathname.split("/").pop());
+        const names=year===2023?["Judea Watkins","Hannah Hidalgo","Other Senior","Unknown Player"]
+          :year===2025?["Jazzy Davidson"]:[];
+        return names.length?new Response(recruits(names)):new Response("",{status:404});
+      }
+      if (url.hostname==="en.wikipedia.org") return new Response("",{status:404});
+      if (url.hostname==="stats.nba.com") {
+        const season=Number(url.searchParams.get("Season"));
+        return Response.json({resultSets:[{headers:["PLAYER_NAME","OVERALL_PICK","ROUND_NUMBER","ROUND_PICK"],
+          rowSet:season===2027?[]:[["Already Drafted",1,1,1]]}]});
+      }
+      if (url.hostname==="site.api.espn.com") return Response.json({});
+      throw new Error("Unexpected URL: "+url);
+    };
+    const request=new Request("https://example.test/api/class-data?type=draft&year=2027&gender=women");
+    const response=await handleClassData(request,{verifySenior:async p=>
+      p.ln==="Senior"?true:p.ln==="Davidson"?false:null});
+    const body=await response.json();
+    assert.equal(response.status,200);
+    assert.deepEqual(body.players.map(p=>[p.fn,p.ln,p.projectedPick]),[
+      ["JuJu","Watkins",1],["Hannah","Hidalgo",2],["Other","Senior",3]
+    ]);
+    assert.equal(body.source.seniorVerification.notSenior,1);
+    assert.match(body.warning,/senior status could not be verified/);
+  } finally { global.fetch=original; }
+});
+
+test("international prospects may be non-seniors, but US and unknown countries require verification", async () => {
+  const {filterWomenDraftSeniors}=await import("../class-sources.js");
+  const players=[
+    {fn:"A",ln:"Senior",country:"United States"},
+    {fn:"B",ln:"Sophomore",country:"US"},
+    {fn:"C",ln:"Foreign",country:"France"},
+    {fn:"D",ln:"Unknown",country:""},
+    {fn:"E",ln:"Territory",country:"Puerto Rico"}
+  ];
+  const result=await filterWomenDraftSeniors(players,2028,async p=>
+    p.ln==="Senior"?true:p.ln==="Sophomore"?false:null);
+  assert.deepEqual(result.players.map(p=>p.ln),["Senior","Foreign"]);
+  assert.equal(result.foreign,1);
+  assert.equal(result.notSenior,1);
+  assert.equal(result.unverified,2);
+});
+
+test("senior verification requires an exact player and roster season", async () => {
+  const {verifyWomenDraftSenior}=await import("../location-worker.js");
+  const original=global.fetch;
+  try {
+    global.fetch=async input=>{
+      const url=new URL(input), id=url.pathname.match(/\/teams\/(\d+)\/roster$/)?.[1];
+      assert.equal(url.searchParams.get("season"),"2027");
+      if (id==="910") return Response.json({team:{id},season:{year:2027},athletes:[
+        {id:"1",displayName:"Senior Player",experience:{displayValue:"Senior"}},
+        {id:"2",displayName:"Jazzy Davidson",experience:{displayValue:"Sophomore"}}
+      ]});
+      if (id==="911") return Response.json({team:{id},season:{year:2026},athletes:[
+        {id:"3",displayName:"Wrong Season",experience:{displayValue:"Senior"}}
+      ]});
+      throw new Error("Unexpected roster "+id);
+    };
+    assert.equal(await verifyWomenDraftSenior({fn:"Senior",ln:"Player",collegeTeamId:"910"},2027),true);
+    assert.equal(await verifyWomenDraftSenior({fn:"Jazzy",ln:"Davidson",collegeTeamId:"910"},2027),false);
+    assert.equal(await verifyWomenDraftSenior({fn:"Wrong",ln:"Season",collegeTeamId:"911"},2027),null);
+    assert.equal(await verifyWomenDraftSenior({fn:"Missing",ln:"Player",collegeTeamId:"910"},2027),null);
+  } finally { global.fetch=original; }
 });
 
 test("Wikimedia photos require an unambiguous exact player and matching filenames", async () => {
