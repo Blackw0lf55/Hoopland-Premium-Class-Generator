@@ -37,6 +37,18 @@ The country selector includes every named country in the location catalog.
 Countries without dedicated name lists use a regional or US fallback, so names
 are not necessarily representative of that country. Belgium remains available
 from the original selector, but has no catalog location and uses a fallback.
+For fictional men's and women's players, country weights use the same
+[2026–27 NBA opening-night snapshot](https://pr.nba.com/international-players-2026-27-nba-rosters/)
+(including two-way players), not WNBA data or live rosters. The
+[519-player total](https://cdn-uat.nba.com/news/2026-27-rosters-by-the-numbers)
+minus 125 international players gives the US weight of 394; available
+international countries use the NBA's listed counts. Countries with no
+listed players receive a small fallback weight of 0.1 player. Counts for
+countries unavailable in the selector are excluded, then selected weights are
+normalized to 100%; deselecting a country redistributes its share
+proportionally. Displayed percentages are rounded. The selector is hidden for
+real classes: real players retain their sourced country, and any fictional fill
+players use all available country weights.
 
 Before downloading, approve the appearances to share manually changed skin,
 hair color, hairstyle and facial-hair (men only) selections. Only changed

@@ -287,7 +287,7 @@ test("all named catalog countries are selectable and resolve fictional players w
   const script=page.match(/<script>\nwindow\.__HOOPLAND_LOCATION_RECORDS[\s\S]*?<\/script>/)[0].slice(8,-9);
   const context=vm.createContext({window:{},console:{warn(){}}});
   vm.runInContext(script,context);
-  const code=html.slice(html.indexOf("const COUNTRIES = ["),html.indexOf("const NAMES = {"));
+  const code=html.slice(html.indexOf("const NBA_COUNTRY_COUNTS = {"),html.indexOf("const NAMES = {"));
   const countries=vm.runInNewContext(code+"\nCOUNTRIES");
   const overrides={BA:"Bosnia and Herzegovina",HK:"Hong Kong",PS:"Palestine",TT:"Trinidad and Tobago",TR:"Turkey"};
   const region=new Intl.DisplayNames(["en"],{type:"region"});

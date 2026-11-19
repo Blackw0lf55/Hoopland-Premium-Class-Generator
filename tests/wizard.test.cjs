@@ -115,3 +115,97 @@ test("actual and potential limits change by half steps and render both halves", 
     assert.equal(Number(elements.LAYpmax.value),19);
     assert.deepEqual(elements.LAYLimitBar.children[9].style.values,{"--limit-left":"#09bf60","--limit-right":"transparent"});
 });
+
+test("country chances use NBA counts, retain a fallback and redistribute selected weights", () => {
+  const countriesCode = html.slice(html.indexOf("const NBA_COUNTRY_COUNTS = {"), html.indexOf("const NAMES = {"));
+  const choiceCode = html.slice(html.indexOf("function weightedChoice("), html.indexOf("function budgetForStars("));
+  const api = vm.runInNewContext(`${countriesCode}
+    let seed=12345;
+    function rng(){seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296}
+    ${choiceCode}
+    ({countries:COUNTRIES, chances:countryChances, weights:selectedCountryWeights, choose:weightedChoice})`);
+  const weights = new Map(api.countries);
+  assert.equal(weights.get("US"), 394);
+  assert.equal(weights.get("FR"), 17);
+  assert.equal(weights.get("CA"), 16);
+  assert.equal(weights.get("NG"), 6);
+  assert.equal(weights.get("ES"), 5);
+  assert.equal(weights.get("JP"), 1);
+  assert.equal(weights.get("IN"), 0.1);
+  const enabled = new Set(weights.keys());
+  const full = api.chances(enabled);
+  assert.ok(Math.abs([...full.values()].reduce((a,b)=>a+b,0)-1)<1e-12);
+  assert.ok([...full.values()].every(chance=>chance>0));
+  enabled.delete("US");
+  enabled.delete("FR");
+  const chances = api.chances(enabled);
+  assert.equal(chances.get("US"), 0);
+  assert.equal(chances.get("FR"), 0);
+  assert.ok(Math.abs(chances.get("CA") / chances.get("IN") - 160)<1e-10);
+  const counts = new Map();
+  for(let i=0;i<50000;i++){
+    const country=api.choose(api.weights(enabled));
+    counts.set(country,(counts.get(country)||0)+1);
+  }
+  assert.equal(counts.has("US"),false);
+  assert.equal(counts.has("FR"),false);
+  assert.ok(Math.abs(counts.get("CA")/50000-chances.get("CA"))<0.01);
+  const only = api.chances(new Set(["IN"]));
+  assert.equal(only.get("IN"),1);
+});
+
+test("country buttons update chances on deselection and retain one selected country", () => {
+  const countriesCode = html.slice(html.indexOf("const NBA_COUNTRY_COUNTS = {"), html.indexOf("const NAMES = {"));
+  const selectorCode = html.slice(html.indexOf("  const flag=code=>{"), html.indexOf("\n  let page=0;", html.indexOf("  const flag=code=>{")));
+  const box = {children:[],appendChild(child){this.children.push(child);}};
+  const options = {};
+  const mode = {value:"fictional",addEventListener(type,fn){this.change=fn;}};
+  const window = {};
+  const document = {createElement:()=>({
+    attributes:{}, percentage:{}, classList:{toggle(){}},
+    querySelector(){return this.percentage;},
+    setAttribute(name,value){this.attributes[name]=value;},
+    addEventListener(type,fn){this.click=fn;}
+  })};
+  const api = vm.runInNewContext(`${countriesCode}\n${selectorCode}\n({countries:COUNTRIES,chances:countryChances})`,
+    {window,document,$:id=>({hlCountries:box,hlCountryOptions:options,mode})[id]});
+  const button = code => box.children[api.countries.findIndex(([c])=>c===code)];
+  assert.equal(button("US").percentage.textContent,(api.chances(window.ENABLED_COUNTRIES).get("US")*100).toFixed(2)+"%");
+  button("US").click();
+  assert.equal(button("US").percentage.textContent,"0.00%");
+  assert.equal(button("US").attributes["aria-pressed"],"false");
+  assert.equal(button("CA").percentage.textContent,(api.chances(window.ENABLED_COUNTRIES).get("CA")*100).toFixed(2)+"%");
+  for(const [code] of api.countries) if(code!=="IN" && window.ENABLED_COUNTRIES.has(code)) button(code).click();
+  assert.equal(button("IN").percentage.textContent,"100.00%");
+  button("IN").click();
+  assert.equal(button("IN").attributes["aria-pressed"],"true");
+  button("US").click();
+  assert.equal(button("US").percentage.textContent,(394/394.1*100).toFixed(2)+"%");
+  assert.equal(options.hidden,false);
+  mode.value="real";
+  mode.change();
+  assert.equal(options.hidden,true);
+  mode.value="fictional";
+  mode.change();
+  assert.equal(options.hidden,false);
+  assert.equal(button("IN").attributes["aria-pressed"],"true");
+  assert.equal(button("CA").attributes["aria-pressed"],"false");
+});
+
+test("fictional fill players in real classes ignore hidden country selections", () => {
+  const countriesCode = html.slice(html.indexOf("const NBA_COUNTRY_COUNTS = {"), html.indexOf("const NAMES = {"));
+  const start = html.indexOf("  const country =\n  sourcePlayer");
+  const countryCode = html.slice(start, html.indexOf("\nconst gender =", start));
+  const mode = {value:"fictional"};
+  const context = vm.createContext({
+    window:{ENABLED_COUNTRIES:new Set(["CA"])},
+    document:{getElementById:()=>mode},
+    weightedChoice:items=>items[0][0],
+    countryFromSource:country=>country
+  });
+  const choose = vm.runInContext(`${countriesCode}\n(sourcePlayer)=>{${countryCode}\nreturn country}`,context);
+  assert.equal(choose(null),"CA");
+  mode.value="real";
+  assert.equal(choose(null),"US");
+  assert.equal(choose({country:"FR"}),"FR");
+});

@@ -2142,6 +2142,7 @@ html body #secAttr,html body #secPhys,html body #secAppear,html body #secGen,htm
 .hl-countries{display:grid;grid-template-columns:repeat(auto-fill,minmax(50px,1fr));gap:8px;margin:0 6px 16px;}
 .hl-country{background:var(--px-fill-dark);color:#fff;border:0;padding:5px 2px;text-align:center;cursor:pointer;font-family:"Press Start 2P",monospace;font-size:.5rem;line-height:1.6;box-shadow:0 -3px 0 var(--px),0 3px 0 var(--px),-3px 0 0 var(--px),3px 0 0 var(--px);opacity:.45;}
 .hl-country .fl{display:block;font-size:1.2rem;font-family:"Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif;}
+.hl-country .pct{display:block;font-size:.42rem;white-space:nowrap;}
 .hl-country.on{opacity:1;background:#1c60b7;box-shadow:0 -3px 0 var(--px-hi),0 3px 0 var(--px-hi),-3px 0 0 var(--px-hi),3px 0 0 var(--px-hi);}
 .hl-pager{height:min(52vh,430px);overflow:hidden;margin:0 6px;}
 .hl-list{display:flex;flex-direction:column;gap:6px;height:100%;}
@@ -2408,8 +2409,11 @@ html{background-color:#06143a!important;}
   <div class="hl-page" data-page="3">
     <p id="hlPhysHint" class="section-note"></p>
     <div id="hlPhysSlot"></div>
-    <div class="hl-q-label hl-sub">Countries</div>
-    <div id="hlCountries" class="hl-countries"></div>
+    <div id="hlCountryOptions">
+      <div class="hl-q-label hl-sub">Countries</div>
+      <p class="hl-hint">For fictional men and women, chances use 2026–27 NBA opening-night rosters; countries with no listed players get a small chance. Selecting countries redistributes their weights.</p>
+      <div id="hlCountries" class="hl-countries"></div>
+    </div>
     <div id="hlStatusSlot"></div>
     <div class="hl-nav"><button type="button" class="secondary" data-back="2">◀ BACK</button><button type="button" class="primary" id="hlSubmit">SUBMIT CLASS</button></div>
   </div>
@@ -2872,23 +2876,28 @@ const POS_PROFILE = {
 };
 
 
+const NBA_COUNTRY_COUNTS = {
+  US:394, FR:17, CA:16, AU:9, DE:7, NG:6, RS:6, ES:5,
+  BS:3, CM:3, HR:3, NL:3, SN:3, CH:3, UK:3,
+  BE:2, LT:2, RU:2, TR:2,
+  AT:1, BA:1, FI:1, JP:1, ME:1, SI:1
+};
 const COUNTRIES = [
-  ["US", 78],
-  ["CA", 6],
-  ["AU", 5],
-  ["FR", 4],
-  ["UK", 2],
-  ["DE", 2],
-  ["ES", 1],
-  ["RS", 1],
-  ["BE", 1],
-  ["DZ",1],["AT",1],["BS",1],["BB",1],["BA",1],["BG",1],["CM",1],
-  ["KY",1],["HR",1],["CU",1],["EC",1],["EG",1],["FI",1],["HT",1],
-  ["HK",1],["HU",1],["IN",1],["IE",1],["JP",1],["LY",1],["LT",1],
-  ["ME",1],["NL",1],["NG",1],["PS",1],["PA",1],["PR",1],["RO",1],
-  ["RU",1],["SN",1],["SI",1],["ZA",1],["CH",1],["SY",1],["TT",1],
-  ["TR",1],["UG",1],["AE",1],["UY",1],["UZ",1]
-];
+  "US","CA","AU","FR","UK","DE","ES","RS","BE",
+  "DZ","AT","BS","BB","BA","BG","CM","KY","HR","CU","EC","EG","FI","HT",
+  "HK","HU","IN","IE","JP","LY","LT","ME","NL","NG","PS","PA","PR","RO",
+  "RU","SN","SI","ZA","CH","SY","TT","TR","UG","AE","UY","UZ"
+].map(code => [code, NBA_COUNTRY_COUNTS[code] || 0.1]);
+
+function selectedCountryWeights(enabled) {
+  return COUNTRIES.filter(([code]) => !enabled || enabled.has(code));
+}
+
+function countryChances(enabled) {
+  const selected = selectedCountryWeights(enabled);
+  const total = selected.reduce((sum, [,weight]) => sum + weight, 0);
+  return new Map(COUNTRIES.map(([code,weight]) => [code, (!enabled || enabled.has(code)) && total ? weight / total : 0]));
+}
 
 const NAMES = {
 
@@ -8212,8 +8221,8 @@ const height =
         sourcePlayer.country
       )
     : weightedChoice(
-        COUNTRIES.filter(
-          c => !window.ENABLED_COUNTRIES || window.ENABLED_COUNTRIES.has(c[0])
+        selectedCountryWeights(
+          document.getElementById("mode").value === "fictional" ? window.ENABLED_COUNTRIES : null
         )
       );
 
@@ -11682,14 +11691,30 @@ classSizePlus.addEventListener(
   const countryNames=new Intl.DisplayNames(["en"],{type:"region"});
   window.ENABLED_COUNTRIES=new Set(COUNTRIES.map(c=>c[0]));
   const box=$("hlCountries");
+  function updateCountryVisibility(){
+    $("hlCountryOptions").hidden=$("mode").value!=="fictional";
+  }
+  $("mode").addEventListener("change",updateCountryVisibility);
+  updateCountryVisibility();
+  const buttons=new Map();
+  function updateCountryChances(){
+    const chances=countryChances(window.ENABLED_COUNTRIES);
+    for(const [code,button] of buttons){
+      const selected=window.ENABLED_COUNTRIES.has(code);
+      const percent=(chances.get(code)*100).toFixed(2)+"%";
+      button.querySelector(".pct").textContent=percent;
+      button.classList.toggle("on",selected);
+      button.setAttribute("aria-pressed",String(selected));
+      button.setAttribute("aria-label",button.title+", "+percent+" chance"+(selected?"":" (not selected)"));
+    }
+  }
   COUNTRIES.forEach(([code])=>{
     const b=document.createElement("button");
     b.type="button";
     b.className="hl-country on";
-    b.innerHTML='<span class="fl">'+flag(code)+'</span>'+code;
+    b.innerHTML='<span class="fl">'+flag(code)+'</span>'+code+'<span class="pct"></span>';
     b.title=countryNames.of(code==="UK"?"GB":code);
-    b.setAttribute("aria-label",b.title);
-    b.setAttribute("aria-pressed","true");
+    buttons.set(code,b);
     b.addEventListener("click",()=>{
       const set=window.ENABLED_COUNTRIES;
       if(set.has(code)){
@@ -11697,11 +11722,11 @@ classSizePlus.addEventListener(
         set.delete(code);
       }
       else set.add(code);
-      b.classList.toggle("on",set.has(code));
-      b.setAttribute("aria-pressed",String(set.has(code)));
+      updateCountryChances();
     });
     box.appendChild(b);
   });
+  updateCountryChances();
 
   let page=0;
   const perPage=()=>{
