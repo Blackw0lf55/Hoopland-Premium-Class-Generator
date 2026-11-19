@@ -387,7 +387,12 @@ function parseEspnRecruits(html) {
         continue;
       }
 
-      const name = splitName(nameCell.text);
+      const names = [...nameCell.html.matchAll(/<a\b([^>]*)>([\s\S]*?)<\/a\s*>/gi)]
+        .filter(match => /href\s*=\s*["'][^"']*(?:recruiting\/player|\/player\/)[^"']*["']/i.test(match[1]))
+        .map(match => stripTags(match[2]).replace(/\b(?:video|scouts?\s+report)\b.*$/i, "").replace(/[|]/g, "").trim())
+        .filter(text => text && splitName(text));
+      const distinctNames = [...new Set(names)];
+      const name = distinctNames.length === 1 ? splitName(distinctNames[0]) : null;
       const rank = Number((row[0]?.text || "").replace(/\D/g, ""));
 
       if (!name || !rank || seen.has(rank)) {

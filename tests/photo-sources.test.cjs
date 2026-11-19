@@ -179,6 +179,51 @@ test("freshman ranking commitments retain college IDs or explicit college names"
   } finally { global.fetch = original; }
 });
 
+test("recruit names exclude video and scouting links without guessing ambiguous names", async () => {
+  const { parseEspnRecruits } = await import("../class-sources.js");
+  const html = `<table><tr><th>Rank</th><th>Player</th></tr>
+    <tr><td>1</td><td><a href="/recruiting/player/_/id/1"><b>Tyran Stokes</b></a>
+      <a href="/recruiting/player/_/id/1/video">Video</a> | <a href="/recruiting/player/_/id/1/scouting">Scouts Report</a></td></tr>
+    <tr><td>2</td><td><a href='/player/2'>Jean de la Cruz</a> Video | Scouts Report</td></tr>
+    <tr><td>3</td><td><a href="/player/3">Avery Jones <span>Video | Scouts Report</span></a></td></tr>
+    <tr><td>4</td><td><a href="/player/4">First Person</a><a href="/player/5">Second Person</a></td></tr>
+    <tr><td>5</td><td><a href="/player/6">Scouts Report</a></td></tr></table>`;
+  const players = parseEspnRecruits(html);
+  assert.deepEqual(players.map(({fn,ln})=>[fn,ln]),[
+    ["Tyran","Stokes"],["Jean","de la Cruz"],["Avery","Jones"]
+  ]);
+  assert.deepEqual(players.map(player=>player.rank),[1,2,3]);
+});
+
+test("future draft projection uses recruit identities before excluding already-drafted players", async () => {
+  const { handleClassData } = await import("../class-sources.js");
+  const html = `<table><tr><th>Rank</th><th>Player</th></tr>
+    <tr><td>1</td><td><a href="/recruiting/player/1">Tyran Stokes</a> Video | Scouts Report</td></tr>
+    <tr><td>2</td><td><a href="/recruiting/player/2">Already Drafted</a> Video | Scouts Report</td></tr></table>`;
+  const original = global.fetch;
+  try {
+    global.fetch = async input => {
+      const url = new URL(input);
+      if (url.hostname === "www.espn.com") {
+        return url.pathname.endsWith("/2026") ? new Response(html) : new Response("",{status:404});
+      }
+      if (url.hostname === "en.wikipedia.org") return new Response("",{status:404});
+      if (url.hostname === "stats.nba.com") {
+        const drafted = url.searchParams.get("Season") === "2025";
+        return Response.json({resultSets:[{headers:["PLAYER_NAME","OVERALL_PICK","ROUND_NUMBER","ROUND_PICK"],
+          rowSet:drafted?[["Already Drafted",1,1,1]]:[]}]});
+      }
+      if (url.hostname === "site.api.espn.com") return Response.json({});
+      throw new Error("Unexpected URL: " + url);
+    };
+    const response = await handleClassData(new Request("https://example.test/api/class-data?type=draft&year=2027&gender=men"));
+    const result = await response.json();
+    assert.equal(response.status,200);
+    assert.equal(result.source.projected,true);
+    assert.deepEqual(result.players.map(({fn,ln,projectedPick})=>[fn,ln,projectedPick]),[["Tyran","Stokes",1]]);
+  } finally { global.fetch = original; }
+});
+
 test("college roster portraits require correct gender, team, season, exact unique name and athlete URL", async () => {
   const { collegeRosterHeadshot } = await import("../location-worker.js");
   const original = global.fetch;
