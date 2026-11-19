@@ -2136,14 +2136,16 @@ html body .hl-arrow{padding:2px 12px!important;font-size:.8rem!important;margin:
 .hl-nav{display:flex;justify-content:space-between;gap:10px;margin-top:10px;}
 .hl-name{margin:0 6px 24px;}
 .hl-name label{display:block;margin-bottom:8px;font-weight:900;text-transform:uppercase;}
+.hl-start{display:flex;flex-direction:column;align-items:stretch;gap:18px;margin:26px auto;max-width:480px;}
+#wizardProgress[hidden]{display:none;}
 
 html body #secAttr,html body #secPhys,html body #secAppear,html body #secGen,html body #secPreview{display:none!important;}
 .hl-sub{margin:14px 6px 8px;}
-.hl-countries{display:grid;grid-template-columns:repeat(auto-fill,minmax(50px,1fr));gap:8px;margin:0 6px 16px;}
-.hl-country{background:var(--px-fill-dark);color:#fff;border:0;padding:5px 2px;text-align:center;cursor:pointer;font-family:"Press Start 2P",monospace;font-size:.5rem;line-height:1.6;box-shadow:0 -3px 0 var(--px),0 3px 0 var(--px),-3px 0 0 var(--px),3px 0 0 var(--px);opacity:.45;}
-.hl-country .fl{display:block;font-size:1.2rem;font-family:"Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif;}
-.hl-country .pct{display:block;font-size:.42rem;white-space:nowrap;}
-.hl-country.on{opacity:1;background:#1c60b7;box-shadow:0 -3px 0 var(--px-hi),0 3px 0 var(--px-hi),-3px 0 0 var(--px-hi),3px 0 0 var(--px-hi);}
+.hl-countries{display:grid;grid-template-columns:repeat(auto-fill,minmax(38px,1fr));gap:6px;margin:0 6px 16px;}
+.hl-country{background:var(--px-fill-dark);color:#fff;border:0;min-height:0;padding:3px 1px;text-align:center;cursor:pointer;font-family:"Press Start 2P",monospace;font-size:.42rem;line-height:1.35;box-shadow:0 -2px 0 var(--px),0 2px 0 var(--px),-2px 0 0 var(--px),2px 0 0 var(--px);opacity:.45;}
+.hl-country .fl{display:block;font-size:.9rem;font-family:"Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif;}
+.hl-country .pct{display:block;font-size:.31rem;white-space:nowrap;}
+.hl-country.on{opacity:1;background:#1c60b7;box-shadow:0 -2px 0 var(--px-hi),0 2px 0 var(--px-hi),-2px 0 0 var(--px-hi),2px 0 0 var(--px-hi);}
 .hl-pager{height:min(52vh,430px);overflow:hidden;margin:0 6px;}
 .hl-list{display:flex;flex-direction:column;gap:6px;height:100%;}
 .hl-row{flex:1;min-height:0;display:grid;grid-template-columns:2.6em 1fr 2.6em 2.2em;cursor:pointer;align-items:center;gap:6px;background:var(--px-fill-dark);padding:0 8px;font-size:.85rem;font-weight:700;animation:hlPageIn .3s steps(4) both;}
@@ -2166,14 +2168,12 @@ html,body{overflow-x:hidden;}
   .hl-q-val{font-size:.55rem;}
   .hl-arrows{gap:8px;}
   html body button.primary,html body button.secondary{padding:12px 12px;font-size:.95rem;}
-  .hl-countries{grid-template-columns:repeat(3,1fr);}
   .wizard-progress-item{font-size:.6rem!important;padding:6px 2px!important;}
 }
 @media(orientation:landscape) and (max-height:500px){
   html body .hl-header,#wizardProgress{display:none!important;}
   html body .card,html body section{margin:6px 10px 18px!important;padding:10px 14px!important;}
   .hl-q{margin-bottom:14px;}
-  .hl-countries{grid-template-columns:repeat(9,1fr);}
   .hl-pager{height:calc(100dvh - 130px);}
   .hl-list{display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:1fr;gap:5px 8px;}
   .hl-row{font-size:.8rem;}
@@ -2253,7 +2253,7 @@ html{background-color:#06143a!important;}
 <section class="card setup-panel">
 
   <div class="hl-screen-title" id="hlScreenTitle">
-    CREATE NEW CLASS
+    HOOPLAND CLASS GENERATOR
   </div>
 
   <div class="setup-grid">
@@ -2391,9 +2391,24 @@ html{background-color:#06143a!important;}
   </div>
 
 <div id="setupWizard">
-  <div class="hl-page on" data-page="0">
+  <div class="hl-page on" data-page="-1">
+    <div class="hl-start">
+      <button type="button" class="primary" id="hlCreateClass">CREATE NEW CLASS</button>
+      <button type="button" class="secondary" id="hlImportPage">IMPORT FILE FOR APPEARANCES</button>
+    </div>
+  </div>
+  <div class="hl-page" data-page="-2">
+    <p class="hl-hint">Import appearance fields only. Baselines are shared with everyone, matched by name and gender, and never replace an existing baseline. Review matches before downloading.</p>
+    <div class="hl-name"><label for="hlImportYear">Roster year</label><input id="hlImportYear" type="number" min="1900" max="2100" required></div>
+    <div class="hl-name"><label for="hlImportGender">Gender</label><select id="hlImportGender"><option value="men">Men's</option><option value="women">Women's</option></select></div>
+    <div class="hl-name"><label for="hlImportLevel">Roster level</label><select id="hlImportLevel"><option value="pro">Pro</option><option value="college">College</option></select></div>
+    <div class="hl-name"><label for="hlImportFile">Hoop Land file (.json or .txt)</label><input id="hlImportFile" type="file" accept=".json,.txt,application/json,text/plain"></div>
+    <p id="hlImportStatus" role="status" aria-live="polite"></p>
+    <div class="hl-nav"><button type="button" class="secondary" id="hlImportBack">◀ BACK</button><button type="button" class="primary" id="hlImportSubmit">IMPORT APPEARANCES</button></div>
+  </div>
+  <div class="hl-page" data-page="0">
     <div class="hl-name" id="hlNameSlot"></div>
-    <div class="hl-nav"><span></span><button type="button" class="primary" id="hlToPage2">START ▶</button></div>
+    <div class="hl-nav"><button type="button" class="secondary" id="hlNameBack">◀ BACK</button><button type="button" class="primary" id="hlToPage2">START ▶</button></div>
   </div>
   <div class="hl-page" data-page="1">
     <div id="hlQuestions"></div>
@@ -2438,6 +2453,7 @@ html{background-color:#06143a!important;}
 <div
   id="wizardProgress"
   class="wizard-progress"
+  hidden
   aria-label="Class builder progress">
 
   <div
@@ -2774,6 +2790,7 @@ html{background-color:#06143a!important;}
       page.classList.toggle("back",!!back);
     });
     if(window.hlPlayWipe)window.hlPlayWipe();
+    $("wizardProgress").hidden=n<0;
     const stage=n<=1?0:n-1;
     document.querySelectorAll("#wizardProgress .wizard-progress-item").forEach((item,i)=>{
       item.classList.toggle("active",i===stage);
@@ -2807,11 +2824,15 @@ html{background-color:#06143a!important;}
       applyRecommended(key!==physAppliedFor);
     }
     const title=$("hlScreenTitle");
-    if(title)title.textContent=["CREATE NEW CLASS","CLASS SETUP","ATTRIBUTE CONTROL","PHYSICALS AND SPECS","CLASS PREVIEW"][n];
+    if(title)title.textContent=n===-1?"HOOPLAND CLASS GENERATOR":n===-2?"IMPORT APPEARANCES":["CREATE NEW CLASS","CLASS SETUP","ATTRIBUTE CONTROL","PHYSICALS AND SPECS","CLASS PREVIEW"][n];
     return baseShowPage(n,back);
   };
 
   $("hlToPage2").addEventListener("click",()=>{revealed=1;render();window.hlShowPage(1,false);});
+  $("hlCreateClass").addEventListener("click",()=>window.hlShowPage(0,false));
+  $("hlImportPage").addEventListener("click",()=>window.hlShowPage(-2,false));
+  $("hlNameBack").addEventListener("click",()=>window.hlShowPage(-1,true));
+  $("hlImportBack").addEventListener("click",()=>window.hlShowPage(-1,true));
   $("hlBack").addEventListener("click",()=>window.hlShowPage(0,true));
   next.addEventListener("click",()=>{
     if(revealed<order().length){revealed++;render();}
@@ -5757,6 +5778,15 @@ function validSharedAppearance(saved, gender) {
     (!("fHair" in saved) || (gender !== "1" && typeof saved.fHair === "string" && /^\d{4}$/.test(saved.fHair) && getFacialHairReference(Number(saved.fHair)))));
 }
 
+function validImportedBaseline(saved, gender) {
+  const keys = ["skinC","hairC","hair",...(gender === "1" ? [] : ["fHair"])];
+  return Boolean(saved && typeof saved === "object" && !Array.isArray(saved) &&
+    Object.keys(saved).length === keys.length && keys.every(key => typeof saved[key] === "string") &&
+    /^[0-9a-f]{6}$/i.test(saved.skinC) && /^[0-9a-f]{6}$/i.test(saved.hairC) &&
+    /^\d{4}$/.test(saved.hair) && Number(saved.hair) <= 170 &&
+    (gender === "1" || (/^\d{4}$/.test(saved.fHair) && Number(saved.fHair) <= 31)));
+}
+
 function combineSharedAppearances(appearances, gender) {
   const valid = appearances.filter(item => validSharedAppearance(item, gender));
   const result = {};
@@ -5799,6 +5829,7 @@ function appearanceSourceFor(sourcePlayer) {
   if (!sourcePlayer) return "fictional";
   if (sourcePlayer.sharedAppearance) return "community";
   if (sourcePlayer.rosterAppearance) return "roster reference";
+  if (sourcePlayer.importedBaseline) return "imported baseline";
   const key = normalizeAppearancePlayerName(
     [sourcePlayer.fn, sourcePlayer.ln].filter(Boolean).join(" ")
   );
@@ -8111,6 +8142,101 @@ function starterSkills(classType, gender, currentStars, attributes) {
   return [{id: weightedPick(choices), xp: 0, level: 1, equipped: true}];
 }
 
+function collectAppearanceImports(data, gender) {
+  if (!data || typeof data !== "object" || Array.isArray(data)) throw new Error("Expected a Hoop Land JSON object.");
+  const collections = [];
+  if (Array.isArray(data.teams)) {
+    for (const team of data.teams) {
+      if (!team || !Array.isArray(team.roster)) throw new Error("A team is missing its roster.");
+      collections.push(team.roster);
+    }
+  }
+  for (const key of ["draftClass","players","freeAgents"]) if (Array.isArray(data[key])) collections.push(data[key]);
+  if (!collections.length) throw new Error("No roster or player list was found in the file.");
+  const players = collections.flat();
+  if (players.length > 100000) throw new Error("The file contains more than 100,000 players.");
+  const normalize = value => String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+    .replace(/[’']/g,"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
+  const records = players.map(player => {
+    if (!player || typeof player.fn !== "string" || typeof player.ln !== "string" || !player.fn.trim() || !player.ln.trim()) return null;
+    const identity = canonicalizeRealPlayer({fn:player.fn.trim(),ln:player.ln.trim()});
+    const name = identity.fn + " " + identity.ln;
+    return {player,name,key:normalize(name)};
+  });
+  const counts = new Map();
+  for (const record of records) if (record && record.key) counts.set(record.key,(counts.get(record.key)||0)+1);
+  const candidates = [];
+  let invalid = 0, ambiguous = 0;
+  for (const record of records) {
+    if (!record || !record.key || record.name.length > 100) { invalid++; continue; }
+    if (counts.get(record.key) > 1) { ambiguous++; continue; }
+    const appearance = record.player.appearance || {};
+    const look = {skinC:appearance.skinC, hairC:appearance.hairC, hair:appearance.hair,
+      ...(gender === "men" ? {fHair:appearance.fHair} : {})};
+    if (!validImportedBaseline(look,gender === "women" ? "1" : "0")) { invalid++; continue; }
+    look.skinC=look.skinC.toUpperCase();
+    look.hairC=look.hairC.toUpperCase();
+    candidates.push({name:record.name,appearance:look});
+  }
+  return {candidates,invalid,ambiguous};
+}
+
+async function importAppearanceFile(file, gender, type, year, onProgress) {
+  if (!file) throw new Error("Choose a Hoop Land .json or .txt file.");
+  if (!/\.(json|txt)$/i.test(file.name)) throw new Error("Choose a .json or .txt file.");
+  if (file.size > 256 * 1024 * 1024) throw new Error("The file exceeds the 256 MB limit.");
+  if (!["men","women"].includes(gender) || !["pro","college"].includes(type) ||
+      !Number.isInteger(year) || year < 1900 || year > 2100) throw new Error("Choose a valid gender, level and year (1900–2100).");
+  let data;
+  try { data = JSON.parse(await file.text()); } catch { throw new Error("The file is not valid JSON."); }
+  const {candidates,invalid,ambiguous} = collectAppearanceImports(data,gender);
+  data = null;
+  if (!candidates.length) throw new Error(`No usable unique appearances found (${invalid} invalid, ${ambiguous} ambiguous).`);
+  const counts = {saved:0,skipped:0,invalid,ambiguous,failed:0,errors:[]};
+  let index = 0, processed = 0;
+  const run = async () => {
+    while (index < candidates.length) {
+      const item = candidates[index++];
+      try {
+        const identity = {name:item.name,gender,type,year:String(year)};
+        const response = await fetch("/api/appearance-baseline?" + new URLSearchParams(identity), {
+          method:"PUT",headers:{"content-type":"application/json"},body:JSON.stringify(item.appearance)
+        });
+        const result = await response.json();
+        if (!response.ok || !result.ok) throw new Error(result.error || ("HTTP " + response.status));
+        if (result.saved) counts.saved++; else counts.skipped++;
+      } catch (error) {
+        counts.failed++;
+        if (counts.errors.length < 3) counts.errors.push(item.name + ": " + String(error.message || error));
+      }
+      onProgress(++processed,candidates.length);
+    }
+  };
+  await Promise.all(Array.from({length:Math.min(6,candidates.length)},run));
+  return counts;
+}
+
+function initializeAppearanceImport() {
+document.getElementById("hlImportYear").value = String(new Date().getFullYear());
+document.getElementById("hlImportSubmit").addEventListener("click", async () => {
+  const button = document.getElementById("hlImportSubmit");
+  const back = document.getElementById("hlImportBack");
+  const status = document.getElementById("hlImportStatus");
+  button.disabled = back.disabled = true;
+  status.textContent = "Reading file...";
+  try {
+    const result = await importAppearanceFile(document.getElementById("hlImportFile").files[0],
+      document.getElementById("hlImportGender").value,document.getElementById("hlImportLevel").value,
+      Number(document.getElementById("hlImportYear").value),
+      (done,total) => { status.textContent = `Importing appearances: ${done} of ${total} processed...`; });
+    status.textContent = `Saved ${result.saved}; existing references skipped ${result.skipped}; invalid ${result.invalid}; ambiguous ${result.ambiguous}; failed ${result.failed}.` +
+      (result.failed ? ` Retry the file. ${result.errors.join("; ")}` : "");
+  } catch (error) {
+    status.textContent = "Import failed: " + String(error.message || error);
+  } finally { button.disabled = back.disabled = false; }
+});
+}
+
 function rosterCalibration(gender, classType, position) {
   const data = window.HOOPLAND_ROSTER_REFERENCE;
   if (!data || !data.calibration || !Array.isArray(data.appearances)) {
@@ -8134,12 +8260,14 @@ function attachRosterAppearances(players, gender, classType, year) {
     const name = normalize([player.fn, player.ln].filter(Boolean).join(" "));
     if (!name || counts.get(name) !== 1) continue;
     const school = normalize(player.school || player.committedCollege || (player.bart && player.bart.team));
-    const matches = data.appearances.filter(entry => entry.name === name && entry.gender === gender &&
+    const sameName = data.appearances.filter(entry => entry.name === name && entry.gender === gender);
+    const matches = sameName.filter(entry =>
       ((entry.source === (gender === "1" ? "wnba" : "nba") && classType === "draft" && year === 2026 && entry.rookie) ||
        (entry.source === "ncaaw" && ((school && school === entry.school) ||
         (classType === "freshman" && year === 2025 && entry.rookie)))));
     const pro = matches.filter(entry => entry.source !== "ncaaw");
-    const selected = pro.length === 1 ? pro[0] : !pro.length && matches.length === 1 ? matches[0] : null;
+    const selected = pro.length === 1 ? pro[0] : !pro.length && matches.length === 1 ? matches[0]
+      : !matches.length && sameName.length === 1 ? sameName[0] : null;
     if (selected) {
       player.rosterAppearance = selected.appearance;
       player.appearanceWarnings = (player.appearanceWarnings || []).filter(warning =>
@@ -8631,6 +8759,11 @@ else {
     const correction = REAL_PLAYER_DESCRIPTIONS[normalizeAppearancePlayerName([sourcePlayer.fn, sourcePlayer.ln].filter(Boolean).join(" "))];
     if (correction) player.appearance = applyLookDescription(player.appearance, correction, gender);
   }
+  else if (sourcePlayer && sourcePlayer.importedBaseline) {
+    player.appearance = applyRosterAppearance(player.appearance, sourcePlayer.importedBaseline, gender);
+    const correction = REAL_PLAYER_DESCRIPTIONS[normalizeAppearancePlayerName([sourcePlayer.fn, sourcePlayer.ln].filter(Boolean).join(" "))];
+    if (correction) player.appearance = applyLookDescription(player.appearance, correction, gender);
+  }
   if (sourcePlayer && sourcePlayer.sharedAppearance) {
     player.appearance = applySharedAppearance(player.appearance, sourcePlayer.sharedAppearance, gender);
   }
@@ -8809,7 +8942,7 @@ async function generateClass() {
         );
       }
 
-      const unmatched = realPlayers.filter(player => !player.lookText && !player.sharedAppearance && !player.rosterAppearance).length;
+      const unmatched = realPlayers.filter(player => !player.lookText && !player.sharedAppearance && !player.rosterAppearance && !player.importedBaseline).length;
       if (unmatched) {
         const status = document.getElementById("status");
         status.textContent += ` Photo matching unavailable or inconclusive for ${unmatched} real players; open their previews for details.`;
@@ -11744,6 +11877,7 @@ classSizePlus.addEventListener(
 <script>
 (function(){
   const $=id=>document.getElementById(id);
+  initializeAppearanceImport();
   $("hlAttrSlot").appendChild($("attrGrid"));
   $("hlPhysSlot").appendChild($("secPhys").querySelector(".grid"));
   $("hlStatusSlot").appendChild($("status"));

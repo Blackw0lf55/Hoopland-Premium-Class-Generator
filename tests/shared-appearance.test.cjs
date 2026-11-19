@@ -4,7 +4,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 
-test("community looks persist per player, class and gender and reject cross-origin and invalid writes", async () => {
+test("community looks persist per player and gender across class years, with five-edit limit", async () => {
   const {default:worker,SharedAppearance} = await import("../location-worker.js");
   const objects = new Map();
   const env = {APPEARANCES:{
@@ -29,9 +29,9 @@ test("community looks persist per player, class and gender and reject cross-orig
   assert.equal((await put(url,{...look,extra:"x"})).status,400);
   assert.equal((await put(url,look)).status,200);
   assert.deepEqual((await (await worker.fetch(new Request(url),env)).json()).appearances,[look]);
-  for (const changed of [url.replace("2026","2027"),url.replace("men","women"),url.replace("draft","freshman")]) {
-    assert.deepEqual((await (await worker.fetch(new Request(changed),env)).json()).appearances,[]);
-  }
+  for (const changed of [url.replace("2026","2027"),url.replace("draft","freshman")])
+    assert.deepEqual((await (await worker.fetch(new Request(changed),env)).json()).appearances,[look]);
+  assert.deepEqual((await (await worker.fetch(new Request(url.replace("men","women")),env)).json()).appearances,[]);
   assert.equal((await put(url.replace("men","women"),look)).status,400);
   const next={...look,hair:"0008"};
   assert.equal((await put(url,next)).status,200);
@@ -39,6 +39,63 @@ test("community looks persist per player, class and gender and reject cross-orig
   assert.deepEqual((await (await worker.fetch(new Request(url),env)).json()).appearances,
     Array.from({length:5},(_,i)=>({hair:"000"+i})));
   assert.equal((await worker.fetch(new Request(url),{})).status,503);
+});
+
+test("imported baselines are first-write-only, preserve edits and skip built-in references", async () => {
+  const {default:worker,SharedAppearance} = await import("../location-worker.js");
+  const objects=new Map();
+  const asset=fs.readFileSync(path.join(__dirname,"..","data/roster-reference.js"),"utf8");
+  const env={ASSETS:{fetch:async()=>new Response(asset)},APPEARANCES:{
+    idFromName:name=>name,
+    get:id=>{
+      if(!objects.has(id)){
+        const values=new Map();
+        let lock=Promise.resolve();
+        const storage={get:async k=>values.get(k),put:async(k,v)=>values.set(k,v),
+          transaction:fn=>{const task=lock.then(()=>fn(storage));lock=task.catch(()=>{});return task;}};
+        objects.set(id,new SharedAppearance({storage}));
+      }
+      return {fetch:(url,init)=>objects.get(id).fetch(new Request(url,init))};
+    }
+  }};
+  const base="https://example.test/api/appearance-baseline?"+new URLSearchParams({name:"Test Prospect",gender:"men",type:"pro",year:"2027"});
+  const edits="https://example.test/api/shared-appearance?"+new URLSearchParams({name:"Test Prospect",gender:"men",type:"draft",year:"2025"});
+  const put=(url,body,origin="https://example.test")=>worker.fetch(new Request(url,{
+    method:"PUT",headers:{"content-type":"application/json",origin},body:JSON.stringify(body)}),env);
+  const look={skinC:"123456",hairC:"123456",hair:"0001",fHair:"0016"};
+  assert.equal((await put(base,look,"https://other.example")).status,403);
+  assert.equal((await put(base,{hair:"0001"})).status,400);
+  const [a,b]=await Promise.all([put(base,look),put(base,{...look,hair:"0002"})]);
+  const results=await Promise.all([a.json(),b.json()]);
+  assert.equal(results.filter(r=>r.saved).length,1);
+  assert.equal((await put(edits,{hair:"0003"})).status,200);
+  const fetched=await (await worker.fetch(new Request(edits.replace("2025","2030")),env)).json();
+  assert.deepEqual(fetched.appearances,[{hair:"0003"}]);
+  assert.ok(["0001","0002"].includes(fetched.baseline.appearance.hair));
+  assert.deepEqual(fetched.baseline.source,{type:"pro",year:2027});
+  const builtin=base.replace("Test+Prospect","Azzi+Fudd").replace("gender=men","gender=women");
+  const existing=await (await put(builtin,{skinC:"123456",hairC:"123456",hair:"0001"})).json();
+  assert.equal(existing.saved,false);
+  assert.equal(existing.reason,"built-in reference");
+});
+
+test("old class-scoped edits remain readable and seed the global history on first edit", async () => {
+  const {default:worker,SharedAppearance}=await import("../location-worker.js");
+  const objects=new Map();
+  const legacyId=JSON.stringify(["men","draft",2026,"legacy player"]);
+  const env={APPEARANCES:{idFromName:name=>name,get:id=>{
+    if(!objects.has(id)){
+      const values=new Map(id===legacyId?[["appearances",[{hair:"0001"}]]]:[]);
+      const storage={get:async k=>values.get(k),put:async(k,v)=>values.set(k,v)};
+      storage.transaction=fn=>fn(storage);
+      objects.set(id,new SharedAppearance({storage}));
+    }
+    return {fetch:(url,init)=>objects.get(id).fetch(new Request(url,init))};
+  }}};
+  const url="https://example.test/api/shared-appearance?"+new URLSearchParams({name:"Legacy Player",gender:"men",type:"draft",year:"2026"});
+  assert.deepEqual((await (await worker.fetch(new Request(url),env)).json()).appearances,[{hair:"0001"}]);
+  await worker.fetch(new Request(url,{method:"PUT",headers:{origin:"https://example.test","content-type":"application/json"},body:JSON.stringify({hair:"0002"})}),env);
+  assert.deepEqual((await (await worker.fetch(new Request(url.replace("2026","2027")),env)).json()).appearances,[{hair:"0001"},{hair:"0002"}]);
 });
 
 test("saved appearance overrides the generated look and updates matching skin segments", () => {

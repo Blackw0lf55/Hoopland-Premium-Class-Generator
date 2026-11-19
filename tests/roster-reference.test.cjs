@@ -37,6 +37,9 @@ test("roster appearances require identity context and reject duplicate class nam
   const college = {fn:"Ace",ln:"Austin",school:"Alabama"};
   api.attachRosterAppearances([college],"1","draft",2028);
   assert.ok(college.rosterAppearance);
+  const acrossYears = {fn:"Paige",ln:"Bueckers"};
+  api.attachRosterAppearances([acrossYears],"1","draft",2025);
+  assert.ok(acrossYears.rosterAppearance);
   const duplicate = [{fn:"Azzi",ln:"Fudd"},{fn:"Azzi",ln:"Fudd"}];
   api.attachRosterAppearances(duplicate,"1","draft",2026);
   assert.ok(duplicate.every(p=>!p.rosterAppearance));

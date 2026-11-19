@@ -47,9 +47,10 @@ no men's college roster was supplied. These are estimates, not verified
 rookie-season outcomes.
 
 The compact reference file also stores appearance fields from the supplied
-active rosters. Real-player matches require an unambiguous name and gender,
-plus either a 2026 pro rookie draft class or a matching college; 2025 college
-freshmen may also match their freshman class. Roster appearances are defaults,
+active rosters. Real-player matches require an unambiguous name and gender;
+where a name appears in multiple rosters, the 2026 pro rookie draft class,
+matching college or 2025 college freshman class can disambiguate it.
+Roster appearances are defaults,
 not guaranteed likenesses; existing user-provided corrections and
 community-approved edits override them. The original
 roster files are not included. To rebuild with replacement files, run
@@ -72,13 +73,27 @@ proportionally. Displayed percentages are rounded. The selector is hidden for
 real classes: real players retain their sourced country, and any fictional fill
 players use all available country weights.
 
+From the title screen, **Import File for Appearances** reads a Hoop Land JSON or
+TXT roster or class file (up to 256 MiB and 100,000 listed players). Parsing is
+local; only names, selected gender, roster level and year, and skin, hair color,
+hairstyle and (for men) facial hair are sent for shared storage. Other player
+data and the full file are not stored. Invalid entries and duplicate names in
+the file are skipped. Existing built-in and previously imported baselines are
+never replaced; the first imported baseline is retained. Imports are shared
+with everyone and are not moderated. Matching by name and gender can confuse
+different people with the same name, including across separate uploads;
+review appearances before downloading.
+
 Before downloading, approve the appearances to share manually changed skin,
 hair color, hairstyle and facial-hair (men only) selections. Only changed
 fields of real players are shared, not unedited placeholders or whole class
-files. Future generations of the same player, gender, class type and year
-combine up to five recent approvals per player: the middle skin shade and most
-common other selections, with the most recent selection breaking ties. Shared
-fields override photo estimates; other fields still use photo matching.
+files. Future generations match the same name and gender across class types
+and years and combine up to five recent approvals per player: the middle skin
+shade and most common other selections, with the most recent selection breaking
+ties. Shared fields override the imported or built-in baseline; remaining fields
+use that baseline or photo matching. Older class-scoped edits remain readable
+for their original class and seed the global history when edited there; old
+histories from other class years are not automatically merged.
 Anyone can contribute; these edits are not moderated or guaranteed accurate.
 Same-name duplicates in a class cannot be shared. Edits to fictional players
 and other appearance details remain local to the generated class. Shared

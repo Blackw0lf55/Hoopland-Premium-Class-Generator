@@ -407,16 +407,50 @@ const HEADSHOT_HOSTS = ["a.espncdn.com", "cdn.nba.com", "commons.wikimedia.org",
 export class SharedAppearance {
   constructor(state) { this.state = state; }
   async fetch(request) {
+    const baseline = new URL(request.url).pathname === "/baseline";
     if (request.method === "GET") {
-      return Response.json({ ok: true, appearances: (await this.state.storage.get("appearances")) || [] },
+      const appearances = await this.state.storage.get("appearances");
+      const reference = await this.state.storage.get("baseline");
+      return Response.json({ ok: true, appearances: appearances || [], hasEdits: appearances !== undefined, baseline: reference || null },
         { headers: { "cache-control": "no-store" } });
     }
-    const appearance = await request.json();
+    const data = await request.json();
+    let saved = true;
     await this.state.storage.transaction(async txn => {
-      const previous = await txn.get("appearances") || [];
-      await txn.put("appearances", [...previous, appearance].slice(-5));
+      if (baseline) {
+        if (await txn.get("baseline")) { saved = false; return; }
+        await txn.put("baseline", data);
+      } else {
+        const previous = await txn.get("appearances") || data.legacy || [];
+        await txn.put("appearances", [...previous, data.appearance].slice(-5));
+      }
     });
-    return Response.json({ ok: true }, { headers: { "cache-control": "no-store" } });
+    return Response.json({ ok: true, saved }, { headers: { "cache-control": "no-store" } });
+  }
+}
+
+const builtInAppearanceCache = new WeakMap();
+async function builtInAppearanceExists(env, gender, normalized) {
+  if (!env.ASSETS) throw new Error("Built-in appearance references are unavailable.");
+  let loading = builtInAppearanceCache.get(env.ASSETS);
+  if (!loading) {
+    loading = (async () => {
+      const response = await env.ASSETS.fetch(new Request("https://assets.internal/data/roster-reference.js"));
+      if (!response.ok) throw new Error("Built-in appearance references are unavailable.");
+      const text = await response.text();
+      const prefix = "window.HOOPLAND_ROSTER_REFERENCE=";
+      if (!text.startsWith(prefix)) throw new Error("Built-in appearance references are invalid.");
+      const data = JSON.parse(text.slice(prefix.length).trim().replace(/;$/, ""));
+      if (!Array.isArray(data.appearances)) throw new Error("Built-in appearance references are invalid.");
+      return new Set(data.appearances.map(entry => entry.gender + ":" + entry.name));
+    })();
+    builtInAppearanceCache.set(env.ASSETS, loading);
+  }
+  try {
+    return (await loading).has((gender === "women" ? "1" : "0") + ":" + normalized.replace(/ /g, ""));
+  } catch (error) {
+    builtInAppearanceCache.delete(env.ASSETS);
+    throw error;
   }
 }
 
@@ -430,9 +464,11 @@ async function handleSharedAppearance(request, env) {
   const gender = url.searchParams.get("gender");
   const type = url.searchParams.get("type");
   const year = Number(url.searchParams.get("year"));
+  const baseline = url.pathname === "/api/appearance-baseline";
   const normalized = normalizePersonName(name);
   if (name.length > 100 || !normalized || normalized.length > 100 || !["men", "women"].includes(gender) ||
-      !["draft", "freshman"].includes(type) || !Number.isInteger(year) || year < 1900 || year > 2100) {
+      !(baseline ? ["pro", "college"] : ["draft", "freshman"]).includes(type) ||
+      !Number.isInteger(year) || year < 1900 || year > 2100) {
     return fail("Invalid player identity.", 400);
   }
   let appearance;
@@ -463,11 +499,37 @@ async function handleSharedAppearance(request, env) {
         ("hairC" in appearance && !/^[0-9a-f]{6}$/i.test(appearance.hairC)) ||
         ("hair" in appearance && (!/^\d{4}$/.test(appearance.hair) || Number(appearance.hair) > 170)) ||
         ("fHair" in appearance && (!/^\d{4}$/.test(appearance.fHair) || Number(appearance.fHair) > 31 || gender === "women"))) return fail("Invalid appearance.", 400);
+    if (baseline && !["skinC","hairC","hair",...(gender === "men" ? ["fHair"] : [])].every(key => key in appearance)) {
+      return fail("A complete baseline appearance is required.", 400);
+    }
   }
-  const id = env.APPEARANCES.idFromName(JSON.stringify([gender, type, year, normalized]));
-  return env.APPEARANCES.get(id).fetch("https://appearance.internal/", {
-    method: request.method,
-    ...(appearance ? { body: JSON.stringify(appearance), headers: { "content-type": "application/json" } } : {})
+  const legacyId = env.APPEARANCES.idFromName(JSON.stringify([gender, type, year, normalized]));
+  const globalId = env.APPEARANCES.idFromName(JSON.stringify(["player", gender, normalized]));
+  const global = env.APPEARANCES.get(globalId);
+  if (baseline) {
+    if (request.method !== "PUT") return fail("Method not allowed.", 405);
+    try {
+      if (await builtInAppearanceExists(env, gender, normalized)) return Response.json({ok:true,saved:false,reason:"built-in reference"}, {headers});
+    } catch (error) { return fail(String(error.message || error), 503); }
+    return global.fetch("https://appearance.internal/baseline", {
+      method:"PUT", headers:{"content-type":"application/json"},
+      body:JSON.stringify({appearance, source:{type,year}})
+    });
+  }
+  const currentResponse = await global.fetch("https://appearance.internal/", {method:"GET"});
+  if (!currentResponse.ok) return fail("Shared appearance storage failed.", 503);
+  const current = await currentResponse.json();
+  let legacy = [];
+  if (!current.hasEdits) {
+    const response = await env.APPEARANCES.get(legacyId).fetch("https://appearance.internal/", {method:"GET"});
+    if (!response.ok) return fail("Previous appearance history is unavailable.", 503);
+    legacy = (await response.json()).appearances;
+  }
+  if (request.method === "GET") {
+    return Response.json({ok:true, appearances:current.hasEdits ? current.appearances : legacy, baseline:current.baseline}, {headers});
+  }
+  return global.fetch("https://appearance.internal/", {
+    method:"PUT", headers:{"content-type":"application/json"}, body:JSON.stringify({appearance,legacy})
   });
 }
 
@@ -754,6 +816,10 @@ window.__HOOPLAND_PREPARE_REAL_PLAYERS=async function(players,gender){
           const response=await fetch("/api/shared-appearance?"+new URLSearchParams(identity),{cache:"no-store"});
           const result=await response.json();
           if(!response.ok||!result.ok)throw new Error(result.error||("HTTP "+response.status));
+          if(result.baseline){
+            if(validImportedBaseline(result.baseline.appearance,gender))p.importedBaseline=result.baseline.appearance;
+            else p.sharedAppearanceError="The imported appearance baseline is invalid and was not applied.";
+          }
           if(Array.isArray(result.appearances)&&result.appearances.length){
             const valid=result.appearances.filter(appearance=>validSharedAppearance(appearance,gender));
             if(valid.length)p.sharedAppearance=combineSharedAppearances(valid,gender);
@@ -795,6 +861,12 @@ window.__HOOPLAND_PREPARE_REAL_PLAYERS=async function(players,gender){
         }catch(e){console.warn('Invalid headshot URL for',[p.fn,p.ln].join(' '),e);return false;}
       }).slice(0,8);
       p.referencePhotos=shots;
+      if(p.importedBaseline){
+        p.appearanceWarnings=["Using an imported appearance baseline; name matching is not guaranteed. Please review."];
+        if(p.sharedAppearance)p.appearanceWarnings.push("Community-approved edits override the baseline.");
+        if(p.sharedAppearanceError)p.appearanceWarnings.push(p.sharedAppearanceError);
+        continue;
+      }
       if(p.sharedAppearance && ["skinC","hairC","hair",...(gender==="1"?[]:["fHair"])].every(field=>field in p.sharedAppearance)){
         p.appearanceWarnings=["Using community-approved appearance edits. Anyone can submit edits; please review."];
         continue;
@@ -1000,6 +1072,7 @@ export default {
     if (pathname === "/api/pro-season") return handleProSeason(request);
     if (pathname === "/api/hometown") return handleHometown(request);
     if (pathname === "/api/shared-appearance") return handleSharedAppearance(request, env);
+    if (pathname === "/api/appearance-baseline") return handleSharedAppearance(request, env);
     if (pathname === "/api/headshot") return handleHeadshot(request);
     if (pathname === "/api/describe") return handleDescribe(request, env, context);
     if (pathname === "/" || pathname === "/index.html") {

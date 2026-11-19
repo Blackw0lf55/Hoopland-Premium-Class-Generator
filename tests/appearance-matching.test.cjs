@@ -329,6 +329,34 @@ test("community looks bypass photo inference and ambiguous same-name players do 
   assert.ok(!requests.some(url=>url.startsWith("/api/describe")));
 });
 
+test("imported baselines are loaded for future classes alongside approved edits", async () => {
+  const {default:worker}=await import("../location-worker.js");
+  const csv=fs.readFileSync(path.join(__dirname,"..","data/location-catalog.csv"),"utf8");
+  const env={ASSETS:{fetch:async r=>new URL(r.url).pathname.endsWith(".csv")?new Response(csv):new Response(html)}};
+  const page=await (await worker.fetch(new Request("https://example.test/"),env)).text();
+  const script=page.match(/<script>\nwindow\.__HOOPLAND_LOCATION_RECORDS[\s\S]*?<\/script>/)[0].slice(8,-9);
+  const look={skinC:"123456",hairC:"123456",hair:"0001",fHair:"0016"};
+  const c=vm.createContext({
+    window:{},URL,URLSearchParams,console:{warn(){}},
+    validImportedBaseline:()=>true,validSharedAppearance:()=>true,combineSharedAppearances:items=>items[0],
+    prepareProfessionalPotential:async()=>{},
+    document:{getElementById:id=>({value:id==="classType"?"draft":"2030"})},
+    fetch:async url=>{
+      if(String(url).startsWith("/api/stats"))return Response.json({ok:true,players:{}});
+      if(String(url).startsWith("/api/shared-appearance"))return Response.json({ok:true,baseline:{appearance:look},appearances:[{hair:"0008"}]});
+      if(String(url).startsWith("/api/hometown"))return Response.json({headshots:[]});
+      throw new Error("Unexpected request "+url);
+    }
+  });
+  vm.runInContext(script,c);
+  const p={fn:"Example",ln:"Imported"};
+  await c.window.__HOOPLAND_PREPARE_REAL_PLAYERS([p],"0");
+  assert.deepEqual(p.importedBaseline,look);
+  assert.equal(p.sharedAppearance.hair,"0008");
+  assert.match(p.appearanceWarnings[0],/imported appearance baseline/);
+  assert.match(p.appearanceWarnings[1],/edits override/);
+});
+
 test("photo service failures are reported instead of looking like successful matches", async () => {
   const {default:worker} = await import("../location-worker.js");
   const csv = fs.readFileSync(path.join(__dirname, "..", "data/location-catalog.csv"),"utf8");
