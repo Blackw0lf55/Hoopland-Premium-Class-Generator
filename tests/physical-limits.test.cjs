@@ -17,8 +17,9 @@ function harness() {
     addEventListener(type,fn) { this.handlers[type]=fn; }
     setAttribute(key,value) { this.attributes[key]=value; }
   }
-  for(const name of ["positionPhysicalLimits","gender","classType","hlPhysHint"]) elements[name]=new Element();
+  for(const name of ["positionPhysicalLimits","gender","classType","mode","hlPhysHint"]) elements[name]=new Element();
   elements.gender.value="0";elements.classType.value="draft";
+  elements.mode.value="fictional";
   const context = vm.createContext({
     POS:positions, POS_PROFILE:Object.fromEntries(positions.map(([i])=>[i,[60,70,100,150,15,10]])),
     rosterCalibration:(gender,type)=>gender==="0"&&type==="freshman"?null:
@@ -29,8 +30,27 @@ function harness() {
   });
   const api=vm.runInContext(`${code}\n({initialize:initializePositionPhysicalLimits,limits:positionPhysicalLimits,generate:generatePlayerDimensions})`,context);
   api.initialize();
-  return {api,elements};
+  return {api,elements,context};
 }
+
+test("recommended limits use the matching women's roster for every position", () => {
+  const {api,elements,context}=harness();
+  const referenceContext={window:{}};
+  vm.runInNewContext(fs.readFileSync(path.join(__dirname,"..","data/roster-reference.js"),"utf8"),referenceContext);
+  const references=referenceContext.window.HOOPLAND_ROSTER_REFERENCE.calibration;
+  context.rosterCalibration=(gender,type,position)=>type==="draft"
+    ? references[gender==="1"?"wnba":"nba"][Math.floor(position/3)]
+    : gender==="1"?references.ncaaw[Math.floor(position/3)]:null;
+  for (const [type,key] of [["draft","wnba"],["freshman","ncaaw"]]) {
+    elements.classType.value=type;
+    elements.gender.value="1";elements.gender.handlers.change();elements.classType.handlers.change();
+    for(let position=0;position<9;position++){
+      const expected=[...references[key][Math.floor(position/3)].height,...references[key][Math.floor(position/3)].weight];
+      if(position===0)expected[0]=67;
+      assert.deepEqual(Array.from(api.limits(position)),expected);
+    }
+  }
+});
 
 test("position controls use named recommended ranges and preserve context-specific edits", () => {
   const {api,elements}=harness();
@@ -86,4 +106,15 @@ test("invalid inputs report the affected position, without silently substituting
   assert.throws(()=>api.limits(4),/SF: height and weight limits must be positive whole numbers/);
   elements.maxHt4.value="76.5";
   assert.throws(()=>api.limits(4),/positive whole numbers/);
+});
+
+test("real players use sourced heights and recommended ranges, ignoring fictional edits", () => {
+  const {api,elements}=harness();
+  elements.minHt0.value="100";elements.maxHt0.value="101";
+  elements.minWt0.value="300";elements.maxWt0.value="301";
+  elements.mode.value="real";
+  assert.deepEqual({...api.generate(0,"0",{height:65})},{height:65,weight:223,giantOutlier:false});
+  assert.deepEqual({...api.generate(0,"0",null)},{height:78,weight:223,giantOutlier:false});
+  elements.maxHt0.value="";
+  assert.equal(api.generate(0,"0",{height:81}).height,81);
 });

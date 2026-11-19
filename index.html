@@ -2425,7 +2425,8 @@ html{background-color:#06143a!important;}
   </div>
   <div class="hl-page" data-page="2">
     <div id="hlAttrSlot"></div>
-    <div class="hl-nav"><button type="button" class="secondary" data-back="1">◀ BACK</button><button type="button" class="primary" data-go="3">CONTINUE ▶</button></div>
+    <div id="hlAttrStatusSlot"></div>
+    <div class="hl-nav"><button type="button" class="secondary" data-back="1">◀ BACK</button><button type="button" class="primary" id="hlAttrContinue">CONTINUE ▶</button></div>
   </div>
   <div class="hl-page" data-page="3">
     <p id="hlPhysHint" class="section-note"></p>
@@ -2479,7 +2480,7 @@ html{background-color:#06143a!important;}
   </div>
 
   <div
-    class="wizard-progress-item"
+    class="wizard-progress-item wizard-spec-step"
     data-progress-step="2">
     3<br>Specs
   </div>
@@ -2763,9 +2764,10 @@ html{background-color:#06143a!important;}
     if(window.hlPlayWipe)window.hlPlayWipe();
     $("wizardProgress").hidden=n<0;
     const fictional=$("mode").value==="fictional";
+    document.querySelector(".wizard-spec-step").hidden=!fictional;
     document.querySelector(".wizard-country-step").hidden=!fictional;
-    $("wizardProgress").style.gridTemplateColumns=`repeat(${fictional?5:4},1fr)`;
-    $("hlReviewProgress").innerHTML=fictional?"5<br>Review":"4<br>Review";
+    $("wizardProgress").style.gridTemplateColumns=`repeat(${fictional?5:3},1fr)`;
+    $("hlReviewProgress").innerHTML=fictional?"5<br>Review":"3<br>Review";
     const stage=n<=1?0:n-1;
     document.querySelectorAll("#wizardProgress .wizard-progress-item").forEach((item,i)=>{
       item.classList.toggle("active",i===stage);
@@ -8269,6 +8271,13 @@ function positionPhysicalLimits(position) {
   return values;
 }
 
+function recommendedPhysicalLimits(position, gender, classType) {
+  const reference = rosterCalibration(gender,classType,position);
+  const values = reference ? [...reference.height,...reference.weight] : POS_PROFILE[position].slice(0,4);
+  if (position === 0) values[0] = 67;
+  return values;
+}
+
 function initializePositionPhysicalLimits() {
   const box = document.getElementById("positionPhysicalLimits");
   const fields = [["minHt","Min height (in)"],["maxHt","Max height (in)"],
@@ -8284,10 +8293,7 @@ function initializePositionPhysicalLimits() {
     if (!saved.has(key)) {
       saved.set(key, POS.map(([position]) => {
         const index = Number(position);
-        const reference = rosterCalibration(gender,type,index);
-        const values = reference ? [...reference.height,...reference.weight] : POS_PROFILE[index].slice(0,4);
-        if (index === 0) values[0] = 67;
-        return values.map(String);
+        return recommendedPhysicalLimits(index,gender,type).map(String);
       }));
     }
     box.replaceChildren();
@@ -8326,7 +8332,10 @@ function initializePositionPhysicalLimits() {
 }
 
 function generatePlayerDimensions(position, gender, sourcePlayer) {
-  const [minimumHeight, maximumHeight, minimumWeight, maximumWeight] = positionPhysicalLimits(position);
+  const real = document.getElementById("mode").value === "real";
+  const [minimumHeight, maximumHeight, minimumWeight, maximumWeight] = real
+    ? recommendedPhysicalLimits(position,gender,document.getElementById("classType").value)
+    : positionPhysicalLimits(position);
   const sourceHeight = sourcePlayer && sourcePlayer.height != null && sourcePlayer.height !== "" &&
     Number.isFinite(Number(sourcePlayer.height)) && Number(sourcePlayer.height) > 0
       ? Math.round(Number(sourcePlayer.height)) : null;
@@ -8335,7 +8344,7 @@ function generatePlayerDimensions(position, gender, sourcePlayer) {
     maximumHeight >= (women ? 77 : 80) && rng() < 0.08;
   const giantMaxHeight = Math.max(minimumHeight, Math.min(maximumHeight, women ? 84 : 91));
   const giantMinHeight = Math.min(giantMaxHeight, Math.max(minimumHeight, women ? 77 : 80));
-  const height = sourceHeight !== null ? clamp(sourceHeight,minimumHeight,maximumHeight)
+  const height = sourceHeight !== null ? (real ? sourceHeight : clamp(sourceHeight,minimumHeight,maximumHeight))
     : giantOutlier ? randomInteger(giantMinHeight,giantMaxHeight) : randomInteger(minimumHeight,maximumHeight);
   const weight = giantOutlier
     ? randomInteger(Math.min(maximumWeight,Math.max(minimumWeight,women ? 200 : 240)),maximumWeight)
@@ -8789,7 +8798,7 @@ async function generateClass() {
         "gender"
       ).value;
 
-    POS.forEach(([position]) => positionPhysicalLimits(Number(position)));
+    if (mode === "fictional") POS.forEach(([position]) => positionPhysicalLimits(Number(position)));
 
     const tierPlan =
       buildTierPlan(
@@ -11858,6 +11867,7 @@ classSizePlus.addEventListener(
   $("setupWizard").parentNode.insertBefore($("wizardProgress"),$("setupWizard"));
   const showWizardPage=window.hlShowPage;
   window.hlShowPage=(n,back)=>{
+    if(n===2)$("hlAttrStatusSlot").appendChild($("status"));
     if(n===3)$("hlSpecStatusSlot").appendChild($("status"));
     if(n===4)$("hlStatusSlot").appendChild($("status"));
     return showWizardPage(n,back);
@@ -11865,8 +11875,6 @@ classSizePlus.addEventListener(
 
   document.querySelectorAll("#setupWizard [data-back]").forEach(b=>
     b.addEventListener("click",()=>window.hlShowPage(Number(b.dataset.back),true)));
-  document.querySelectorAll("#setupWizard [data-go]").forEach(b=>
-    b.addEventListener("click",()=>window.hlShowPage(Number(b.dataset.go),false)));
 
   const flag=code=>{
     const iso=code==="UK"?"GB":code;
@@ -11878,7 +11886,7 @@ classSizePlus.addEventListener(
   function updateCountryVisibility(){
     const fictional=$("mode").value==="fictional";
     $("hlCountryOptions").hidden=!fictional;
-    $("hlSpecContinue").textContent=fictional?"CONTINUE ▶":"SUBMIT CLASS";
+    $("hlAttrContinue").textContent=fictional?"CONTINUE ▶":"SUBMIT CLASS";
   }
   $("mode").addEventListener("change",updateCountryVisibility);
   updateCountryVisibility();
@@ -12006,6 +12014,10 @@ classSizePlus.addEventListener(
     }
   }
   $("hlSubmit").addEventListener("click",()=>submitClass($("hlSubmit")));
+  $("hlAttrContinue").addEventListener("click",()=>{
+    if($("mode").value==="fictional")window.hlShowPage(3,false);
+    else submitClass($("hlAttrContinue"));
+  });
   $("hlSpecContinue").addEventListener("click",()=>{
     try {
       POS.forEach(([position])=>positionPhysicalLimits(Number(position)));
@@ -12014,11 +12026,10 @@ classSizePlus.addEventListener(
       return;
     }
     setStatus("","");
-    if($("mode").value==="fictional")window.hlShowPage(4,false);
-    else submitClass($("hlSpecContinue"));
+    window.hlShowPage(4,false);
   });
   $("hlReviewBack").addEventListener("click",()=>
-    window.hlShowPage($("mode").value==="fictional"?4:3,true));
+    window.hlShowPage($("mode").value==="fictional"?4:2,true));
   $("hlDownload").addEventListener("click",async()=>{
     const button=$("hlDownload");
     button.disabled=true;
