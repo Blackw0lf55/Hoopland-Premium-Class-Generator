@@ -42,7 +42,8 @@ tendencies blend those references with tier, archetype and available college
 statistics. Dribbling growth uses the group’s observed average instead of
 forcing four full rating points of growth; potential remains a separate career estimate. The
 editable height and weight limits for each position default to the sample's
-position-group 5th–95th percentiles. Generated and sourced heights and
+position-group 5th–95th percentiles, except the PG minimum defaults to 67
+inches. Generated and sourced heights and
 generated weights stay within the corresponding position's limits, including
 outliers; an invalid range identifies the position. Edits are retained when
 switching between class types or genders. Men’s freshmen retain the previous model because
@@ -72,7 +73,8 @@ international countries use the NBA's listed counts. Countries with no
 listed players receive a small fallback weight of 0.1 player. Counts for
 countries unavailable in the selector are excluded, then selected weights are
 normalized to 100%; deselecting a country redistributes its share
-proportionally. Displayed percentages are rounded. The selector is hidden for
+proportionally. Displayed percentages are rounded. The selector has its own
+screen after Spec Limits; the screen is skipped for
 real classes: real players retain their sourced country, and any fictional fill
 players use all available country weights.
 

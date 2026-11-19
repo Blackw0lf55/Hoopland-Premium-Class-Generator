@@ -38,16 +38,24 @@ test("position controls use named recommended ranges and preserve context-specif
   assert.equal(elements.positionPhysicalLimits.children[0].children[0].textContent,"PG");
   assert.equal(elements.positionPhysicalLimits.children[8].children[0].textContent,"C");
   assert.equal(elements.minHt0.attributes["aria-label"],"PG Min height (in)");
-  assert.deepEqual(Array.from(api.limits(0)),[72,78,166,223]);
+  assert.deepEqual(Array.from(api.limits(0)),[67,78,166,223]);
   elements.minHt0.value="80";elements.minHt0.handlers.input();
   elements.gender.value="1";elements.gender.handlers.change();
-  assert.deepEqual(Array.from(api.limits(0)),[66,72,120,168]);
+  assert.deepEqual(Array.from(api.limits(0)),[67,72,120,168]);
   elements.gender.value="0";elements.gender.handlers.change();
   assert.equal(elements.minHt0.value,"80");
   elements.classType.value="freshman";elements.classType.handlers.change();
-  assert.deepEqual(Array.from(api.limits(0)),[60,70,100,150]);
+  assert.deepEqual(Array.from(api.limits(0)),[67,70,100,150]);
   elements.classType.value="draft";elements.classType.handlers.change();
   assert.equal(elements.minHt0.value,"80");
+  elements.gender.value="1";elements.gender.handlers.change();
+  elements.classType.value="freshman";elements.classType.handlers.change();
+  assert.equal(api.limits(0)[0],67);
+  elements.minHt0.value="62";elements.minHt0.handlers.input();
+  assert.equal(api.limits(0)[0],62);
+  elements.gender.value="0";elements.gender.handlers.change();
+  elements.gender.value="1";elements.gender.handlers.change();
+  assert.equal(api.limits(0)[0],62);
 });
 
 test("each position's limits constrain fictional, outlier and sourced heights", () => {

@@ -159,6 +159,7 @@ test("country buttons update chances on deselection and retain one selected coun
   const selectorCode = html.slice(html.indexOf("  const flag=code=>{"), html.indexOf("\n  let page=0;", html.indexOf("  const flag=code=>{")));
   const box = {children:[],appendChild(child){this.children.push(child);}};
   const options = {};
+  const specContinue = {};
   const mode = {value:"fictional",addEventListener(type,fn){this.change=fn;}};
   const window = {};
   const document = {createElement:()=>({
@@ -168,7 +169,7 @@ test("country buttons update chances on deselection and retain one selected coun
     addEventListener(type,fn){this.click=fn;}
   })};
   const api = vm.runInNewContext(`${countriesCode}\n${selectorCode}\n({countries:COUNTRIES,chances:countryChances})`,
-    {window,document,$:id=>({hlCountries:box,hlCountryOptions:options,mode})[id]});
+    {window,document,$:id=>({hlCountries:box,hlCountryOptions:options,hlSpecContinue:specContinue,mode})[id]});
   const button = code => box.children[api.countries.findIndex(([c])=>c===code)];
   assert.equal(button("US").percentage.textContent,(api.chances(window.ENABLED_COUNTRIES).get("US")*100).toFixed(2)+"%");
   button("US").click();
@@ -185,11 +186,96 @@ test("country buttons update chances on deselection and retain one selected coun
   mode.value="real";
   mode.change();
   assert.equal(options.hidden,true);
+  assert.equal(specContinue.textContent,"SUBMIT CLASS");
   mode.value="fictional";
   mode.change();
   assert.equal(options.hidden,false);
+  assert.equal(specContinue.textContent,"CONTINUE ▶");
   assert.equal(button("IN").attributes["aria-pressed"],"true");
   assert.equal(button("CA").attributes["aria-pressed"],"false");
+});
+
+test("wizard titles and progress reflect country selection and real-class skipping", () => {
+  const start = html.indexOf("  function showPage(n,back){");
+  const end = html.indexOf('  $("hlToPage2").addEventListener',start);
+  const pages = Array.from({length:6},(_,i)=>({dataset:{page:String(i)},classList:{toggle(){}}}));
+  const items = Array.from({length:5},()=>({classList:{toggle(name,value){this[name]=value;}}}));
+  const country = items[3], elements = {
+    wizardProgress:{style:{}},mode:{value:"fictional"},hlReviewProgress:{},hlScreenTitle:{}
+  };
+  const window = {scrollTo(){}};
+  vm.runInNewContext(html.slice(start,end),{
+    window,$:id=>elements[id],document:{
+      querySelector:()=>country,
+      querySelectorAll:selector=>selector.includes("#setupWizard")?pages:items
+    }
+  });
+  window.hlShowPage(3,false);
+  assert.equal(elements.hlScreenTitle.textContent,"SPEC LIMITS");
+  assert.equal(items[2].classList.active,true);
+  window.hlShowPage(4,false);
+  assert.equal(elements.hlScreenTitle.textContent,"COUNTRY SELECTION");
+  assert.equal(country.hidden,false);
+  assert.equal(items[3].classList.active,true);
+  window.hlShowPage(5,false);
+  assert.equal(elements.hlScreenTitle.textContent,"CLASS PREVIEW");
+  assert.equal(items[4].classList.active,true);
+  elements.mode.value="real";
+  window.hlShowPage(5,false);
+  assert.equal(country.hidden,true);
+  assert.equal(elements.hlReviewProgress.innerHTML,"4<br>Review");
+  assert.equal(elements.wizardProgress.style.gridTemplateColumns,"repeat(4,1fr)");
+});
+
+test("spec validation, submission errors and review back follow the selected mode", async () => {
+  const start = html.indexOf("  function createLoadingMessages(){");
+  const end = html.indexOf('  $("hlDownload").addEventListener',start);
+  const elements = {};
+  for (const id of ["hlSubmit","hlSpecContinue","hlReviewBack","hlLoading","hlLoadingText",
+    "status","className","hlResultTitle","hlResultStatus","mode"]) {
+    elements[id]={style:{},classList:{add(){},remove(){},contains(name){return name==="error"&&elements.status.className.includes("error");}},
+      addEventListener(type,fn){this[type]=fn;}};
+  }
+  elements.mode.value="fictional";
+  let page=3, invalid=false, failed=false, generationCount=0;
+  const window={hlShowPage(n){page=n;}};
+  vm.runInNewContext(html.slice(start,end),{
+    $:id=>elements[id],window,POS:[["0","PG"]],
+    positionPhysicalLimits(){if(invalid)throw new Error("PG: invalid limits");},
+    setStatus(text,cls){elements.status.textContent=text;elements.status.className=cls;},
+    async generateClass(){generationCount++;elements.status.textContent=failed?"Generation failed":"Ready";elements.status.className=failed?"error":"ok";},
+    generated:[{}],drawList(){},setInterval:()=>1,clearInterval(){},Math
+  });
+  invalid=true;
+  elements.hlSpecContinue.click();
+  assert.equal(page,3);
+  assert.match(elements.status.textContent,/PG: invalid/);
+  invalid=false;
+  elements.hlSpecContinue.click();
+  assert.equal(page,4);
+  assert.equal(generationCount,0);
+  failed=true;
+  await elements.hlSubmit.click();
+  assert.equal(page,4);
+  assert.equal(elements.status.textContent,"Generation failed");
+  failed=false;
+  await elements.hlSubmit.click();
+  assert.equal(page,5);
+  elements.hlReviewBack.click();
+  assert.equal(page,4);
+  elements.mode.value="real";
+  page=3;
+  failed=true;
+  elements.hlSpecContinue.click();
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(page,3);
+  assert.equal(elements.status.textContent,"Generation failed");
+  failed=false;
+  elements.hlSpecContinue.click();
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(page,5);
+  elements.hlReviewBack.click();
+  assert.equal(page,3);
 });
 
 test("fictional fill players in real classes ignore hidden country selections", () => {

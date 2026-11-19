@@ -1680,7 +1680,7 @@ h3,
 
 .wizard-progress{
   display:grid;
-  grid-template-columns:repeat(4,1fr);
+  grid-template-columns:repeat(5,1fr);
   gap:5px;
   margin:0 0 12px;
 }
@@ -1711,6 +1711,7 @@ h3,
   background:#10366a;
   color:#bfefff;
 }
+.wizard-progress-item[hidden]{display:none;}
 
 .wizard-screen{
   display:none;
@@ -2429,15 +2430,19 @@ html{background-color:#06143a!important;}
   <div class="hl-page" data-page="3">
     <p id="hlPhysHint" class="section-note"></p>
     <div id="hlPhysSlot"></div>
+    <div id="hlSpecStatusSlot"></div>
+    <div class="hl-nav"><button type="button" class="secondary" data-back="2">◀ BACK</button><button type="button" class="primary" id="hlSpecContinue">CONTINUE ▶</button></div>
+  </div>
+  <div class="hl-page" data-page="4">
     <div id="hlCountryOptions">
       <div class="hl-q-label hl-sub">Countries</div>
       <p class="hl-hint">For fictional men and women, chances use 2026–27 NBA opening-night rosters; countries with no listed players get a small chance. Selecting countries redistributes their weights.</p>
       <div id="hlCountries" class="hl-countries"></div>
     </div>
     <div id="hlStatusSlot"></div>
-    <div class="hl-nav"><button type="button" class="secondary" data-back="2">◀ BACK</button><button type="button" class="primary" id="hlSubmit">SUBMIT CLASS</button></div>
+    <div class="hl-nav"><button type="button" class="secondary" data-back="3">◀ BACK</button><button type="button" class="primary" id="hlSubmit">SUBMIT CLASS</button></div>
   </div>
-  <div class="hl-page" data-page="4">
+  <div class="hl-page" data-page="5">
     <div class="hl-page-title" id="hlResultTitle"></div>
     <p class="hl-hint">Select a player to verify appearance.</p>
     <div id="hlPager" class="hl-pager">
@@ -2449,7 +2454,7 @@ html{background-color:#06143a!important;}
       <button type="button" class="secondary hl-arrow" id="hlNextPg">▶</button>
     </div>
     <div id="hlResultStatus" aria-live="polite"></div>
-    <div class="hl-nav"><button type="button" class="secondary" data-back="3">◀ BACK</button><button type="button" class="primary" id="hlDownload">DOWNLOAD CLASS</button></div>
+    <div class="hl-nav"><button type="button" class="secondary" id="hlReviewBack">◀ BACK</button><button type="button" class="primary" id="hlDownload">DOWNLOAD CLASS</button></div>
   </div>
 </div>
 
@@ -2476,13 +2481,20 @@ html{background-color:#06143a!important;}
   <div
     class="wizard-progress-item"
     data-progress-step="2">
-    3<br>Physicals
+    3<br>Specs
+  </div>
+
+  <div
+    class="wizard-progress-item wizard-country-step"
+    data-progress-step="3">
+    4<br>Countries
   </div>
 
   <div
     class="wizard-progress-item"
-    data-progress-step="3">
-    4<br>Review
+    id="hlReviewProgress"
+    data-progress-step="4">
+    5<br>Review
   </div>
 </div>
   
@@ -2750,6 +2762,10 @@ html{background-color:#06143a!important;}
     });
     if(window.hlPlayWipe)window.hlPlayWipe();
     $("wizardProgress").hidden=n<0;
+    const fictional=$("mode").value==="fictional";
+    document.querySelector(".wizard-country-step").hidden=!fictional;
+    $("wizardProgress").style.gridTemplateColumns=`repeat(${fictional?5:4},1fr)`;
+    $("hlReviewProgress").innerHTML=fictional?"5<br>Review":"4<br>Review";
     const stage=n<=1?0:n-1;
     document.querySelectorAll("#wizardProgress .wizard-progress-item").forEach((item,i)=>{
       item.classList.toggle("active",i===stage);
@@ -2762,7 +2778,7 @@ html{background-color:#06143a!important;}
   const baseShowPage=showPage;
   window.hlShowPage=function(n,back){
     const title=$("hlScreenTitle");
-    if(title)title.textContent=n===-1?"HOOPLAND CLASS GENERATOR":n===-2?"IMPORT APPEARANCES":["CREATE NEW CLASS","CLASS SETUP","ATTRIBUTE CONTROL","PHYSICALS AND SPECS","CLASS PREVIEW"][n];
+    if(title)title.textContent=n===-1?"HOOPLAND CLASS GENERATOR":n===-2?"IMPORT APPEARANCES":["CREATE NEW CLASS","CLASS SETUP","ATTRIBUTE CONTROL","SPEC LIMITS","COUNTRY SELECTION","CLASS PREVIEW"][n];
     return baseShowPage(n,back);
   };
 
@@ -8269,7 +8285,9 @@ function initializePositionPhysicalLimits() {
       saved.set(key, POS.map(([position]) => {
         const index = Number(position);
         const reference = rosterCalibration(gender,type,index);
-        return (reference ? [...reference.height,...reference.weight] : POS_PROFILE[index].slice(0,4)).map(String);
+        const values = reference ? [...reference.height,...reference.weight] : POS_PROFILE[index].slice(0,4);
+        if (index === 0) values[0] = 67;
+        return values.map(String);
       }));
     }
     box.replaceChildren();
@@ -11836,8 +11854,14 @@ classSizePlus.addEventListener(
   initializePositionPhysicalLimits();
   $("hlAttrSlot").appendChild($("attrGrid"));
   $("hlPhysSlot").appendChild($("positionPhysicalLimits"));
-  $("hlStatusSlot").appendChild($("status"));
+  $("hlSpecStatusSlot").appendChild($("status"));
   $("setupWizard").parentNode.insertBefore($("wizardProgress"),$("setupWizard"));
+  const showWizardPage=window.hlShowPage;
+  window.hlShowPage=(n,back)=>{
+    if(n===3)$("hlSpecStatusSlot").appendChild($("status"));
+    if(n===4)$("hlStatusSlot").appendChild($("status"));
+    return showWizardPage(n,back);
+  };
 
   document.querySelectorAll("#setupWizard [data-back]").forEach(b=>
     b.addEventListener("click",()=>window.hlShowPage(Number(b.dataset.back),true)));
@@ -11852,7 +11876,9 @@ classSizePlus.addEventListener(
   window.ENABLED_COUNTRIES=new Set(COUNTRIES.map(c=>c[0]));
   const box=$("hlCountries");
   function updateCountryVisibility(){
-    $("hlCountryOptions").hidden=$("mode").value!=="fictional";
+    const fictional=$("mode").value==="fictional";
+    $("hlCountryOptions").hidden=!fictional;
+    $("hlSpecContinue").textContent=fictional?"CONTINUE ▶":"SUBMIT CLASS";
   }
   $("mode").addEventListener("change",updateCountryVisibility);
   updateCountryVisibility();
@@ -11960,8 +11986,7 @@ classSizePlus.addEventListener(
     };
   }
 
-  $("hlSubmit").addEventListener("click",async()=>{
-    const btn=$("hlSubmit");
+  async function submitClass(btn){
     btn.disabled=true;
     const overlay=$("hlLoading"),msg=$("hlLoadingText");
     const nextMessage=createLoadingMessages();
@@ -11976,10 +12001,24 @@ classSizePlus.addEventListener(
       resultTitle.style.display=resultTitle.textContent?"":"none";
       $("hlResultStatus").textContent=$("status").textContent;
       $("hlResultStatus").className=$("status").className;
-      window.hlShowPage(4,false);
+      window.hlShowPage(5,false);
       drawList();
     }
+  }
+  $("hlSubmit").addEventListener("click",()=>submitClass($("hlSubmit")));
+  $("hlSpecContinue").addEventListener("click",()=>{
+    try {
+      POS.forEach(([position])=>positionPhysicalLimits(Number(position)));
+    } catch (error) {
+      setStatus(error.message,"error");
+      return;
+    }
+    setStatus("","");
+    if($("mode").value==="fictional")window.hlShowPage(4,false);
+    else submitClass($("hlSpecContinue"));
   });
+  $("hlReviewBack").addEventListener("click",()=>
+    window.hlShowPage($("mode").value==="fictional"?4:3,true));
   $("hlDownload").addEventListener("click",async()=>{
     const button=$("hlDownload");
     button.disabled=true;
