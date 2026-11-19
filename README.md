@@ -177,6 +177,12 @@ the preview then identifies the draft-pick/tier fallback. Projected future
 drafts use draft-order tiers, with earlier picks never assigned lower potential
 than later picks. All classes have a minimum potential of 2.5 stars.
 
+Projected drafts exclude names found in the prior four draft years. If a
+needed year's results cannot be verified, generation stops with an error.
+Men's projections also check the current NBA season's player list; if it is
+unavailable, generation warns that undrafted NBA players might remain. These
+name-based checks can mistake different players with the same name.
+
 For current ability, where college stats are available, a composite of era-relative shooting, passing,
 rebounding, steals and blocks estimates current ability and prioritizes
 attributes. It is not PIE, win shares, or a validated prediction. It shrinks

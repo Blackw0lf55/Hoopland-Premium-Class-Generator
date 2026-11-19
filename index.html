@@ -8811,6 +8811,7 @@ async function generateClass() {
 
 
     let realPlayers = [];
+    let classDataWarning = "";
 
 
     if (mode === "real") {
@@ -8849,12 +8850,13 @@ async function generateClass() {
       if (!response.ok) {
         const failure = await response.json().catch(() => null);
         const detail = failure && failure.diagnostics ? " " + JSON.stringify(failure.diagnostics).slice(0, 300) : "";
-        throw new Error(`Real class data could not be loaded (HTTP ${response.status}).${detail}`);
+        throw new Error(`${failure?.error || `Real class data could not be loaded (HTTP ${response.status}).`}${detail}`);
       }
       const data = await response.json();
       if (!data || !Array.isArray(data.players) || data.players.length === 0) {
         throw new Error("No real players were returned for this class. Try another year or class type.");
       }
+      classDataWarning = typeof data.warning === "string" ? data.warning : "";
 
       data.players.forEach(canonicalizeRealPlayer);
 
@@ -8928,6 +8930,9 @@ async function generateClass() {
       if (unmatched) {
         const status = document.getElementById("status");
         status.textContent += ` Photo matching unavailable or inconclusive for ${unmatched} real players; open their previews for details.`;
+      }
+      if (classDataWarning) {
+        document.getElementById("status").textContent += " " + classDataWarning;
       }
     }
     else {

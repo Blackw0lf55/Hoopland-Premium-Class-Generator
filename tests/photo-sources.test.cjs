@@ -199,7 +199,8 @@ test("future draft projection uses recruit identities before excluding already-d
   const { handleClassData } = await import("../class-sources.js");
   const html = `<table><tr><th>Rank</th><th>Player</th></tr>
     <tr><td>1</td><td><a href="/recruiting/player/1">Tyran Stokes</a> Video | Scouts Report</td></tr>
-    <tr><td>2</td><td><a href="/recruiting/player/2">Already Drafted</a> Video | Scouts Report</td></tr></table>`;
+    <tr><td>2</td><td><a href="/recruiting/player/2">Already Drafted</a> Video | Scouts Report</td></tr>
+    <tr><td>3</td><td><a href="/recruiting/player/3">AJ Roster</a></td></tr></table>`;
   const original = global.fetch;
   try {
     global.fetch = async input => {
@@ -209,9 +210,11 @@ test("future draft projection uses recruit identities before excluding already-d
       }
       if (url.hostname === "en.wikipedia.org") return new Response("",{status:404});
       if (url.hostname === "stats.nba.com") {
-        const drafted = url.searchParams.get("Season") === "2025";
+        if (url.pathname.endsWith("/commonallplayers")) return Response.json({resultSets:[
+          {headers:["DISPLAY_FIRST_LAST"],rowSet:[["A.J. Roster"]]}]});
+        const name = url.searchParams.get("Season") === "2025" ? "Already Drafted" : "Other Player";
         return Response.json({resultSets:[{headers:["PLAYER_NAME","OVERALL_PICK","ROUND_NUMBER","ROUND_PICK"],
-          rowSet:drafted?[["Already Drafted",1,1,1]]:[]}]});
+          rowSet:url.searchParams.get("Season") === "2027" ? [] : [[name,1,1,1]]}]});
       }
       if (url.hostname === "site.api.espn.com") return Response.json({});
       throw new Error("Unexpected URL: " + url);
@@ -221,6 +224,43 @@ test("future draft projection uses recruit identities before excluding already-d
     assert.equal(response.status,200);
     assert.equal(result.source.projected,true);
     assert.deepEqual(result.players.map(({fn,ln,projectedPick})=>[fn,ln,projectedPick]),[["Tyran","Stokes",1]]);
+  } finally { global.fetch = original; }
+});
+
+test("future draft checks ESPN history without headshots and reports unavailable sources", async () => {
+  const { handleClassData } = await import("../class-sources.js");
+  const html = `<table><tr><th>Rank</th><th>Player</th></tr>
+    <tr><td>1</td><td><a href="/player/1">Current Prospect</a></td></tr>
+    <tr><td>2</td><td><a href="/player/2">Jalen Drafted</a></td></tr></table>`;
+  const original = global.fetch;
+  let missingYear = false;
+  try {
+    global.fetch = async input => {
+      const url = new URL(input);
+      if (url.hostname === "www.espn.com") return url.pathname.endsWith("/2026")
+        ? new Response(html) : new Response("",{status:404});
+      if (url.hostname === "en.wikipedia.org" || url.hostname === "stats.nba.com") return new Response("",{status:503});
+      if (url.hostname === "site.api.espn.com") {
+        const year = Number(url.searchParams.get("season"));
+        if (year === 2027 || (missingYear && year === 2025)) return new Response("",{status:503});
+        return Response.json({season:{year},picks:[{status:"SELECTION_MADE",athlete:{
+          displayName:year === 2026 ? "Jalen Drafted" : "Other Player"
+        }}]});
+      }
+      throw new Error("Unexpected URL: " + url);
+    };
+    const request = () => new Request("https://example.test/api/class-data?type=draft&year=2027&gender=men");
+    const response = await handleClassData(request());
+    const body = await response.json();
+    assert.equal(response.status,200);
+    assert.deepEqual(body.players.map(({fn,ln})=>[fn,ln]),[["Current","Prospect"]]);
+    assert.match(body.warning,/roster could not be verified/i);
+    missingYear = true;
+    const failed = await handleClassData(request());
+    const failure = await failed.json();
+    assert.equal(failed.status,502);
+    assert.match(failure.error,/2025/);
+    assert.deepEqual(failure.diagnostics.missingDraftYears,[2025]);
   } finally { global.fetch = original; }
 });
 

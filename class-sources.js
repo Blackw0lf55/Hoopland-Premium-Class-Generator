@@ -105,15 +105,19 @@ function normalizeCountry(cell) {
 }
 
 async function fetchText(url) {
-  const response = await fetch(url, {
-    headers: { "User-Agent": UA, Accept: "text/html,application/json" }
-  });
-
-  return {
-    ok: response.ok,
-    status: response.status,
-    text: response.ok ? await response.text() : ""
-  };
+  try {
+    const response = await fetch(url, {
+      headers: { "User-Agent": UA, Accept: "text/html,application/json" }
+    });
+    return {
+      ok: response.ok,
+      status: response.status,
+      text: response.ok ? await response.text() : ""
+    };
+  } catch (error) {
+    console.warn("Class source request failed", url, error);
+    return { ok:false, status:0, text:"" };
+  }
 }
 
 async function loadWikipediaDraft(gender, year) {
@@ -465,6 +469,62 @@ function nameKey(player) {
     .toLowerCase().replace(/[^a-z ]/g, "").replace(/\s+/g, " ").trim();
 }
 
+function exclusionNameKey(player) {
+  return `${player.fn} ${player.ln}`.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+async function loadEspnDraftHistory(gender, year) {
+  const league = gender === "women" ? "wnba" : "nba";
+  try {
+    const response = await fetch(`https://site.api.espn.com/apis/site/v2/sports/basketball/${league}/draft?season=${year}`,
+      { headers: { "User-Agent": UA, Accept: "application/json" } });
+    if (!response.ok) return { players: [], status: response.status, verified: false };
+    const data = await response.json();
+    const season = Number(String(data?.displayName || "").match(/\b(?:19|20)\d{2}\b/)?.[0] || data?.season?.year);
+    if (season !== year || !Array.isArray(data.picks) || !data.picks.length) {
+      return { players: [], status: response.status, verified: false };
+    }
+    const selected = data.picks.filter(pick => pick.status === "SELECTION_MADE");
+    const players = selected.map(pick => splitName(String(pick.athlete?.displayName || "")));
+    const pending = data.picks.every(pick => pick.status === "PENDING");
+    return {
+      players: players.filter(Boolean),
+      status: response.status,
+      verified: (selected.length === data.picks.length && selected.length > 0 && players.every(Boolean)) ||
+        (year === new Date().getFullYear() && pending)
+    };
+  } catch (error) {
+    console.warn("ESPN draft history lookup failed", gender, year, error);
+    return { players: [], status: 0, verified: false };
+  }
+}
+
+async function loadCurrentNbaPlayers() {
+  const now = new Date();
+  const start = now.getUTCFullYear() - (now.getUTCMonth() < 6 ? 1 : 0);
+  const season = `${start}-${String((start + 1) % 100).padStart(2, "0")}`;
+  const url = `https://stats.nba.com/stats/commonallplayers?LeagueID=00&Season=${season}&IsOnlyCurrentSeason=1`;
+  try {
+    const response = await fetch(url, { headers: {
+      "User-Agent": UA, Referer: "https://www.nba.com/", Origin: "https://www.nba.com/", Accept: "application/json"
+    } });
+    if (!response.ok) return { players: [], status: response.status, season, verified: false };
+    const data = await response.json();
+    const set = data.resultSets?.[0];
+    const nameColumn = set?.headers?.indexOf("DISPLAY_FIRST_LAST");
+    if (!Number.isInteger(nameColumn) || nameColumn < 0 || !Array.isArray(set.rowSet)) {
+      return { players: [], status: response.status, season, verified: false };
+    }
+    const names = set.rowSet.map(row => splitName(String(row[nameColumn] || "")));
+    return { players: names.filter(Boolean), status: response.status, season,
+      verified: names.length > 0 && names.every(Boolean) };
+  } catch (error) {
+    console.warn("NBA roster lookup failed", season, error);
+    return { players: [], status: 0, season, verified: false };
+  }
+}
+
 function espnDraftPhotos(data, year) {
   const statedYear = Number(String(data?.displayName || "").match(/\b(?:19|20)\d{2}\b/)?.[0] || data?.season?.year);
   if (statedYear !== year || !Array.isArray(data?.picks)) return [];
@@ -533,32 +593,43 @@ async function loadProjectedDraft(gender, year) {
     }
   }
 
-  const drafted = new Set();
+  const ineligible = new Set();
   const nowYear = new Date().getFullYear();
   const draftYears = [];
 
-  for (let y = Math.max(1947, year - 7); y <= Math.min(year - 1, nowYear); y++) {
+  for (let y = Math.max(1947, year - 4); y <= Math.min(year - 1, nowYear); y++) {
     draftYears.push(y);
   }
 
-  const pastDrafts = await Promise.all(
-    draftYears.map(async y => {
-      const [wiki, nba] = await Promise.all([loadWikipediaDraft(gender, y), loadNbaComDraft(gender, y)]);
-      return [...wiki.players, ...nba.players];
-    })
-  );
+  const [pastDrafts, roster] = await Promise.all([
+    Promise.all(draftYears.map(async y => {
+      const [wiki, nba, espn] = await Promise.all([
+        loadWikipediaDraft(gender, y), loadNbaComDraft(gender, y), loadEspnDraftHistory(gender, y)
+      ]);
+      return { year:y, players:[...wiki.players, ...nba.players, ...espn.players],
+        verified:Boolean(wiki.players.length || nba.players.length || espn.verified) };
+    })),
+    gender === "men" ? loadCurrentNbaPlayers() : Promise.resolve(null)
+  ]);
 
-  for (const list of pastDrafts) {
-    for (const player of list) {
-      drafted.add(nameKey(player));
+  const missingYears = pastDrafts.filter(draft => !draft.verified).map(draft => draft.year);
+  if (missingYears.length) {
+    return { players: [], diagnostics: { projected:true, classes:diagnostics, missingDraftYears:missingYears },
+      error: `Cannot verify prior draft results for ${missingYears.join(", ")}. Please try again later.` };
+  }
+  for (const draft of pastDrafts) {
+    for (const player of draft.players) {
+      ineligible.add(exclusionNameKey(player));
     }
   }
+  for (const player of roster?.players || []) ineligible.add(exclusionNameKey(player));
 
-  diagnostics.push({ excludedAlreadyDrafted: drafted.size });
+  diagnostics.push({ priorDraftYears:draftYears, excludedNames:ineligible.size,
+    ...(roster ? { nbaRoster:{ season:roster.season, status:roster.status, verified:roster.verified } } : {}) });
 
   const seen = new Set();
   const players = pool
-    .filter(player => !drafted.has(nameKey(player)))
+    .filter(player => !ineligible.has(exclusionNameKey(player)))
     .sort((a, b) => a.projectedScore - b.projectedScore)
     .filter(player => {
       const key = `${player.fn} ${player.ln}`.toLowerCase();
@@ -573,7 +644,8 @@ async function loadProjectedDraft(gender, year) {
     })
     .map((player, index) => ({ ...player, projectedPick: index + 1, sourceOrder: index }));
 
-  return { players, diagnostics: { projected: true, classes: diagnostics } };
+  return { players, diagnostics: { projected: true, classes: diagnostics },
+    warning: roster && !roster.verified ? "Current NBA roster could not be verified; undrafted NBA players may appear in this class." : "" };
 }
 
 export async function handleClassData(request) {
@@ -616,7 +688,7 @@ export async function handleClassData(request) {
     return Response.json(
       {
         ok: false,
-        error: `No ${year} ${gender} ${type} class could be loaded.`,
+        error: loaded.error || `No ${year} ${gender} ${type} class could be loaded.`,
         diagnostics: loaded.diagnostics
       },
       { status: 502 }
@@ -631,6 +703,7 @@ export async function handleClassData(request) {
     ok: true,
     request: { gender, type, year: String(year) },
     source: loaded.diagnostics,
+    ...(loaded.warning ? { warning:loaded.warning } : {}),
     players
   });
 }
