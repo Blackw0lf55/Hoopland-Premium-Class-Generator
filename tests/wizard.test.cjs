@@ -9,6 +9,20 @@ const start = html.indexOf("  function render(){", html.indexOf("const box=$(\"h
 const end = html.indexOf("  function showPage(", start);
 const renderCode = html.slice(start, end);
 
+test("class feedback keeps important limitations without routine generation details", () => {
+  const code = html.slice(html.indexOf("function classResultMessage("), html.indexOf("async function generateClass()"));
+  const {classResultMessage, playerEditNotice} = vm.runInNewContext(code + "\n({classResultMessage, playerEditNotice})");
+  assert.equal(classResultMessage(0, false, ""), "");
+  const warning = "Prior draft results could not be verified; previously drafted players may appear.";
+  assert.equal(classResultMessage(3, true, warning),
+    `3 fictional players added. Some appearances are estimates; please review them. ${warning}`);
+  assert.equal(playerEditNotice(["Community-approved edits override the baseline.", "Hair style was not identified and is a placeholder."]), "");
+  assert.equal(playerEditNotice(["Shared appearance lookup failed: timeout", "Shared attribute lookup failed: timeout"]),
+    "Saved edits could not be loaded.");
+  assert.equal(playerEditNotice(["Some shared attribute edits were incompatible with this player or era and were not applied.",
+    "The imported appearance baseline is invalid and was not applied."]), "Some saved edits could not be applied.");
+});
+
 test("rerendering setup preserves the class size input and its value", () => {
   class Element {
     constructor() {

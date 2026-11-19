@@ -2201,6 +2201,7 @@ html body main > section,.hl-page,.hl-page.on,.hl-q,.hl-row,.hl-reveal{animation
 html body button{transition:none!important;}
 
 .hl-hint{text-align:center;font-size:.8rem;margin:-8px 6px 10px;opacity:.85;}
+#hlResultStatus:empty{display:none;}
 .hl-page.on > .hl-nav{position:fixed;z-index:20;bottom:0;left:50%;transform:translateX(-50%);width:min(100%,1144px);margin:0;padding:8px 14px calc(14px + env(safe-area-inset-bottom));background:var(--px-fill-dark);box-shadow:0 -4px 0 var(--px);}
 main{padding-bottom:calc(100px + env(safe-area-inset-bottom));}
 .hl-modal{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;padding:8px;}
@@ -2493,7 +2494,7 @@ html{background-color:#06143a!important;}
   <div class="hl-page" data-page="4">
     <div id="hlCountryOptions">
       <div class="hl-q-label hl-sub">Countries</div>
-      <p class="hl-hint">For fictional men and women, chances use 2026–27 NBA opening-night rosters; countries with no listed players get a small chance. Selecting countries redistributes their weights.</p>
+      <p class="hl-hint">Select the countries to include.</p>
       <div id="hlCountries" class="hl-countries"></div>
     </div>
     <div id="hlStatusSlot"></div>
@@ -8250,9 +8251,11 @@ document.getElementById("hlImportSubmit").addEventListener("click", async () => 
     const result = await importAppearanceFile(document.getElementById("hlImportFile").files[0],
       document.getElementById("hlImportGender").value,document.getElementById("hlImportLevel").value,
       Number(document.getElementById("hlImportYear").value),
-      (done,total) => { status.textContent = `Importing appearances: ${done} of ${total} processed...`; });
-    status.textContent = `Saved ${result.saved}; existing references skipped ${result.skipped}; invalid ${result.invalid}; ambiguous ${result.ambiguous}; failed ${result.failed}.` +
-      (result.failed ? ` Retry the file. ${result.errors.join("; ")}` : "");
+      () => { status.textContent = "Importing appearances..."; });
+    status.textContent = `Imported ${result.saved} appearances.` +
+      (result.skipped ? ` ${result.skipped} already saved.` : "") +
+      (result.invalid || result.ambiguous ? ` ${result.invalid + result.ambiguous} could not be imported.` : "") +
+      (result.failed ? ` ${result.failed} failed; please retry. ${result.errors.join("; ")}` : "");
   } catch (error) {
     status.textContent = "Import failed: " + String(error.message || error);
   } finally { button.disabled = back.disabled = false; }
@@ -8953,6 +8956,23 @@ else {
 }
 
 
+function classResultMessage(fictionalCount, hasEstimatedAppearances, warning) {
+  return [
+    fictionalCount ? `${fictionalCount} fictional players added.` : "",
+    hasEstimatedAppearances ? "Some appearances are estimates; please review them." : "",
+    warning
+  ].filter(Boolean).join(" ");
+}
+
+function playerEditNotice(warnings) {
+  const notices = [];
+  if (warnings.some(w => /^Shared (appearance|attribute) lookup failed:/.test(w)))
+    notices.push("Saved edits could not be loaded.");
+  if (warnings.some(w => /^(The imported appearance baseline is invalid|Some community appearance values were unsupported|Some shared attribute edits were incompatible)/.test(w)))
+    notices.push("Some saved edits could not be applied.");
+  return notices.join(" ");
+}
+
 async function generateClass() {
 
   try {
@@ -9046,12 +9066,12 @@ async function generateClass() {
 
       if (!response.ok) {
         const failure = await response.json().catch(() => null);
-        const detail = failure && failure.diagnostics ? " " + JSON.stringify(failure.diagnostics).slice(0, 300) : "";
+        if (failure?.diagnostics) console.error("Class data diagnostics:", failure.diagnostics);
         if (classType === "freshman" && response.status === 502 &&
             /^No \d{4} (?:men|women) freshman class could be loaded\.$/.test(failure?.error || "")) {
-          classDataWarning = "No verified freshman class was available; all players are fictional.";
+          classDataWarning = "No verified freshman class was available.";
         } else {
-          throw new Error(`${failure?.error || `Real class data could not be loaded (HTTP ${response.status}).`}${detail}`);
+          throw new Error(failure?.error || `Real class data could not be loaded (HTTP ${response.status}).`);
         }
       }
       if (response.ok) {
@@ -9106,39 +9126,12 @@ async function generateClass() {
         realPlayers.length;
 
 
-      if (
-        fictionalCount > 0
-      ) {
-
-        setStatus(
-          `Generated ${classSize} players: ${realPlayers.length} real prospects and ${fictionalCount} fictional fill players.`,
-          "ok"
-        );
-
-      }
-      else {
-
-        setStatus(
-          `Generated ${classSize} real prospects successfully.`,
-          "ok"
-        );
-      }
-
       const unmatched = realPlayers.filter(player => !player.lookText && !player.sharedAppearance && !player.rosterAppearance && !player.importedBaseline).length;
-      if (unmatched) {
-        const status = document.getElementById("status");
-        status.textContent += ` Photo matching unavailable or inconclusive for ${unmatched} real players; open their previews for details.`;
-      }
-      if (classDataWarning) {
-        document.getElementById("status").textContent += " " + classDataWarning;
-      }
+      setStatus(classResultMessage(fictionalCount, unmatched > 0, classDataWarning), "ok");
     }
     else {
 
-      setStatus(
-        `Generated ${classSize} players successfully.`,
-        "ok"
-      );
+      setStatus("", "ok");
     }
 
   }
@@ -12299,7 +12292,7 @@ classSizePlus.addEventListener(
     <div class="hl-pv-head"><b id="hlPvName"></b><button type="button" class="secondary" id="hlPvClose" aria-label="Close">✕</button></div>
     <div class="hl-pv-content">
     <div class="hl-pv-meta" id="hlPvMeta"></div>
-    <details id="hlPvWarningDetails" hidden><summary>Player warnings</summary><div class="hl-hint" id="hlPvWarnings" role="status"></div></details>
+    <div class="hl-hint" id="hlPvWarnings" role="status" hidden></div>
     <div id="hlPvAppearance">
     <div class="hl-pv-compare">
     <div class="hl-pv-art" id="hlPvArt"></div>
@@ -12316,7 +12309,6 @@ classSizePlus.addEventListener(
       <div class="hl-pv-field">Head accessory<div class="hl-pv-choice" data-field="accessory"><button type="button" class="secondary" data-direction="-1" aria-label="Previous head accessory">◀</button><output id="hlPvAcc" aria-live="polite"></output><button type="button" class="secondary" data-direction="1" aria-label="Next head accessory">▶</button></div></div>
     </div>
     <div class="hl-pv-desc"><input id="hlPvDesc" type="text" placeholder="Or describe: dark 4 skin, afro, goggles"><button type="button" class="primary" id="hlPvApply">APPLY</button></div>
-    <div class="hl-hint">Edited skin and hair details can be shared when you approve the class before download.</div>
     </div>
     <div id="hlPvAttributes" hidden>
     <label class="hl-pv-field" for="hlPvArchetype">Archetype</label>
@@ -12325,7 +12317,6 @@ classSizePlus.addEventListener(
     <p class="hl-hint" id="hlPvRatingError" role="status"></p>
     <div class="hl-hint">Actual / Potential</div>
     <div id="hlPvRatings"></div>
-    <div class="hl-hint">Changes to real players can be shared when you approve attributes before download.</div>
     </div>
     </div>
     <div class="hl-pv-nav"><button type="button" class="secondary" id="hlPvPrev" aria-label="Previous player">◀</button><button type="button" class="primary" id="hlPvToggle">Edit Attributes</button><button type="button" class="secondary" id="hlPvNext" aria-label="Next player">▶</button></div>
@@ -12703,9 +12694,9 @@ classSizePlus.addEventListener(
     const pos=(POS.find(x=>Number(x[0])===p.pos)||[0,"?"])[1];
     $("hlPvName").textContent=p.fn+" "+p.ln;
     $("hlPvMeta").textContent=pos+" • "+p.arc+" • "+Math.floor(p.ht/12)+"'"+p.ht%12+'" • '+p.wt+" lb • age "+p.age+" • "+p.ctry;
-    $("hlPvWarnings").textContent=(p.appearanceWarnings||[]).join(" ");
-    $("hlPvWarningDetails").hidden=!(p.appearanceWarnings||[]).length;
-    $("hlPvWarningDetails").open=false;
+    const notice=playerEditNotice(p.appearanceWarnings||[]);
+    $("hlPvWarnings").textContent=notice;
+    $("hlPvWarnings").hidden=!notice;
     $("hlPvArt").innerHTML=renderArt(p);
     $("hlPvDesc").value="";
     buildChoices(p);
