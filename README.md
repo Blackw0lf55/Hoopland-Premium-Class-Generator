@@ -120,6 +120,12 @@ performs inference; it does not train itself from edits. Approved edits can
 improve later references for the same matched name, but autonomous learning
 would require a separate training and evaluation pipeline.
 
+The class preview lists position, name, jersey number, archetype and stars:
+white shows potential and gold overlays current ability. Real players use a
+matched college jersey number when available; otherwise a generated number is
+used and retained in the export. Opening a player shows the appearance editor
+first; the bottom button switches between appearances and attributes.
+
 Speed, strength and stamina are generated separately from the core attribute
 budget and exported in half-point steps. Speed uses position-specific limits,
 with rare outliers; a 10 is reserved for PG/G. A 10 strength is rare and
@@ -208,8 +214,8 @@ drafts use draft-order tiers, with earlier picks never assigned lower potential
 than later picks. All classes have a minimum potential of 2.5 stars.
 
 Projected drafts exclude names found in the prior four draft years. If a
-needed year's results cannot be verified, generation stops with an error,
-except for the limited 2027 women's fallback described below.
+needed year's results cannot be verified, men's generation stops with an error;
+women's generation warns that previously drafted players may remain.
 Men's projections also check the current NBA season's player list; if it is
 unavailable, generation warns that undrafted NBA players might remain. These
 name-based checks can mistake different players with the same name.
@@ -217,13 +223,25 @@ name-based checks can mistake different players with the same name.
 For real women's drafts, US prospects must be verified as seniors on their
 college roster for the draft season; prospects identified by the source as
 foreign can be included without senior status. Unverified US prospects are
-excluded, not assumed to be seniors. College rosters may be unavailable for
-historical or future seasons, so this can reduce or prevent a real class;
-any resulting fictional fill is reported. This is a generator rule, not the
-WNBA's complete eligibility criteria. The projected 2027 class places JuJu
-Watkins and Hannah Hidalgo first and second; their schools list both as
-2026–27 seniors. If prior draft results cannot be checked, only these
-school-verified prospects are used, with a warning.
+excluded, not assumed to be seniors. The bundled
+[Sports Roster Data](https://github.com/Sports-Roster-Data/womens-college-basketball)
+Division I rosters for 2020–21 through 2026–27 (snapshot from November 19,
+2026) provide school-sourced class years and jersey numbers; matching requires
+an unambiguous player name.
+Roster class labels can reflect either academic year or eligibility and are
+not guaranteed current. ESPN's matching season roster is a fallback. When
+recruiting lists are incomplete, verified seniors matching the same school's
+college-statistics data supplement projections, ordered by playing time, not
+by an independently verified draft ranking. Missing seasons or unmatched
+players can reduce the real class; fictional fill is reported. This is a
+generator rule, not the WNBA's complete eligibility criteria. The projected
+2027 class places JuJu Watkins and Hannah Hidalgo first and second; their
+schools list both as 2026–27 seniors.
+
+The bundled roster snapshot can be rebuilt with
+`python scripts/build-women-rosters.py DIRECTORY`, where DIRECTORY contains
+the upstream season CSVs. The upstream MIT license is in
+`data/WOMEN-ROSTERS-LICENSE.txt`.
 
 For current ability, where college stats are available, a composite of era-relative shooting, passing,
 rebounding, steals and blocks estimates current ability and prioritizes

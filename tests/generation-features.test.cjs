@@ -32,6 +32,10 @@ test("draft starter skills reflect ability, exclude women's dunk skill and retai
     appearance:{skinC:"AD795C",eyeC:"090502",browC:"202020",hair:"0001",hairC:"202020",fHair:"0000",fHairC:"202020",accessories:[]},
     attributes:{},physical:{STR:10,SPD:10,STA:10},tendencies:{},skills};
   assert.deepEqual(JSON.parse(JSON.stringify(exportPlayer(p,0).skills)),skills);
+  p.jersey="12";
+  assert.equal(exportPlayer(p,0).num,12);
+  p.jersey="00";
+  assert.equal(exportPlayer(p,0).num,0);
   p.grayscale=true;
   p.appearance.accessories=[{headAccC:"PRI",shoeC:"FF5533",L_Elbow:"AD795C"}];
   const historical=exportPlayer(p,0);

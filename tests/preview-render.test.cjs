@@ -63,7 +63,7 @@ test("preview renders a black jersey with white trim", () => {
   const svg = renderArt({appearance});
   assert.match(svg, /fill="#17171d"/);
   assert.match(svg, /stroke="#fff" stroke-width="2"/);
-  assert.match(svg, /stroke-linejoin="miter"/);
+  assert.match(svg, /M32 13 C24 13/);
   assert.doesNotMatch(svg, /#d93a3a/);
 });
 

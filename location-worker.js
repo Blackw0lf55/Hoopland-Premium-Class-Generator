@@ -3,6 +3,7 @@ import { handleClassData, loadEspnDraftPhotos, attachEspnDraftPhotos, filterWome
 import { wikidataProfile, wikidataPhotos } from "./enrich.js";
 import { handleStats } from "./college-stats.js";
 import { handleProSeason } from "./pro-stats.js";
+import { womenRosterLookup, womenRosterCandidates } from "./women-rosters.js";
 
 function normalizeName(value) {
   return String(value || "")
@@ -153,13 +154,26 @@ export async function collegeRosterHeadshot(name, gender, teamId, recruitYear, s
   return verifiedCollegeHeadshot(athlete, gender);
 }
 
-export async function verifyWomenDraftSenior(player, year) {
+export async function verifyWomenDraftSenior(player, year, env) {
+  if (env?.ASSETS) {
+    try {
+      const roster = await womenRosterLookup(env, year, player);
+      if (roster) {
+        if (/^\d{1,2}$/.test(roster.jersey)) player.jersey = roster.jersey;
+        if (/^senior$/i.test(roster.grade)) return true;
+        if (/^(freshman|sophomore|junior|fifth year|graduate)$/i.test(roster.grade)) return false;
+      }
+    } catch (error) {
+      console.warn("Women's school-roster reference unavailable", error);
+    }
+  }
   const athlete = await collegeRosterPlayer(
     [player.fn,player.ln].filter(Boolean).join(" "), "women",
     player.collegeTeamId, player.recruitYear,
     player.committedCollege || player.school || player.team || "", year
   );
   if (!athlete) return null;
+  if (/^\d{1,2}$/.test(String(athlete.jersey || ""))) player.jersey = String(athlete.jersey);
   const value = athlete.experience?.displayValue || athlete.experience?.abbreviation ||
     athlete.class?.displayValue || athlete.class?.abbreviation || athlete.classYear ||
     (typeof athlete.class === "string" ? athlete.class : "");
@@ -403,6 +417,8 @@ async function handleHometown(request) {
     if (verifiedPhotosOnly) delete hometownResult.headshot;
     const result = {
       ...hometownResult,
+      ...(college.status === "fulfilled" && /^\d{1,2}$/.test(String(college.value?.jersey || ""))
+        ? {jersey:String(college.value.jersey)} : {}),
       headshots: [
         ...(collegePhoto ? [collegePhoto] : []),
         ...(photos.status === "fulfilled" ? photos.value : [])
@@ -908,6 +924,7 @@ window.__HOOPLAND_PREPARE_REAL_PLAYERS=async function(players,gender){
         d=res.ok?await res.json():null;
       }catch(e){console.warn('Hometown and photo lookup failed for',[p.fn,p.ln].join(' '),e);}
       if(d){
+        if(!/^\\d{1,2}$/.test(String(p.jersey||"")) && /^\\d{1,2}$/.test(String(d.jersey||"")))p.jersey=String(d.jersey);
         if(d.home&&!window.__HOOPLAND_REAL_HOMETOWN(p)){p.hometown=d.home;}
         if(d.home===window.__HOOPLAND_REAL_HOMETOWN(p)&&Number.isFinite(d.x)&&Number.isFinite(d.y)){p.homeX=d.x;p.homeY=d.y;}
         if(d.home===window.__HOOPLAND_REAL_HOMETOWN(p)&&d.countryName)p.homeCountry=d.countryName;
@@ -1123,7 +1140,10 @@ export default {
         params.get("year") === "2026";
 
       if (!curated) {
-        return handleClassData(request, {verifySenior:verifyWomenDraftSenior});
+        return handleClassData(request, {
+          verifySenior:(player,year)=>verifyWomenDraftSenior(player,year,env),
+          rosterCandidates:year=>womenRosterCandidates(env,year)
+        });
       }
       const [response, espn] = await Promise.all([
         existingWorker.fetch(request, env, context),
@@ -1133,7 +1153,7 @@ export default {
       const body = await response.json();
       if (!Array.isArray(body.players)) return Response.json(body);
       body.players = attachEspnDraftPhotos(body.players, espn.players);
-      const filtered = await filterWomenDraftSeniors(body.players, 2026, verifyWomenDraftSenior);
+      const filtered = await filterWomenDraftSeniors(body.players, 2026, (player,year)=>verifyWomenDraftSenior(player,year,env));
       body.players = filtered.players;
       body.source = { ...body.source, espnPhotos: { status: espn.status, parsed: espn.players.length },
         seniorVerification:{unverified:filtered.unverified,notSenior:filtered.notSenior,foreign:filtered.foreign} };

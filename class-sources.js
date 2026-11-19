@@ -477,9 +477,9 @@ function exclusionNameKey(player) {
 
 // Both schools identify these players as seniors in the 2026–27 season.
 const WOMEN_2027_PROSPECTS = [
-  {fn:"JuJu",ln:"Watkins",position:"G",school:"USC",committedCollege:"USC",collegeTeamId:"30",
+  {fn:"JuJu",ln:"Watkins",position:"G",school:"USC",committedCollege:"USC",collegeTeamId:"30",jersey:"12",
     seniorSource:"https://usctrojans.com/sports/womens-basketball/roster/watkins-juju/18627"},
-  {fn:"Hannah",ln:"Hidalgo",position:"PG",school:"Notre Dame",committedCollege:"Notre Dame",collegeTeamId:"87",
+  {fn:"Hannah",ln:"Hidalgo",position:"PG",school:"Notre Dame",committedCollege:"Notre Dame",collegeTeamId:"87",jersey:"3",
     seniorSource:"https://fightingirish.com/sports/wbball/roster/season/2026-27"}
 ];
 
@@ -511,9 +511,10 @@ export async function filterWomenDraftSeniors(players, year, verifySenior) {
       const international = foreignRegions.has(String(player.country || "").trim().toLowerCase());
       if (international) { results[index] = player; foreign++; continue; }
       let verified = curated ? true : null;
-      if (!curated && typeof verifySenior === "function") {
+      if (typeof verifySenior === "function") {
         try {
-          verified = await verifySenior(player, year);
+          const result = await verifySenior(player, year);
+          if (!curated) verified = result;
         } catch (error) {
           console.warn("Women's senior verification failed", player.fn, player.ln, error);
         }
@@ -631,13 +632,15 @@ function attachEspnDraftPhotos(players, photos) {
   });
 }
 
-async function loadProjectedDraft(gender, year) {
+async function loadProjectedDraft(gender, year, options = {}) {
   const weights = { 1: 1, 2: 1.5, 3: 2, 4: 2.5 };
   const pool = [];
   const diagnostics = [];
 
-  for (const back of gender === "women" ? [1, 2, 3, 4, 5, 6] : [1, 2, 3, 4]) {
-    const loaded = await loadFreshmen(gender, year - back);
+  const recruitingYears = gender === "women" ? [1, 2, 3, 4, 5, 6] : [1, 2, 3, 4];
+  const classes = await Promise.all(recruitingYears.map(back => loadFreshmen(gender, year - back)));
+  for (const [index, back] of recruitingYears.entries()) {
+    const loaded = classes[index];
 
     diagnostics.push({ classYear: year - back, parsed: loaded.players.length });
 
@@ -666,14 +669,7 @@ async function loadProjectedDraft(gender, year) {
   ]);
 
   const missingYears = pastDrafts.filter(draft => !draft.verified).map(draft => draft.year);
-  if (missingYears.length) {
-    if (gender === "women" && year === 2027) {
-      const drafted = new Set(pastDrafts.flatMap(draft=>draft.players.map(exclusionNameKey)));
-      const players = WOMEN_2027_PROSPECTS.filter(player=>!drafted.has(exclusionNameKey(player)))
-        .map((player,index)=>({...player,recruitYear:2023,country:"United States",projectedPick:index+1,sourceOrder:index}));
-      return {players,diagnostics:{projected:true,classes:diagnostics,missingDraftYears:missingYears},
-        warning:`Prior draft results for ${missingYears.join(", ")} could not be verified; only school-verified 2027 prospects are included.`};
-    }
+  if (missingYears.length && gender !== "women") {
     return { players: [], diagnostics: { projected:true, classes:diagnostics, missingDraftYears:missingYears },
       error: `Cannot verify prior draft results for ${missingYears.join(", ")}. Please try again later.` };
   }
@@ -689,6 +685,20 @@ async function loadProjectedDraft(gender, year) {
       ...player, recruitYear:2023, country:"United States", projectedScore:index-2
     }));
     pool.unshift(...priority);
+  }
+  let rosterWarning = "";
+  if (gender === "women" && options.rosterCandidates) {
+    try {
+      const candidates = await options.rosterCandidates(year);
+      if (candidates === null) rosterWarning = `School-roster data for ${year} is unavailable.`;
+      else {
+        diagnostics.push({schoolRosterCandidates:candidates.length});
+        candidates.forEach((player,index)=>pool.push({...player,projectedScore:10000+index}));
+      }
+    } catch (error) {
+      console.warn("Women's college roster lookup failed", year, error);
+      rosterWarning = "School-roster candidates could not be loaded.";
+    }
   }
   diagnostics.push({ priorDraftYears:draftYears, excludedNames:ineligible.size,
     ...(roster ? { nbaRoster:{ season:roster.season, status:roster.status, verified:roster.verified } } : {}) });
@@ -711,7 +721,11 @@ async function loadProjectedDraft(gender, year) {
     .map((player, index) => ({ ...player, projectedPick: index + 1, sourceOrder: index }));
 
   return { players, diagnostics: { projected: true, classes: diagnostics },
-    warning: roster && !roster.verified ? "Current NBA roster could not be verified; undrafted NBA players may appear in this class." : "" };
+    warning: [
+      missingYears.length ? `Prior draft results for ${missingYears.join(", ")} could not be verified; previously drafted players may appear.` : "",
+      rosterWarning,
+      roster && !roster.verified ? "Current NBA roster could not be verified; undrafted NBA players may appear in this class." : ""
+    ].filter(Boolean).join(" ") };
 }
 
 export async function handleClassData(request, options = {}) {
@@ -743,7 +757,7 @@ export async function handleClassData(request, options = {}) {
     loaded.players = attachEspnDraftPhotos(loaded.players, espn.players);
 
     if (!loaded.players.length && year >= new Date().getFullYear()) {
-      loaded = await loadProjectedDraft(gender, year);
+      loaded = await loadProjectedDraft(gender, year, options);
     }
   }
   else {
