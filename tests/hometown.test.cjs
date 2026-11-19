@@ -257,6 +257,7 @@ test("transformed preparation preserves the source hometown and exports its coun
       return Response.json({home:"Toronto, Ontario, Canada",countryName:"Canada",x:4365,y:-7938,headshots:[]});
     }
   });
+
   vm.runInContext(script,c);
   const players=[{fn:"Test",ln:"Origin",hometown:"Toronto, Ontario, Canada",recruitYear:2025,espnId:"20"}];
   await c.window.__HOOPLAND_PREPARE_REAL_PLAYERS(players,"1");
@@ -275,4 +276,31 @@ test("transformed preparation preserves the source hometown and exports its coun
   assert.equal(mismatched[0].hometown,"Boston, MA");
   assert.equal(mismatched[0].homeX,undefined);
   assert.equal(mismatched[0].homeCountry,undefined);
+});
+
+test("all named catalog countries are selectable and resolve fictional players within that country", async () => {
+  const {default:worker}=await import("../location-worker.js");
+  const html=fs.readFileSync(path.join(__dirname,"..","index.html"),"utf8");
+  const csv=fs.readFileSync(path.join(__dirname,"..","data/location-catalog.csv"),"utf8");
+  const env={ASSETS:{fetch:async r=>new URL(r.url).pathname.endsWith(".csv")?new Response(csv):new Response(html)}};
+  const page=await (await worker.fetch(new Request("https://example.test/"),env)).text();
+  const script=page.match(/<script>\nwindow\.__HOOPLAND_LOCATION_RECORDS[\s\S]*?<\/script>/)[0].slice(8,-9);
+  const context=vm.createContext({window:{},console:{warn(){}}});
+  vm.runInContext(script,context);
+  const code=html.slice(html.indexOf("const COUNTRIES = ["),html.indexOf("const NAMES = {"));
+  const countries=vm.runInNewContext(code+"\nCOUNTRIES");
+  const overrides={BA:"Bosnia and Herzegovina",HK:"Hong Kong",PS:"Palestine",TT:"Trinidad and Tobago",TR:"Turkey"};
+  const region=new Intl.DisplayNames(["en"],{type:"region"});
+  const names=new Set();
+  for(const [code] of countries){
+    const name=overrides[code]||region.of(code==="UK"?"GB":code);
+    const candidates=context.window.__HOOPLAND_LOCATION_RECORDS.filter(location=>location.country===name);
+    if(code==="BE"){assert.equal(candidates.length,0);continue;}
+    assert.ok(candidates.length>0,`${code}: ${name}`);
+    names.add(name);
+    const location=context.window.__HOOPLAND_RESOLVE_LOCATION({ctry:code}).loc;
+    assert.ok(candidates.some(item=>item.x===location.x&&item.y===location.y),code);
+  }
+  const catalogNames=new Set(context.window.__HOOPLAND_LOCATION_RECORDS.map(location=>location.country));
+  assert.deepEqual([...catalogNames].filter(name=>!names.has(name)),[]);
 });

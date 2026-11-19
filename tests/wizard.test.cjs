@@ -91,3 +91,27 @@ test("loading trivia always shows its answer immediately after the question", ()
     if (message === answer && index > 0) assert.equal(messages[index - 1], question);
   });
 });
+
+test("actual and potential limits change by half steps and render both halves", () => {
+    const code=html.slice(html.indexOf("function buildInputs()"),html.indexOf("function attributeBounds("));
+    const elements={}, handlers={};
+    const element=()=>({children:[],dataset:{},style:{values:{},setProperty(k,v){this.values[k]=v}},
+      classList:{add(){}},appendChild(child){this.children.push(child);},addEventListener(type,fn){handlers[type]=fn},
+      set innerHTML(text){this.children=[];for(const m of text.matchAll(/id="([^"]+)"[^>]*value="([^"]*)"/g))elements[m[1]]={value:m[2],dataset:{}};
+        for(const m of text.matchAll(/id="([^"]+)(?:LimitBar|cmaxValue|pmaxValue)"/g)){
+          const id=m[0].slice(4,-1);elements[id]=element();
+        }}});
+    elements.attrGrid=element();
+    elements.gender={value:"0",addEventListener(){}};
+    const context=vm.createContext({ATTRS:[["LAY","Layup"]],document:{getElementById:id=>elements[id],createElement:()=>element()},
+      window:{},clamp:(v,a,b)=>Math.max(a,Math.min(b,v))});
+    vm.runInContext(code+"\nbuildInputs()",context);
+    const click=(side,delta)=>handlers.click({target:{closest:()=>({dataset:{code:"LAY",side,delta:String(delta)}})}});
+    click("actual",-1);
+    assert.equal(Number(elements.LAYcmax.value),19);
+    assert.equal(elements.LAYcmaxValue.textContent,"9.5");
+    assert.deepEqual(elements.LAYLimitBar.children[9].style.values,{"--limit-left":"#09bf60","--limit-right":"#030712"});
+    click("potential",-1);
+    assert.equal(Number(elements.LAYpmax.value),19);
+    assert.deepEqual(elements.LAYLimitBar.children[9].style.values,{"--limit-left":"#09bf60","--limit-right":"transparent"});
+});

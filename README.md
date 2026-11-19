@@ -21,6 +21,23 @@ are included in the export.
 Awa Fam's source name variations are normalized before matching. Getty Images
 is not used as a photo source.
 
+Attribute actual and potential caps adjust in 0.5 increments. The left and right
+halves of each bar segment show the corresponding half-point limits.
+
+Draft players can receive one level-1 starter skill (HIG, SPA, CLA or DIM),
+with higher current ability making a skill more likely. HIG is limited to men
+with at least 4 dunk ability. Freshman players receive no starter skills. The
+skill objects follow the save-file format; in-game behavior is not verified.
+Fictional players have a 30% chance of tattoo-style body colors and a 45%
+chance of accessories, including arm or leg sleeves. Real-player placeholder
+appearances do not invent tattoos or sleeves. Random shoe, lace and sole colors
+use a broader palette when random shoe colors are enabled.
+
+The country selector includes every named country in the location catalog.
+Countries without dedicated name lists use a regional or US fallback, so names
+are not necessarily representative of that country. Belgium remains available
+from the original selector, but has no catalog location and uses a fallback.
+
 Before downloading, approve the appearances to share manually changed skin,
 hair color, hairstyle and facial-hair (men only) selections. Only changed
 fields of real players are shared, not unedited placeholders or whole class

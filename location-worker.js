@@ -876,10 +876,14 @@ window.__HOOPLAND_PREPARE_REAL_PLAYERS=async function(players,gender){
 window.__HOOPLAND_RESOLVE_LOCATION=function(player){
   const records=window.__HOOPLAND_LOCATION_RECORDS||[];
   const normalize=window.__HOOPLAND_NORMALIZE_LOCATION_NAME;
+  const regionName=code=>{
+    const overrides={BA:"Bosnia and Herzegovina",HK:"Hong Kong",PS:"Palestine",TT:"Trinidad and Tobago",TR:"Turkey"};
+    return overrides[code]||(/^[A-Z]{2}$/.test(code)?new Intl.DisplayNames(["en"],{type:"region"}).of(code==="UK"?"GB":code):"");
+  };
   if(!player||!player.isReal){
     if(!records.length)return {home:"",loc:{x:0,y:0}};
-    const fictionalCountries={US:"United States",CA:"Canada",AU:"Australia",FR:"France",UK:"United Kingdom",GB:"United Kingdom",DE:"Germany",ES:"Spain",RS:"Serbia",BE:"Belgium"};
-    const fictionalCountry=fictionalCountries[String(player&&player.ctry||"").toUpperCase()];
+    const code=String(player&&player.ctry||"").toUpperCase();
+    const fictionalCountry=regionName(code);
     const sameCountry=fictionalCountry?records.filter(record=>normalize(record.country)===normalize(fictionalCountry)):[];
     const pool=sameCountry.length?sameCountry:records;
     const fictionalLocation=pool[Math.floor(Math.random()*pool.length)];
@@ -889,8 +893,9 @@ window.__HOOPLAND_RESOLVE_LOCATION=function(player){
   const fullName=[player.fn,player.ln].filter(Boolean).join(" ");
   const known=window.__HOOPLAND_REAL_PLAYER_HOMETOWNS[normalize(fullName)];
   const home=known&&known.home?known.home:String(player.home||"").trim();
-  const countryNames={US:"United States",CA:"Canada",AU:"Australia",FR:"France",UK:"United Kingdom",GB:"United Kingdom",DE:"Germany",ES:"Spain",RS:"Serbia",BE:"Belgium"};
-  const country=(known&&known.country)||player.homeCountry||countryNames[String(player.ctry||"").toUpperCase()]||String(player.ctry||"");
+  const code=String(player.ctry||"").toUpperCase();
+  const countryName=regionName(code);
+  const country=(known&&known.country)||player.homeCountry||countryName||String(player.ctry||"");
   let candidates=records.filter(record=>normalize(record.country)===normalize(country));
   if(!candidates.length)candidates=records;
 

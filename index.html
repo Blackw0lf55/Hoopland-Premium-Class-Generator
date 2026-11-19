@@ -1598,9 +1598,7 @@ h3,
   height:24px;
   border-radius:2px;
 }
-.limit-half.actual{background:#09bf60}
-.limit-half.potential{background:#030712}
-.limit-half.blank{background:transparent}
+.limit-half{background:linear-gradient(to right,var(--limit-left,transparent) 50%,var(--limit-right,transparent) 50%)}
 .limit-half.unit-end{margin-right:1px}
 @media(max-width:350px){.attribute-limit-grid{grid-template-columns:1fr!important}}
 
@@ -2141,9 +2139,9 @@ html body .hl-arrow{padding:2px 12px!important;font-size:.8rem!important;margin:
 
 html body #secAttr,html body #secPhys,html body #secAppear,html body #secGen,html body #secPreview{display:none!important;}
 .hl-sub{margin:14px 6px 8px;}
-.hl-countries{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:10px;margin:0 6px 16px;}
-.hl-country{background:var(--px-fill-dark);color:#fff;border:0;padding:8px 2px;text-align:center;cursor:pointer;font-family:"Press Start 2P",monospace;font-size:.5rem;line-height:1.6;box-shadow:0 -3px 0 var(--px),0 3px 0 var(--px),-3px 0 0 var(--px),3px 0 0 var(--px);opacity:.45;}
-.hl-country .fl{display:block;font-size:1.5rem;font-family:"Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif;}
+.hl-countries{display:grid;grid-template-columns:repeat(auto-fill,minmax(50px,1fr));gap:8px;margin:0 6px 16px;}
+.hl-country{background:var(--px-fill-dark);color:#fff;border:0;padding:5px 2px;text-align:center;cursor:pointer;font-family:"Press Start 2P",monospace;font-size:.5rem;line-height:1.6;box-shadow:0 -3px 0 var(--px),0 3px 0 var(--px),-3px 0 0 var(--px),3px 0 0 var(--px);opacity:.45;}
+.hl-country .fl{display:block;font-size:1.2rem;font-family:"Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif;}
 .hl-country.on{opacity:1;background:#1c60b7;box-shadow:0 -3px 0 var(--px-hi),0 3px 0 var(--px-hi),-3px 0 0 var(--px-hi),3px 0 0 var(--px-hi);}
 .hl-pager{height:min(52vh,430px);overflow:hidden;margin:0 6px;}
 .hl-list{display:flex;flex-direction:column;gap:6px;height:100%;}
@@ -2584,8 +2582,7 @@ html{background-color:#06143a!important;}
   </div>
 
   <p class="section-note">
-    Hairstyle filtering, accessories, and occasional
-    tattoo-style accessories will be expanded later.
+    Fictional players may have sleeves and tattoo-style body colors.
   </p>
 </section>
 
@@ -2884,7 +2881,13 @@ const COUNTRIES = [
   ["DE", 2],
   ["ES", 1],
   ["RS", 1],
-  ["BE", 1]
+  ["BE", 1],
+  ["DZ",1],["AT",1],["BS",1],["BB",1],["BA",1],["BG",1],["CM",1],
+  ["KY",1],["HR",1],["CU",1],["EC",1],["EG",1],["FI",1],["HT",1],
+  ["HK",1],["HU",1],["IN",1],["IE",1],["JP",1],["LY",1],["LT",1],
+  ["ME",1],["NL",1],["NG",1],["PS",1],["PA",1],["PR",1],["RO",1],
+  ["RU",1],["SN",1],["SI",1],["ZA",1],["CH",1],["SY",1],["TT",1],
+  ["TR",1],["UG",1],["AE",1],["UY",1],["UZ",1]
 ];
 
 const NAMES = {
@@ -6038,7 +6041,10 @@ const SHOE_COLORS=[
   "D4AF37",
   "E94B35",
   "13B2F2",
-  "E37033"
+  "E37033",
+  "171717","6B7280","BFC5CE","F5E9D1","F59E0B","FFE14A",
+  "F472B6","DB2777","9333EA","4F46E5","2563EB","06B6D4",
+  "14B8A6","16A34A","84CC16","991B1B","7C2D12","78350F"
 ];
 
 const TEAM_ACCESSORY_COLORS=[
@@ -6167,8 +6173,8 @@ function shoeColorsEnabled(){
 }
 
 function buildAccessories(skinC,tattooColor,gender,shoeC,fictional=true){
-const hasTattoos = fictional && rng() < 0.12;
-const usesAccessories = fictional && rng() < 0.28;
+const hasTattoos = fictional && rng() < 0.30;
+const usesAccessories = fictional && rng() < 0.45;
 
 const theme = shoeC;
 
@@ -6205,8 +6211,6 @@ const base = {
     base.soleC=rng()<.7?"FFFFFF":pick(others);
   }
   
-  if(hasTattoos)shuffled(BODY_SEGMENTS).slice(0,randomInteger(1,2)).forEach(segment=>base[segment]=tattooColor);
-
   if(usesAccessories){
     const primaryPool=[...PRIMARY_ACCESSORIES];
 
@@ -6248,6 +6252,11 @@ const base = {
     const c=pick(["FFFFFF","000000"]);
     base.L_Shin=c;
     base.R_Shin=c;
+  }
+
+  if(hasTattoos){
+    const available=BODY_SEGMENTS.filter(segment=>base[segment]===skinC);
+    shuffled(available).slice(0,randomInteger(1,2)).forEach(segment=>base[segment]=tattooColor);
   }
 
   if(fictional&&rng()<.18){
@@ -6481,30 +6490,9 @@ function renderBar(code) {
     segment.className =
       "limit-half";
 
-    const raw =
-      rating * 2;
-
-
-    if (raw <= actual) {
-
-      segment.classList.add(
-        "actual"
-      );
-
-    }
-    else if (raw <= potential) {
-
-      segment.classList.add(
-        "potential"
-      );
-
-    }
-    else {
-
-      segment.classList.add(
-        "blank"
-      );
-    }
+    const color = raw => raw <= actual ? "#09bf60" : raw <= potential ? "#030712" : "transparent";
+    segment.style.setProperty("--limit-left", color(rating * 2 - 1));
+    segment.style.setProperty("--limit-right", color(rating * 2));
 
 
     segment.classList.add(
@@ -6633,7 +6621,7 @@ function renderBar(code) {
               class="limit-arrow"
               data-code="${code}"
               data-side="actual"
-              data-delta="2"
+              data-delta="1"
               aria-label="Increase ${name} Actual maximum"
             >
               ▲
@@ -6644,7 +6632,7 @@ function renderBar(code) {
               class="limit-arrow"
               data-code="${code}"
               data-side="actual"
-              data-delta="-2"
+              data-delta="-1"
               aria-label="Decrease ${name} Actual maximum"
             >
               ▼
@@ -7964,6 +7952,15 @@ function countryFromSource(value) {
       .trim()
       .toLowerCase();
 
+  const regionNames = new Intl.DisplayNames(["en"], { type:"region" });
+  const catalogNames = {BA:"Bosnia and Herzegovina", HK:"Hong Kong", PS:"Palestine", TT:"Trinidad and Tobago", TR:"Turkey"};
+  const match = COUNTRIES.find(([code]) => {
+    const iso = code === "UK" ? "GB" : code;
+    return sourceCountry === code.toLowerCase() || sourceCountry === iso.toLowerCase() ||
+      sourceCountry === regionNames.of(iso).toLowerCase() ||
+      sourceCountry === (catalogNames[code] || "").toLowerCase();
+  });
+  if (match) return match[0];
 
   const countryMap = {
 
@@ -8082,6 +8079,19 @@ function chooseClassSurname(names, counts) {
   if (!distinct.length) throw new Error("Missing surnames for fictional player.");
   const minimum = Math.min(...distinct.map(name => counts.get(surnameKey(name)) || 0));
   return pick(distinct.filter(name => (counts.get(surnameKey(name)) || 0) === minimum));
+}
+
+function starterSkills(classType, gender, currentStars, attributes) {
+  if (classType !== "draft") return [];
+  const chance = currentStars >= 4 ? 0.65 : currentStars >= 3 ? 0.35 : currentStars >= 2 ? 0.12 : 0.04;
+  if (rng() >= chance) return [];
+  const choices = [
+    ["SPA", 1],
+    ["CLA", Math.max(1, (attributes.STL[0] + attributes.BLK[0]) / 8)],
+    ["DIM", Math.max(1, attributes.PAS[0] / 4)]
+  ];
+  if (gender !== "1" && attributes.DNK[0] >= 8) choices.push(["HIG", attributes.DNK[0] / 4]);
+  return [{id: weightedPick(choices), xp: 0, level: 1, equipped: true}];
 }
 
 function makePlayer(
@@ -8212,8 +8222,14 @@ const gender =
     "gender"
   ).value;
 
+const regionalNamePools = {
+  AT:"DE", CH:"DE", NL:"BE", HR:"RS", BA:"RS", ME:"RS", SI:"RS",
+  DZ:"FR", CM:"FR", SN:"FR", HT:"FR", EC:"ES", CU:"ES", PA:"ES",
+  PR:"ES", UY:"ES", BS:"US", BB:"US", KY:"UK", IE:"UK", TT:"UK"
+};
 const namePool =
   NAMES[country] ||
+  NAMES[regionalNamePools[country]] ||
   NAMES.US;
 
   if (!namePool) {
@@ -8483,6 +8499,9 @@ else {
 
     attributes:
       attributes,
+
+    skills:
+      starterSkills(classType, gender, currentStars, attributes),
 
     physical:
       physical,
@@ -9666,7 +9685,7 @@ function makeHoopLandPlayer(
 
 
     skills:
-      [],
+      player.skills || [],
 
 
     tendencies:
@@ -11660,6 +11679,7 @@ classSizePlus.addEventListener(
     const iso=code==="UK"?"GB":code;
     return String.fromCodePoint(...[...iso].map(c=>127397+c.charCodeAt(0)));
   };
+  const countryNames=new Intl.DisplayNames(["en"],{type:"region"});
   window.ENABLED_COUNTRIES=new Set(COUNTRIES.map(c=>c[0]));
   const box=$("hlCountries");
   COUNTRIES.forEach(([code])=>{
@@ -11667,6 +11687,9 @@ classSizePlus.addEventListener(
     b.type="button";
     b.className="hl-country on";
     b.innerHTML='<span class="fl">'+flag(code)+'</span>'+code;
+    b.title=countryNames.of(code==="UK"?"GB":code);
+    b.setAttribute("aria-label",b.title);
+    b.setAttribute("aria-pressed","true");
     b.addEventListener("click",()=>{
       const set=window.ENABLED_COUNTRIES;
       if(set.has(code)){
@@ -11675,6 +11698,7 @@ classSizePlus.addEventListener(
       }
       else set.add(code);
       b.classList.toggle("on",set.has(code));
+      b.setAttribute("aria-pressed",String(set.has(code)));
     });
     box.appendChild(b);
   });
