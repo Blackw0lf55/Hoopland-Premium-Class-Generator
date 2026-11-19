@@ -41,6 +41,33 @@ test("potential caps and overall use the requested point scale", () => {
   assert.equal(api.starsForBudget(53), 2);
 });
 
+test("rookie references influence ratings without violating caps or losing position differences", () => {
+  const ref = vm.runInNewContext(
+    fs.readFileSync(path.join(__dirname,"..","data/roster-reference.js"),"utf8") + "\nwindow.HOOPLAND_ROSTER_REFERENCE",
+    {window:{}}
+  );
+  for (const [gender,key] of [["0","nba"],["1","wnba"],["1","ncaaw"]]) {
+    let guardDribble=0,bigDribble=0,guardBlock=0,bigBlock=0;
+    for (let i=0;i<100;i++) {
+      const guard=api.makeAttributeRatings(1,gender,null,quality(3.5,3),weights,"",ref.calibration[key][0]);
+      const big=api.makeAttributeRatings(7,gender,null,quality(3.5,3),weights,"",ref.calibration[key][2]);
+      guardDribble+=guard.attributes.DRB[0]; bigDribble+=big.attributes.DRB[0];
+      guardBlock+=guard.attributes.BLK[0]; bigBlock+=big.attributes.BLK[0];
+      assert.ok(guard.attributes.DRB[1]-guard.attributes.DRB[0]>=Math.round(ref.calibration[key][0].dribbleGrowth));
+      assert.ok(big.attributes.DRB[1]-big.attributes.DRB[0]>=Math.round(ref.calibration[key][2].dribbleGrowth));
+      for (const result of [guard,big]) {
+        assert.equal(sum(result.attributes,0),result.currentBudget);
+        assert.equal(sum(result.attributes,1),result.potentialBudget);
+        for(const code of codes) assert.ok(result.attributes[code][0]<=result.attributes[code][1]);
+      }
+    }
+    assert.ok(guardDribble > bigDribble + 200, key);
+    assert.ok(bigBlock > guardBlock + 200, key);
+    assert.ok(guardDribble / 100 > 9, key);
+    assert.ok(bigDribble / 100 > 3.5, key);
+  }
+});
+
 test("all positions and tiers honor budgets, growth, and women’s dunk default", () => {
   const caps = [20,18,16,14,12,10,10,10,10];
   for (const gender of ["0", "1"]) for (let position = 0; position < 9; position++) {

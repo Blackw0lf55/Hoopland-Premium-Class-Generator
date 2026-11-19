@@ -2827,6 +2827,7 @@ html{background-color:#06143a!important;}
 
 
 
+<script src="data/roster-reference.js"></script>
 <script>
 
   const CLASS_DATA_API =
@@ -5797,6 +5798,7 @@ function applySharedAppearance(appearance, saved, gender) {
 function appearanceSourceFor(sourcePlayer) {
   if (!sourcePlayer) return "fictional";
   if (sourcePlayer.sharedAppearance) return "community";
+  if (sourcePlayer.rosterAppearance) return "roster reference";
   const key = normalizeAppearancePlayerName(
     [sourcePlayer.fn, sourcePlayer.ln].filter(Boolean).join(" ")
   );
@@ -7433,15 +7435,16 @@ function isReportedWomanDunker(sourcePlayer) {
   return Boolean(WOMEN_DUNKERS[name] && WOMEN_DUNKERS[name].some(team => school.includes(team)));
 }
 
-function makeAttributeRatings(position, gender, sourcePlayer, quality, weights, arc = "") {
+function makeAttributeRatings(position, gender, sourcePlayer, quality, weights, arc = "", calibration = null) {
   const isGoat = arc === "GOAT";
   if (isGoat && quality.potentialStars !== 5) throw new Error("GOAT archetypes require 5-star potential.");
   const potentialBudget = isGoat ? 192 : budgetForStars(quality.potentialStars);
   const profile = ratingStatsProfile(sourcePlayer && sourcePlayer.bart);
+  const estimatedBudget = isGoat ? Math.max(108, profile ? Math.round(40 + profile.score * 80) : budgetForStars(quality.currentStars))
+    : profile ? Math.round(40 + profile.score * 80) : budgetForStars(quality.currentStars);
   const currentBudget = Math.min(
     potentialBudget - 8,
-    isGoat ? Math.max(108, profile ? Math.round(40 + profile.score * 80) : budgetForStars(quality.currentStars))
-      : profile ? Math.round(40 + profile.score * 80) : budgetForStars(quality.currentStars)
+    calibration && !isGoat ? Math.round((estimatedBudget + calibration.current) / 2) : estimatedBudget
   );
   const currentMinimums = [], currentMaximums = [], potentialMinimums = [], potentialMaximums = [];
   const dribbleIndex = ATTRS.findIndex(([code]) => code === "DRB");
@@ -7474,7 +7477,8 @@ function makeAttributeRatings(position, gender, sourcePlayer, quality, weights, 
     currentMaximums[index] = Math.min(currentMaximums[index], potentialMaximums[index]);
   });
 
-  const growth = Math.max(0, Math.min(8, potentialBudget - currentBudget,
+  const desiredGrowth = calibration && !isGoat ? Math.round(calibration.dribbleGrowth) : 8;
+  const growth = Math.max(0, Math.min(desiredGrowth, potentialBudget - currentBudget,
     potentialMaximums[dribbleIndex] - currentMinimums[dribbleIndex]));
   currentMaximums[dribbleIndex] = Math.min(
     currentMaximums[dribbleIndex], potentialMaximums[dribbleIndex] - growth
@@ -7482,6 +7486,9 @@ function makeAttributeRatings(position, gender, sourcePlayer, quality, weights, 
 
   const adjustedWeights = weights.map((weight, index) => {
     const code = ATTRS[index][0];
+    if (calibration && !isGoat) {
+      weight = Math.sqrt(weight) * Math.max(0.15, (calibration.attrs[index] - 2) / 8);
+    }
     if (!profile || !profile.codes.includes(code)) return weight;
     const measured = sourcePlayer.bart.attrs[code];
     if (!Number.isFinite(measured) || measured < 2 || measured > 20) return weight;
@@ -7586,11 +7593,12 @@ function generateRegressionAge() {
 function generatePhysicalRatings(
   position,
   height,
-  weight
+  weight,
+  positionProfile = POS_PROFILE[position]
 ) {
 
   const profile =
-    POS_PROFILE[position];
+    positionProfile;
 
 
   const heightMiddle =
@@ -8103,6 +8111,65 @@ function starterSkills(classType, gender, currentStars, attributes) {
   return [{id: weightedPick(choices), xp: 0, level: 1, equipped: true}];
 }
 
+function rosterCalibration(gender, classType, position) {
+  const data = window.HOOPLAND_ROSTER_REFERENCE;
+  if (!data || !data.calibration || !Array.isArray(data.appearances)) {
+    throw new Error("Roster reference data could not be loaded. Refresh and try again.");
+  }
+  const key = classType === "draft" ? (gender === "1" ? "wnba" : "nba")
+    : gender === "1" ? "ncaaw" : null;
+  return key ? data.calibration[key][Math.floor(position / 3)] : null;
+}
+
+function attachRosterAppearances(players, gender, classType, year) {
+  const data = window.HOOPLAND_ROSTER_REFERENCE;
+  if (!data || !Array.isArray(data.appearances)) throw new Error("Roster reference data could not be loaded. Refresh and try again.");
+  const normalize = value => String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]/g,"");
+  const counts = new Map();
+  for (const player of players) {
+    const name = normalize([player.fn, player.ln].filter(Boolean).join(" "));
+    counts.set(name, (counts.get(name) || 0) + 1);
+  }
+  for (const player of players) {
+    const name = normalize([player.fn, player.ln].filter(Boolean).join(" "));
+    if (!name || counts.get(name) !== 1) continue;
+    const school = normalize(player.school || player.committedCollege || (player.bart && player.bart.team));
+    const matches = data.appearances.filter(entry => entry.name === name && entry.gender === gender &&
+      ((entry.source === (gender === "1" ? "wnba" : "nba") && classType === "draft" && year === 2026 && entry.rookie) ||
+       (entry.source === "ncaaw" && ((school && school === entry.school) ||
+        (classType === "freshman" && year === 2025 && entry.rookie)))));
+    const pro = matches.filter(entry => entry.source !== "ncaaw");
+    const selected = pro.length === 1 ? pro[0] : !pro.length && matches.length === 1 ? matches[0] : null;
+    if (selected) {
+      player.rosterAppearance = selected.appearance;
+      player.appearanceWarnings = (player.appearanceWarnings || []).filter(warning =>
+        !/placeholder|no photo|photo descriptions unavailable|skin tone could not|hair (color|style) was not|facial hair was not/i.test(warning));
+      player.appearanceWarnings.push("Using supplied roster appearance; verify it in the preview.");
+    }
+  }
+}
+
+function applyRosterAppearance(appearance, saved, gender) {
+  const result = {...appearance, ...saved};
+  if (gender === "1") result.fHair = "0000";
+  result.browC = result.fHairC = result.hairC;
+  result.accessories = (appearance.accessories || []).map(accessory => {
+    const next = {...accessory};
+    for (const key of Object.keys(next)) {
+      if (/^[LR]_(Shoulder|Elbow|Wrist|Knee|Shin)$/.test(key) && next[key] === appearance.skinC) next[key] = result.skinC;
+    }
+    return next;
+  });
+  return result;
+}
+
+function calibratedTendencies(attributes, calibration) {
+  const automatic = generateAutomaticTendencies(attributes);
+  if (!calibration) return automatic;
+  return Object.fromEntries(Object.entries(automatic).map(([key,value]) =>
+    [key, Math.max(-5, Math.min(5, Math.round((value + calibration.tendencies[key]) / 2)))]));
+}
+
 function makePlayer(
   id,
   tierName,
@@ -8135,8 +8202,12 @@ const position =
         [8, 11]
       ]);
 
-  const profile =
-    POS_PROFILE[position];
+  const gender = document.getElementById("gender").value;
+  const classType = document.getElementById("classType").value;
+  const calibration = rosterCalibration(gender, classType, position);
+  const profile = calibration
+    ? [...calibration.height, ...calibration.weight, ...POS_PROFILE[position].slice(4)]
+    : POS_PROFILE[position];
 
 
   const userMinHt = numberValue("minHt", 63);
@@ -8185,8 +8256,8 @@ const womenClass = document.getElementById("gender").value === "1";
     Number(position) >= 5 &&
     maximumHeight >= (womenClass ? 76 : 78) &&
     Math.random() < 0.08;
-  const giantMaxHeight = womenClass ? 84 : 91;
-  const giantMinHeight = Math.min(giantMaxHeight, womenClass ? 77 : 80);
+  const giantMaxHeight = Math.min(userMaxHt, womenClass ? 84 : 91);
+  const giantMinHeight = Math.min(giantMaxHeight, Math.max(userMinHt, womenClass ? 77 : 80));
 
 const height =
   sourceHeight !== null
@@ -8225,11 +8296,6 @@ const height =
           document.getElementById("mode").value === "fictional" ? window.ENABLED_COUNTRIES : null
         )
       );
-
-const gender =
-  document.getElementById(
-    "gender"
-  ).value;
 
 const regionalNamePools = {
   AT:"DE", CH:"DE", NL:"BE", HR:"RS", BA:"RS", ME:"RS", SI:"RS",
@@ -8319,11 +8385,10 @@ const hometown =
     );
 
   const { attributes, currentBudget, potentialBudget, reportedDunk } =
-    makeAttributeRatings(position, gender, sourcePlayer, quality, archetype.weights, archetype.arc);
+    makeAttributeRatings(position, gender, sourcePlayer, quality, archetype.weights, archetype.arc, calibration);
   const currentStars = starsForBudget(currentBudget);
 
 
-  const classType=document.getElementById("classType").value;
   const international=country!=="US";
   let year;
 let age;
@@ -8420,7 +8485,8 @@ else {
     generatePhysicalRatings(
       position,
       height,
-      weight
+      weight,
+      profile
     );
 
 
@@ -8520,13 +8586,11 @@ else {
 
     tendencies:
       Object.assign(
-        generateAutomaticTendencies(
-          attributes
-        ),
+        calibratedTendencies(attributes, calibration),
         sourcePlayer && sourcePlayer.bart && sourcePlayer.bart.tend
           ? Object.fromEntries(
               Object.entries(sourcePlayer.bart.tend).map(([key, value]) => {
-                const base = generateAutomaticTendencies(attributes)[key];
+                const base = calibratedTendencies(attributes, calibration)[key];
                 const weight = Math.min(1, (sourcePlayer.bart.g || 0) / 20);
 
                 return [key, Math.max(-5, Math.min(5, Math.round(value * weight + base * (1 - weight))))];
@@ -8562,6 +8626,11 @@ else {
 
   };
 
+  if (sourcePlayer && sourcePlayer.rosterAppearance) {
+    player.appearance = applyRosterAppearance(player.appearance, sourcePlayer.rosterAppearance, gender);
+    const correction = REAL_PLAYER_DESCRIPTIONS[normalizeAppearancePlayerName([sourcePlayer.fn, sourcePlayer.ln].filter(Boolean).join(" "))];
+    if (correction) player.appearance = applyLookDescription(player.appearance, correction, gender);
+  }
   if (sourcePlayer && sourcePlayer.sharedAppearance) {
     player.appearance = applySharedAppearance(player.appearance, sourcePlayer.sharedAppearance, gender);
   }
@@ -8684,6 +8753,7 @@ async function generateClass() {
           player.appearanceWarnings = ["Photo matching is unavailable: the application worker is not running. Unsaved features are placeholders."];
         });
       }
+      attachRosterAppearances(realPlayers, gender, classType, Number(draftYear));
     }
 
 
@@ -8739,7 +8809,7 @@ async function generateClass() {
         );
       }
 
-      const unmatched = realPlayers.filter(player => !player.lookText && !player.sharedAppearance).length;
+      const unmatched = realPlayers.filter(player => !player.lookText && !player.sharedAppearance && !player.rosterAppearance).length;
       if (unmatched) {
         const status = document.getElementById("status");
         status.textContent += ` Photo matching unavailable or inconclusive for ${unmatched} real players; open their previews for details.`;

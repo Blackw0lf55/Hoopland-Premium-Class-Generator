@@ -33,6 +33,28 @@ chance of accessories, including arm or leg sleeves. Real-player placeholder
 appearances do not invent tattoos or sleeves. Random shoe, lace and sole colors
 use a broader palette when random shoe colors are enabled.
 
+The supplied NBA 2027, WNBA 2026 and NCAAW 2025 roster files provide
+position-group reference distributions for draft men, draft women and
+freshman women, respectively. Their `yrs: 0` players provide approximate
+rookie/freshman baselines; the WNBA sample includes some experienced
+international players. Current rating budgets, attribute priorities and
+tendencies blend those references with tier, archetype and available college
+statistics. Dribbling growth uses the group’s observed average instead of
+forcing four full rating points of growth; potential remains a separate career estimate. Position-group
+height and weight ranges use the sample's 5th–95th percentiles and remain
+subject to the user's limits. Men’s freshmen retain the previous model because
+no men's college roster was supplied. These are estimates, not verified
+rookie-season outcomes.
+
+The compact reference file also stores appearance fields from the supplied
+active rosters. Real-player matches require an unambiguous name and gender,
+plus either a 2026 pro rookie draft class or a matching college; 2025 college
+freshmen may also match their freshman class. Roster appearances are defaults,
+not guaranteed likenesses; existing user-provided corrections and
+community-approved edits override them. The original
+roster files are not included. To rebuild with replacement files, run
+`node scripts/build-roster-reference.cjs NBA.json WNBA.json NCAAW.json`.
+
 The country selector includes every named country in the location catalog.
 Countries without dedicated name lists use a regional or US fallback, so names
 are not necessarily representative of that country. Belgium remains available

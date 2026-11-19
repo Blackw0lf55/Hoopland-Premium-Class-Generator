@@ -195,7 +195,7 @@ test("country buttons update chances on deselection and retain one selected coun
 test("fictional fill players in real classes ignore hidden country selections", () => {
   const countriesCode = html.slice(html.indexOf("const NBA_COUNTRY_COUNTS = {"), html.indexOf("const NAMES = {"));
   const start = html.indexOf("  const country =\n  sourcePlayer");
-  const countryCode = html.slice(start, html.indexOf("\nconst gender =", start));
+  const countryCode = html.slice(start, html.indexOf("\nconst regionalNamePools =", start));
   const mode = {value:"fictional"};
   const context = vm.createContext({
     window:{ENABLED_COUNTRIES:new Set(["CA"])},
