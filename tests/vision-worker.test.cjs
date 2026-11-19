@@ -119,6 +119,8 @@ test("worker transforms retain location and player export fields", async () => {
     attributes:{DRB:[12,20]},physical:{STR:10,SPD:10,STA:10},tendencies:{}
   };
   const exported=exportPlayer(player,0);
+  assert.equal(exported.ht,78);
+  assert.equal(exported.wt,200);
   assert.equal(exported.arc,"GOAT");
   assert.equal(exported.pot,10);
   assert.equal(exported.attributes.DRB[1],20);

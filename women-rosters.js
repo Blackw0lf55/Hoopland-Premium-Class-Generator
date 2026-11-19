@@ -41,10 +41,10 @@ export async function womenRosterSeason(env, year) {
   const rows = data[year];
   if (!Array.isArray(rows)) return null;
   const names = new Map();
-  for (const [name, school, grade, jersey, position, country, url] of rows) {
+  for (const [name, school, grade, jersey, position, country, url, height] of rows) {
     const key = nameKey(name);
     if (!names.has(key)) names.set(key, []);
-    names.get(key).push({name,school,grade,jersey,position,country,url});
+    names.get(key).push({name,school,grade,jersey,position,country,url,height});
   }
   seasons.set(year,names);
   return names;
@@ -79,7 +79,7 @@ export async function womenRosterCandidates(env, year) {
     if (parts.length < 2) continue;
     candidates.push({
       fn:parts[0],ln:parts.slice(1).join(" "),position:roster.position,
-      school:roster.school,committedCollege:roster.school,jersey:roster.jersey,
+      school:roster.school,committedCollege:roster.school,jersey:roster.jersey,height:roster.height,
       country:roster.country || "United States",rosterMinutes:Number(matches[0].m) * Number(matches[0].g)
     });
   }

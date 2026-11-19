@@ -18,11 +18,13 @@ test("school roster verifies season-specific classes and jersey numbers", async(
   assert.equal(soph.jersey,"9");
   assert.equal(await verifyWomenDraftSenior(senior,2027,env),true);
   assert.equal(senior.jersey,"12");
+  assert.ok(senior.height >= 48 && senior.height <= 100);
   assert.equal(await womenRosterLookup(env,2030,senior),null);
   const candidates=await womenRosterCandidates(env,2027);
   assert.ok(candidates.length>100);
   assert.ok(!candidates.some(p=>p.fn==="Jazzy"&&p.ln==="Davidson"));
   assert.ok(candidates.every(p=>Number.isFinite(p.rosterMinutes)&&p.rosterMinutes>0));
+  assert.ok(candidates.some(p=>p.height >= 48 && p.height <= 100));
 });
 
 test("unknown and duplicate names never receive a guessed college classification", async()=>{

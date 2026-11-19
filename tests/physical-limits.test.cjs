@@ -108,13 +108,31 @@ test("invalid inputs report the affected position, without silently substituting
   assert.throws(()=>api.limits(4),/positive whole numbers/);
 });
 
-test("real players use sourced heights and recommended ranges, ignoring fictional edits", () => {
+test("real players preserve sourced dimensions independently of fictional edits", () => {
   const {api,elements}=harness();
   elements.minHt0.value="100";elements.maxHt0.value="101";
   elements.minWt0.value="300";elements.maxWt0.value="301";
   elements.mode.value="real";
   assert.deepEqual({...api.generate(0,"0",{height:65})},{height:65,weight:223,giantOutlier:false});
+  assert.deepEqual({...api.generate(0,"0",{height:80,weight:240})},{height:80,weight:240,giantOutlier:false});
+  assert.deepEqual({...api.generate(0,"0",{height:0,weight:250})},{height:78,weight:250,giantOutlier:false});
+  assert.deepEqual({...api.generate(8,"0",{height:null,weight:null})},{height:78,weight:223,giantOutlier:false});
   assert.deepEqual({...api.generate(0,"0",null)},{height:78,weight:223,giantOutlier:false});
   elements.maxHt0.value="";
   assert.equal(api.generate(0,"0",{height:81}).height,81);
+});
+
+test("legacy draft biography merging preserves measurements when no biography matches", () => {
+  const worker=fs.readFileSync(path.join(__dirname,"..","worker.js"),"utf8");
+  const mergeCode=worker.slice(worker.indexOf("function mergeDraftBiographies("),worker.indexOf("export default {"));
+  const merge=vm.runInNewContext(mergeCode+"\nmergeDraftBiographies",{
+    normalizePlayerName:name=>name.toLowerCase().replace(/[^a-z0-9]/g,"")
+  });
+  const [unmatched,matched]=merge([
+    {fn:"One",ln:"Player",height:74,weight:170},
+    {fn:"Two",ln:"Player",height:70,weight:165}
+  ],[{nameKey:"twoplayer",height:72,sourcePosition:"G"}]);
+  assert.equal(unmatched.height,74);
+  assert.equal(unmatched.weight,170);
+  assert.equal(matched.height,72);
 });

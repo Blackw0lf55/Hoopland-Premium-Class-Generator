@@ -11,7 +11,7 @@ const renderCode = html.slice(start, end);
 
 test("class feedback keeps important limitations without routine generation details", () => {
   const code = html.slice(html.indexOf("function classResultMessage("), html.indexOf("async function generateClass()"));
-  const {classResultMessage, playerEditNotice} = vm.runInNewContext(code + "\n({classResultMessage, playerEditNotice})");
+  const {classResultMessage, playerEditNotice, updatePlayerDimension} = vm.runInNewContext(code + "\n({classResultMessage, playerEditNotice, updatePlayerDimension})");
   assert.equal(classResultMessage(0, false, ""), "");
   const warning = "Prior draft results could not be verified; previously drafted players may appear.";
   assert.equal(classResultMessage(3, true, warning),
@@ -21,6 +21,13 @@ test("class feedback keeps important limitations without routine generation deta
     "Saved edits could not be loaded.");
   assert.equal(playerEditNotice(["Some shared attribute edits were incompatible with this player or era and were not applied.",
     "The imported appearance baseline is invalid and was not applied."]), "Some saved edits could not be applied.");
+  assert.match(classResultMessage(0,false,"",2),/2 real players have estimated height or weight/);
+  const player={ht:86,wt:200,estimatedDimensions:{ht:true,wt:true}};
+  assert.equal(updatePlayerDimension(player,"ht","81"),true);
+  assert.deepEqual(player,{ht:81,wt:200,estimatedDimensions:{ht:false,wt:true}});
+  assert.equal(updatePlayerDimension(player,"wt",""),false);
+  assert.equal(updatePlayerDimension(player,"wt","220.5"),false);
+  assert.equal(player.wt,200);
 });
 
 test("rerendering setup preserves the class size input and its value", () => {

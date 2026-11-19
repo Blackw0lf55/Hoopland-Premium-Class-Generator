@@ -1191,7 +1191,7 @@ function mergeDraftBiographies(
             false,
 
           height:
-            null,
+            player.height ?? null,
 
           birthYear:
             null,
@@ -1219,7 +1219,7 @@ function mergeDraftBiographies(
           true,
 
         height:
-          biography.height,
+          biography.height ?? player.height ?? null,
 
         birthYear:
           biography.birthYear,

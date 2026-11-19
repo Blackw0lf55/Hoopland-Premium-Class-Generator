@@ -1,3 +1,5 @@
+import { athleteDimensions } from "./measurements.js";
+
 const UA = "Mozilla/5.0 (compatible; Hoopland-Class-Generator/1.0; +https://github.com/Blackw0lf55/Hoopland-Premium-Class-Generator)";
 
 const decode = text =>
@@ -89,9 +91,16 @@ function splitName(fullName) {
 function heightInches(text) {
   const match = String(text || "").match(/(\d)\s*(?:-|'|ft)\s*(\d{1,2})/);
 
-  return match
+  return match && Number(match[2]) < 12
     ? Number(match[1]) * 12 + Number(match[2])
     : null;
+}
+
+function weightPounds(text) {
+  const match = String(text || "").trim().match(/^(\d{2,3}(?:\.\d+)?)\s*(kg|lb(?:s)?\.?)?(?:\s|$|\()/i);
+  if (!match) return null;
+  const value = Number(match[1]) * (match[2]?.toLowerCase() === "kg" ? 2.2046226218 : 1);
+  return value >= 70 && value <= 500 ? Math.round(value) : null;
 }
 
 function normalizeCountry(cell) {
@@ -166,6 +175,8 @@ async function loadWikipediaDraft(gender, year) {
 
     const roundColumn = column(/^rd|^round/);
     const positionColumn = column(/^pos/);
+    const heightColumn = column(/^(?:ht\.?|height)\b/);
+    const weightColumn = column(/^(?:wt\.?|weight)\b/);
     const nationalityColumn = column(/^nationality|^country/);
     const teamColumn = column(/^(team|nba team|wnba team)/);
     const schoolColumn = column(/^school|^college|^club/);
@@ -193,6 +204,8 @@ async function loadWikipediaDraft(gender, year) {
       players.push({
         ...name,
         position: positionColumn >= 0 ? row[positionColumn]?.text || "" : "",
+        height: heightColumn >= 0 ? heightInches(row[heightColumn]?.text) : null,
+        weight: weightColumn >= 0 ? weightPounds(row[weightColumn]?.text) : null,
         team: teamColumn >= 0 ? row[teamColumn]?.text || "" : "",
         school: schoolColumn >= 0 ? row[schoolColumn]?.text || "" : "",
         hometown: hometownColumn >= 0 ? row[hometownColumn]?.text || "" : "",
@@ -278,7 +291,9 @@ function mergeDraftSources(wikipedia, nba) {
 
     byPick.delete(player.draftPick);
     merged.push(other
-      ? { ...other, ...Object.fromEntries(Object.entries(player).filter(([, value]) => value)), position: other.position, country: other.country }
+      ? { ...other, ...Object.fromEntries(Object.entries(player).filter(([, value]) => value)),
+          position: other.position, country: other.country,
+          ...(nameKey(other) !== nameKey(player) ? {height:null,weight:null} : {}) }
       : player);
   }
 
@@ -321,6 +336,7 @@ async function loadMcDonaldsRoster(gender, year) {
 
     const positionColumn = column(/^pos/);
     const heightColumn = column(/^(ht|height)/);
+    const weightColumn = column(/^(wt|weight)/);
     const schoolColumn = column(/^(school|high school)/);
     const collegeColumn = column(/^(college|commitment|committed|college choice)$/);
     const hometownColumn = column(/^home\s*town$/);
@@ -343,6 +359,7 @@ async function loadMcDonaldsRoster(gender, year) {
         ...name,
         position: positionColumn >= 0 ? row[positionColumn]?.text || "" : "",
         height: heightColumn >= 0 ? heightInches(row[heightColumn]?.text) : null,
+        weight: weightColumn >= 0 ? weightPounds(row[weightColumn]?.text) : null,
         school: schoolColumn >= 0 ? row[schoolColumn]?.text || "" : "",
         committedCollege: collegeColumn >= 0 ? row[collegeColumn]?.text || "" : "",
         hometown: hometownColumn >= 0 ? row[hometownColumn]?.text || "" : "",
@@ -380,6 +397,7 @@ function parseEspnRecruits(html) {
     const commitmentColumn = header ? header.findIndex(cell => /^(college|commitment|committed|college choice)$/i.test(cell.text)) : -1;
     const hometownColumn = header ? header.findIndex(cell => /^home\s*town$/i.test(cell.text)) : -1;
     const birthplaceColumn = header ? header.findIndex(cell => /^(?:birth\s*place|place of birth)$/i.test(cell.text)) : -1;
+    const weightColumn = header ? header.findIndex(cell => /^(?:wt\.?|weight)\b/i.test(cell.text)) : -1;
     for (const row of rows) {
       if (row.some(cell => cell.header)) {
         continue;
@@ -421,6 +439,7 @@ function parseEspnRecruits(html) {
         rank,
         position: positionCell || "",
         height: heightCell ? heightInches(heightCell) : null,
+        weight: weightColumn >= 0 ? weightPounds(row[weightColumn]?.text) : null,
         stars: gradeCell ? Number(gradeCell) : (starMatches > 0 ? Math.min(5, starMatches) : null),
         school: schoolCell?.text || "",
         committedCollege: schoolIds.length > 1 ? "" : schoolCell?.text || "",
@@ -586,15 +605,19 @@ function espnDraftPhotos(data, year) {
     const athlete = pick.athlete;
     const name = splitName(String(athlete?.displayName || ""));
     const headshot = athlete?.headshot?.href;
-    if (!name || pick.status !== "SELECTION_MADE" || typeof headshot !== "string") return [];
-    try {
-      const url = new URL(headshot);
-      if (url.protocol !== "https:" || url.hostname !== "a.espncdn.com") return [];
-    } catch (error) {
-      return [];
+    if (!name || pick.status !== "SELECTION_MADE") return [];
+    if (headshot) {
+      try {
+        const url = new URL(headshot);
+        if (url.protocol !== "https:" || url.hostname !== "a.espncdn.com") return [];
+      } catch (error) {
+        return [];
+      }
     }
     const espnId = /^\d{1,10}$/.test(String(athlete.id || "")) ? String(athlete.id) : undefined;
-    return [{ ...name, draftPick: Number(pick.overall) || 0, headshot, espnId }];
+    const dimensions = athleteDimensions(athlete);
+    if (!headshot && !espnId && !dimensions.height && !dimensions.weight) return [];
+    return [{ ...name, draftPick: Number(pick.overall) || 0, headshot, espnId, ...dimensions }];
   });
 }
 
@@ -628,7 +651,13 @@ function attachEspnDraftPhotos(players, photos) {
     if (!match || (player.draftPick && match.draftPick && Number(player.draftPick) !== match.draftPick)) return player;
     const existing = Array.isArray(player.headshots) ? player.headshots : [];
     const headshots = [...new Set([player.headshot, ...existing, match.headshot].filter(Boolean))];
-    return { ...player, headshots, ...(match.espnId ? { espnId: match.espnId } : {}) };
+    return {
+      ...player,
+      ...(headshots.length ? { headshots } : {}),
+      ...(match.espnId ? { espnId: match.espnId } : {}),
+      ...(!(Number(player.height) >= 48 && Number(player.height) <= 100) && match.height ? {height:match.height} : {}),
+      ...(!(Number(player.weight) >= 70 && Number(player.weight) <= 500) && match.weight ? {weight:match.weight} : {})
+    };
   });
 }
 

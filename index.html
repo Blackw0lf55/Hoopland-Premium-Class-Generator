@@ -2247,6 +2247,9 @@ html body #hlPreview .hl-pv-choice button{min-height:34px;padding:3px!important;
 #hlPreview .hl-pv-desc{margin:5px 0;}
 #hlPreview .hl-hint{margin:2px 0;font-size:.68rem;}
 #hlPvRatings{display:grid;grid-template-columns:1fr 1fr;gap:0 12px;}
+.hl-pv-dimensions{display:flex;gap:8px;align-items:center;font-size:.7rem;}
+.hl-pv-dimensions label{display:flex;align-items:center;gap:4px;}
+html body #hlPreview .hl-pv-dimensions input{width:60px;height:30px;min-height:0;padding:2px!important;margin:0;}
 #hlPreview .hl-rating-row{grid-template-columns:minmax(0,1fr) 48px 48px;margin:2px 0;gap:3px;font-size:.68rem;}
 html body #hlPreview .hl-rating-row input{height:30px;min-height:0;padding:2px!important;margin:0;font-size:.8rem;}
 html body #hlPvAttributes select{width:100%;height:34px;min-height:0;padding:4px!important;margin:0;}
@@ -8400,23 +8403,28 @@ function initializePositionPhysicalLimits() {
   render();
 }
 
+function sourceDimension(player, field, min, max) {
+  const value = player?.[field];
+  return value != null && value !== "" && Number.isFinite(Number(value)) &&
+    Number(value) >= min && Number(value) <= max ? Math.round(Number(value)) : null;
+}
+
 function generatePlayerDimensions(position, gender, sourcePlayer) {
   const real = document.getElementById("mode").value === "real";
   const [minimumHeight, maximumHeight, minimumWeight, maximumWeight] = real
     ? recommendedPhysicalLimits(position,gender,document.getElementById("classType").value)
     : positionPhysicalLimits(position);
-  const sourceHeight = sourcePlayer && sourcePlayer.height != null && sourcePlayer.height !== "" &&
-    Number.isFinite(Number(sourcePlayer.height)) && Number(sourcePlayer.height) > 0
-      ? Math.round(Number(sourcePlayer.height)) : null;
+  const sourceHeight = sourceDimension(sourcePlayer, "height", 48, 100);
+  const sourceWeight = sourceDimension(sourcePlayer, "weight", 70, 500);
   const women = gender === "1";
-  const giantOutlier = sourceHeight === null && position >= 5 &&
+  const giantOutlier = sourceHeight === null && !(real && sourcePlayer) && position >= 5 &&
     maximumHeight >= (women ? 77 : 80) && rng() < 0.08;
   const giantMaxHeight = Math.max(minimumHeight, Math.min(maximumHeight, women ? 84 : 91));
   const giantMinHeight = Math.min(giantMaxHeight, Math.max(minimumHeight, women ? 77 : 80));
   const height = sourceHeight !== null ? (real ? sourceHeight : clamp(sourceHeight,minimumHeight,maximumHeight))
     : giantOutlier ? randomInteger(giantMinHeight,giantMaxHeight) : randomInteger(minimumHeight,maximumHeight);
-  const weight = giantOutlier
-    ? randomInteger(Math.min(maximumWeight,Math.max(minimumWeight,women ? 200 : 240)),maximumWeight)
+  const weight = sourceWeight !== null ? (real ? sourceWeight : clamp(sourceWeight,minimumWeight,maximumWeight))
+    : giantOutlier ? randomInteger(Math.min(maximumWeight,Math.max(minimumWeight,women ? 200 : 240)),maximumWeight)
     : randomInteger(minimumWeight,maximumWeight);
   return {height,weight,giantOutlier};
 }
@@ -8814,6 +8822,12 @@ else {
     wt:
       weight,
 
+    estimatedDimensions:
+      sourcePlayer ? {
+        ht: sourceDimension(sourcePlayer,"height",48,100) === null,
+        wt: sourceDimension(sourcePlayer,"weight",70,500) === null
+      } : null,
+
     pos:
       position,
 
@@ -8956,10 +8970,11 @@ else {
 }
 
 
-function classResultMessage(fictionalCount, hasEstimatedAppearances, warning) {
+function classResultMessage(fictionalCount, hasEstimatedAppearances, warning, estimatedDimensions = 0) {
   return [
     fictionalCount ? `${fictionalCount} fictional players added.` : "",
     hasEstimatedAppearances ? "Some appearances are estimates; please review them." : "",
+    estimatedDimensions ? `${estimatedDimensions} real player${estimatedDimensions === 1 ? " has" : "s have"} estimated height or weight; review in Edit Attributes.` : "",
     warning
   ].filter(Boolean).join(" ");
 }
@@ -8971,6 +8986,15 @@ function playerEditNotice(warnings) {
   if (warnings.some(w => /^(The imported appearance baseline is invalid|Some community appearance values were unsupported|Some shared attribute edits were incompatible)/.test(w)))
     notices.push("Some saved edits could not be applied.");
   return notices.join(" ");
+}
+
+function updatePlayerDimension(player, field, value) {
+  const number = Number(value);
+  if (!["ht","wt"].includes(field) || String(value).trim() === "" ||
+      !Number.isInteger(number) || number < 1 || number > 999) return false;
+  player[field] = number;
+  if (player.estimatedDimensions) player.estimatedDimensions[field] = false;
+  return true;
 }
 
 async function generateClass() {
@@ -9127,7 +9151,9 @@ async function generateClass() {
 
 
       const unmatched = realPlayers.filter(player => !player.lookText && !player.sharedAppearance && !player.rosterAppearance && !player.importedBaseline).length;
-      setStatus(classResultMessage(fictionalCount, unmatched > 0, classDataWarning), "ok");
+      const estimatedDimensions = generated.filter(player => player.estimatedDimensions &&
+        (player.estimatedDimensions.ht || player.estimatedDimensions.wt)).length;
+      setStatus(classResultMessage(fictionalCount, unmatched > 0, classDataWarning, estimatedDimensions), "ok");
     }
     else {
 
@@ -12311,6 +12337,11 @@ classSizePlus.addEventListener(
     <div class="hl-pv-desc"><input id="hlPvDesc" type="text" placeholder="Or describe: dark 4 skin, afro, goggles"><button type="button" class="primary" id="hlPvApply">APPLY</button></div>
     </div>
     <div id="hlPvAttributes" hidden>
+    <div class="hl-pv-dimensions">
+      <label>Height (in) <input id="hlPvHeight" type="number" min="1" max="999" step="1"></label>
+      <label>Weight (lb) <input id="hlPvWeight" type="number" min="1" max="999" step="1"></label>
+    </div>
+    <p class="hl-hint" id="hlPvDimensionError" role="status"></p>
     <label class="hl-pv-field" for="hlPvArchetype">Archetype</label>
     <select id="hlPvArchetype"></select>
     <p class="hl-hint" id="hlPvRatingSummary"></p>
@@ -12687,13 +12718,35 @@ classSizePlus.addEventListener(
     if(window.hlRefreshPreviewList)window.hlRefreshPreviewList();
   });
 
+  function showPlayerMeta(p){
+    const pos=(POS.find(x=>Number(x[0])===p.pos)||[0,"?"])[1];
+    const height=Math.floor(p.ht/12)+"'"+p.ht%12+'"'+(p.estimatedDimensions?.ht?" (est.)":"");
+    const weight=p.wt+" lb"+(p.estimatedDimensions?.wt?" (est.)":"");
+    $("hlPvMeta").textContent=pos+" • "+p.arc+" • "+height+" • "+weight+" • age "+p.age+" • "+p.ctry;
+  }
+
+  for(const [id,field] of [["hlPvHeight","ht"],["hlPvWeight","wt"]]){
+    $(id).addEventListener("change",()=>{
+      const p=generated[idx];
+      if(!updatePlayerDimension(p,field,$(id).value)){
+        $("hlPvDimensionError").textContent="Enter a whole number between 1 and 999.";
+        $(id).value=String(p[field]);
+        return;
+      }
+      $("hlPvDimensionError").textContent="";
+      showPlayerMeta(p);
+    });
+  }
+
   function show(i){
     if(!generated.length)return;
     idx=(i+generated.length)%generated.length;
     const p=generated[idx];
-    const pos=(POS.find(x=>Number(x[0])===p.pos)||[0,"?"])[1];
     $("hlPvName").textContent=p.fn+" "+p.ln;
-    $("hlPvMeta").textContent=pos+" • "+p.arc+" • "+Math.floor(p.ht/12)+"'"+p.ht%12+'" • '+p.wt+" lb • age "+p.age+" • "+p.ctry;
+    showPlayerMeta(p);
+    $("hlPvHeight").value=String(p.ht);
+    $("hlPvWeight").value=String(p.wt);
+    $("hlPvDimensionError").textContent="";
     const notice=playerEditNotice(p.appearanceWarnings||[]);
     $("hlPvWarnings").textContent=notice;
     $("hlPvWarnings").hidden=!notice;

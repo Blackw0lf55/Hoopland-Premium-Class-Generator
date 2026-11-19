@@ -22,6 +22,7 @@ for path in sorted(directory.glob("wbb_rosters_????_??.csv")):
         seasons.setdefault(str(year), []).append([
             row["name"], row["team"], row["year_clean"], row["jersey"],
             row["position"], row["country_clean"], row["url"],
+            int(row["total_inches"]) if row["total_inches"].isdigit() else None,
         ])
 
 if not seasons:

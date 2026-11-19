@@ -4,6 +4,7 @@ import { wikidataProfile, wikidataPhotos } from "./enrich.js";
 import { handleStats } from "./college-stats.js";
 import { handleProSeason } from "./pro-stats.js";
 import { womenRosterLookup, womenRosterCandidates } from "./women-rosters.js";
+import { athleteDimensions } from "./measurements.js";
 
 function normalizeName(value) {
   return String(value || "")
@@ -160,6 +161,8 @@ export async function verifyWomenDraftSenior(player, year, env) {
       const roster = await womenRosterLookup(env, year, player);
       if (roster) {
         if (/^\d{1,2}$/.test(roster.jersey)) player.jersey = roster.jersey;
+        if (!(Number(player.height) >= 48 && Number(player.height) <= 100) &&
+            roster.height >= 48 && roster.height <= 100) player.height = roster.height;
         if (/^senior$/i.test(roster.grade)) return true;
         if (/^(freshman|sophomore|junior|fifth year|graduate)$/i.test(roster.grade)) return false;
       }
@@ -242,7 +245,9 @@ async function findAthlete(name, gender, debug, verifiedId = "") {
         if (!athlete || normalizeName(athlete.displayName || athlete.fullName || athlete.name) !== wanted ||
             (athlete.id && String(athlete.id) !== id)) continue;
         profiles.push(athlete);
-        if (athlete.hometown || athlete.homeTown || athlete.birthPlace || athlete.birthplace) break;
+        const dimensions = athleteDimensions(athlete);
+        if ((athlete.hometown || athlete.homeTown || athlete.birthPlace || athlete.birthplace) &&
+            dimensions.height && dimensions.weight) break;
       }
     }
     if (profiles.length) matches.push({ id, profiles });
@@ -255,7 +260,9 @@ async function findAthlete(name, gender, debug, verifiedId = "") {
   return {
     homePlace: profiles.map(player => parsePlace(player.hometown || player.homeTown)).find(Boolean),
     birthPlace: profiles.map(player => parsePlace(player.birthPlace || player.birthplace || player.birth_place || player.placeOfBirth)).find(Boolean),
-    headshot: profiles.map(player => player.headshot?.href).find(Boolean)
+    headshot: profiles.map(player => player.headshot?.href).find(Boolean),
+    height: profiles.map(player => athleteDimensions(player).height).find(Boolean),
+    weight: profiles.map(player => athleteDimensions(player).weight).find(Boolean)
   };
 }
 
@@ -315,9 +322,11 @@ async function resolveHometown(name, gender, sourceHome, sourceBirth, rosterPlay
   const verifiedId = rosterPlayer ? String(rosterPlayer.id) : espnId;
   const rosterHome = parsePlace(rosterPlayer?.hometown || rosterPlayer?.homeTown);
   const rosterBirth = parsePlace(rosterPlayer?.birthPlace || rosterPlayer?.birthplace || rosterPlayer?.birth_place || rosterPlayer?.placeOfBirth);
+  const rosterDimensions = athleteDimensions(rosterPlayer);
   let athlete = null;
   try {
-    athlete = (recruit && !verifiedId) || rosterHome ? null : await findAthlete(name, gender, debug, verifiedId);
+    athlete = (recruit && !verifiedId) || (rosterHome && rosterDimensions.height && rosterDimensions.weight)
+      ? null : await findAthlete(name, gender, debug, verifiedId);
   } catch (error) {
     console.warn("ESPN athlete lookup failed", name, error);
     debug.push("ESPN lookup failed");
@@ -351,9 +360,13 @@ async function resolveHometown(name, gender, sourceHome, sourceBirth, rosterPlay
   };
   const place = parsePlace(sourceHome) || rosterHome || athlete?.homePlace || parsePlace(sourceBirth) || rosterBirth || athlete?.birthPlace;
   const headshot = athlete?.headshot || undefined;
+  const dimensions = {
+    ...(rosterDimensions.height || (verifiedId && athlete?.height) ? {height:rosterDimensions.height || athlete.height} : {}),
+    ...(rosterDimensions.weight || (verifiedId && athlete?.weight) ? {weight:rosterDimensions.weight || athlete.weight} : {})
+  };
   if (!place) {
-    if (debug.includes("ambiguous ESPN match")) return { headshot, debug };
-    return wikiFallback(headshot);
+    if (debug.includes("ambiguous ESPN match")) return { headshot, debug, ...dimensions };
+    return {...await wikiFallback(headshot), ...dimensions};
   }
 
   const rawCountry = place.country || (place.state && (US_STATES[place.state.toUpperCase()] || Object.values(US_STATES).includes(place.state)) ? "US" : "");
@@ -373,7 +386,7 @@ async function resolveHometown(name, gender, sourceHome, sourceBirth, rosterPlay
     debug.push("geocoding service failed");
   }
   if (!point) {
-    return { home, headshot, countryName: countryNameFor(rawCountry), locationSource, debug: debug.concat("geocode failed") };
+    return { home, headshot, countryName: countryNameFor(rawCountry), locationSource, debug: debug.concat("geocode failed"), ...dimensions };
   }
 
   return {
@@ -382,8 +395,25 @@ async function resolveHometown(name, gender, sourceHome, sourceBirth, rosterPlay
     x: Math.round(point.lat * 100),
     y: Math.round(point.lon * 100),
     countryName: isUS ? "United States" : point.countryName,
-    locationSource
+    locationSource,
+    ...dimensions
   };
+}
+
+async function nbaPlayerDimensions(name, gender, id) {
+  const response = await fetch(
+    `https://stats.nba.com/stats/commonplayerinfo?LeagueID=${gender === "women" ? "10" : "00"}&PlayerID=${id}`,
+    {headers:{"User-Agent":"Mozilla/5.0",Referer:"https://www.nba.com/",Origin:"https://www.nba.com",Accept:"application/json"},
+      signal:AbortSignal.timeout(8000)}
+  );
+  if (!response.ok) throw new Error(`NBA player profile HTTP ${response.status}`);
+  const data = await response.json();
+  const set = data.resultSets?.find(item => item.name === "CommonPlayerInfo");
+  if (!Array.isArray(set?.headers) || !Array.isArray(set.rowSet) || set.rowSet.length !== 1) return {};
+  const column = key => set.rowSet[0][set.headers.indexOf(key)];
+  if (String(column("PERSON_ID")) !== id ||
+      normalizePersonName(column("DISPLAY_FIRST_LAST")) !== normalizePersonName(name)) return {};
+  return athleteDimensions({displayHeight:column("HEIGHT"),weight:column("WEIGHT")});
 }
 
 async function handleHometown(request) {
@@ -401,7 +431,9 @@ async function handleHometown(request) {
   const sourceHome = (params.get("home") || "").trim();
   const sourceBirth = (params.get("birthplace") || "").trim();
   const espnId = /^\d{1,10}$/.test(params.get("espnId") || "") ? params.get("espnId") : "";
-  const key = JSON.stringify([gender, normalizePersonName(name), teamId, normalizePersonName(school), recruitYear, draftYear, verifiedPhotosOnly, country, sourceHome, sourceBirth, espnId]);
+  const nbaId = /^\d{1,10}$/.test(params.get("nbaId") || "") ? params.get("nbaId") : "";
+  const needsDimensions = params.get("measure") === "1";
+  const key = JSON.stringify([gender, normalizePersonName(name), teamId, normalizePersonName(school), recruitYear, draftYear, verifiedPhotosOnly, country, sourceHome, sourceBirth, espnId, nbaId, needsDimensions]);
   let entry = hometownCache.get(key);
   if (!entry || entry.expires <= Date.now()) {
     const collegePromise = collegeRosterPlayer(name, gender, teamId, recruitYear, school, draftYear);
@@ -414,6 +446,18 @@ async function handleHometown(request) {
     if (college.status === "rejected") console.warn("College roster lookup failed", name, college.reason);
     const collegePhoto = college.status === "fulfilled" ? verifiedCollegeHeadshot(college.value, gender) : "";
     const hometownResult = hometown.status === "fulfilled" ? hometown.value : {};
+    let measurementUnavailable = false;
+    if (needsDimensions && nbaId && (!hometownResult.height || !hometownResult.weight)) {
+      try {
+        const dimensions = await nbaPlayerDimensions(name, gender, nbaId);
+        if (!hometownResult.height && dimensions.height) hometownResult.height = dimensions.height;
+        if (!hometownResult.weight && dimensions.weight) hometownResult.weight = dimensions.weight;
+        measurementUnavailable = !hometownResult.height || !hometownResult.weight;
+      } catch (error) {
+        console.warn("NBA player measurements unavailable", name, error);
+        measurementUnavailable = true;
+      }
+    }
     if (verifiedPhotosOnly) delete hometownResult.headshot;
     const result = {
       ...hometownResult,
@@ -424,7 +468,7 @@ async function handleHometown(request) {
         ...(photos.status === "fulfilled" ? photos.value : [])
       ]
     };
-    const failed = hometown.status === "rejected" || photos.status === "rejected" || college.status === "rejected" ||
+    const failed = measurementUnavailable || hometown.status === "rejected" || photos.status === "rejected" || college.status === "rejected" ||
       hometownResult.debug?.some(message => message === "ESPN lookup failed" || message === "geocode failed");
     entry = { result, failed, expires: Date.now() + 60 * 60 * 1000 };
     if (!failed && (result.home || result.headshot || result.headshots.length)) hometownCache.set(key, entry);
@@ -919,11 +963,17 @@ window.__HOOPLAND_PREPARE_REAL_PLAYERS=async function(players,gender){
       }
       let d=null;
       try{
-        const q=new URLSearchParams({name:[p.fn,p.ln].filter(Boolean).join(" "),gender:gender==="1"?"women":"men",ctry:String(p.ctry||p.country||""),home:window.__HOOPLAND_REAL_HOMETOWN(p),birthplace:String(p.birthplace||""),espnId:String(p.espnId||""),team:String(p.collegeTeamId||""),college:String(p.committedCollege||(type==="draft"&&(p.school||(p.bart&&p.bart.team)))||""),recruitYear:String(p.recruitYear||""),recruit:p.recruitYear?"1":"",draftYear:type==="draft"?String(year):"",v:"5"});
+        const q=new URLSearchParams({name:[p.fn,p.ln].filter(Boolean).join(" "),gender:gender==="1"?"women":"men",ctry:String(p.ctry||p.country||""),home:window.__HOOPLAND_REAL_HOMETOWN(p),birthplace:String(p.birthplace||""),espnId:String(p.espnId||""),nbaId:String(p.proId||""),measure:(!(Number(p.height)>=48&&Number(p.height)<=100)||!(Number(p.weight)>=70&&Number(p.weight)<=500))?"1":"",team:String(p.collegeTeamId||""),college:String(p.committedCollege||(type==="draft"&&(p.school||(p.bart&&p.bart.team)))||""),recruitYear:String(p.recruitYear||""),recruit:p.recruitYear?"1":"",draftYear:type==="draft"?String(year):"",v:"6"});
         const res=await fetch("/api/hometown?"+q);
         d=res.ok?await res.json():null;
       }catch(e){console.warn('Hometown and photo lookup failed for',[p.fn,p.ln].join(' '),e);}
       if(d){
+        if(!Number.isFinite(Number(p.height)) || Number(p.height)<48 || Number(p.height)>100) {
+          if(Number.isFinite(d.height) && d.height>=48 && d.height<=100)p.height=d.height;
+        }
+        if(!Number.isFinite(Number(p.weight)) || Number(p.weight)<70 || Number(p.weight)>500) {
+          if(Number.isFinite(d.weight) && d.weight>=70 && d.weight<=500)p.weight=d.weight;
+        }
         if(!/^\\d{1,2}$/.test(String(p.jersey||"")) && /^\\d{1,2}$/.test(String(d.jersey||"")))p.jersey=String(d.jersey);
         if(d.home&&!window.__HOOPLAND_REAL_HOMETOWN(p)){p.hometown=d.home;}
         if(d.home===window.__HOOPLAND_REAL_HOMETOWN(p)&&Number.isFinite(d.x)&&Number.isFinite(d.y)){p.homeX=d.x;p.homeY=d.y;}

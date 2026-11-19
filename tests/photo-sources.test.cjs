@@ -44,6 +44,18 @@ test("ESPN draft portraits are matched by year, name, and pick", async () => {
   assert.equal(attachEspnDraftPhotos([people[0]],[photos[0],photos[0]])[0].headshots, undefined);
   const unsafe = { ...espnDraft, picks:[{...espnDraft.picks[0], athlete:{...espnDraft.picks[0].athlete,headshot:{href:"https://evil.example/x"}}}] };
   assert.deepEqual(espnDraftPhotos(unsafe,2026), []);
+  const withoutPhoto = {...espnDraft, picks:[{...espnDraft.picks[0], athlete:{id:"4433790",displayName:"Azzi Fudd"}}]};
+  const match = attachEspnDraftPhotos([people[0]],espnDraftPhotos(withoutPhoto,2026))[0];
+  assert.equal(match.espnId,"4433790");
+  assert.equal(match.headshots,undefined);
+  const withMeasurements = {...espnDraft, picks:[{...espnDraft.picks[0],
+    athlete:{...espnDraft.picks[0].athlete,displayHeight:"5' 11\"",displayWeight:"160 lbs"}}]};
+  const dimensions = espnDraftPhotos(withMeasurements,2026);
+  const updated = attachEspnDraftPhotos(people,dimensions);
+  assert.equal(updated[0].height,71);
+  assert.equal(updated[0].weight,160);
+  assert.equal(updated[3].height,undefined);
+  assert.equal(attachEspnDraftPhotos([{...people[0],height:72,weight:165}],dimensions)[0].weight,165);
 });
 
 test("the curated 2026 WNBA route also attaches ESPN draft photos", async () => {

@@ -7,6 +7,67 @@ const vm = require("node:vm");
 const claim = value => [{ mainsnak: { datavalue: { value } } }];
 const missing = () => new Response("", { status: 404 });
 
+test("verified ESPN draft and college identities supply player measurements", async () => {
+  const {default:worker} = await import("../location-worker.js");
+  const original = global.fetch;
+  try {
+    global.fetch = async url => {
+      const request = new URL(url);
+      if (request.hostname === "www.wikidata.org") return Response.json({search:[]});
+      if (request.pathname.endsWith("/teams/9001/roster")) return Response.json({
+        team:{id:"9001"},season:{year:2026},
+        athletes:[{id:"9700",displayName:"College Example",displayHeight:"6' 2\"",displayWeight:"175 lbs"}]
+      });
+      if (request.pathname.includes("/athletes/1966")) return Response.json({
+        id:"1966",displayName:"LeBron James",height:81,weight:250
+      });
+      if (request.pathname.includes("/athletes/9999")) return Response.json({
+        id:"9999",displayName:"Different Person",height:86,weight:300
+      });
+      return missing();
+    };
+    const lookup = async params => (await (await worker.fetch(new Request(
+      `https://example.test/api/hometown?${new URLSearchParams(params)}`), {})).json());
+    const james = await lookup({name:"LeBron James",gender:"men",espnId:"1966",draftYear:"2003"});
+    assert.equal(james.height,81);
+    assert.equal(james.weight,250);
+    const mismatch = await lookup({name:"LeBron James",gender:"men",espnId:"9999",draftYear:"2003"});
+    assert.equal(mismatch.height,undefined);
+    assert.equal(mismatch.weight,undefined);
+    for (const gender of ["men","women"]) {
+      const college = await lookup({name:"College Example",gender,team:"9001",recruit:"1",recruitYear:"2025"});
+      assert.equal(college.height,74);
+      assert.equal(college.weight,175);
+    }
+  } finally { global.fetch = original; }
+});
+
+test("NBA profile measurements require the drafted player ID and exact name", async () => {
+  const {default:worker} = await import("../location-worker.js");
+  const original = global.fetch;
+  try {
+    global.fetch = async url => {
+      const request = new URL(url);
+      if (request.hostname === "www.wikidata.org") return Response.json({search:[]});
+      if (request.hostname === "stats.nba.com") {
+        const id = request.searchParams.get("PlayerID");
+        return Response.json({resultSets:[{name:"CommonPlayerInfo",
+          headers:["PERSON_ID","DISPLAY_FIRST_LAST","HEIGHT","WEIGHT"],
+          rowSet:[[Number(id),id==="2544"?"LeBron James":"Different Player","6-8","240"]]}]});
+      }
+      return missing();
+    };
+    const lookup = async id => (await (await worker.fetch(new Request(
+      `https://example.test/api/hometown?name=LeBron%20James&gender=men&nbaId=${id}&measure=1`), {})).json());
+    const match = await lookup("2544");
+    assert.equal(match.height,80);
+    assert.equal(match.weight,240);
+    const mismatch = await lookup("9999");
+    assert.equal(mismatch.height,undefined);
+    assert.equal(mismatch.weight,undefined);
+  } finally { global.fetch = original; }
+});
+
 test("ESPN uses exact unambiguous basketball identities and prefers hometown over birthplace", async () => {
   const { default: worker } = await import("../location-worker.js");
   const original = global.fetch;
@@ -80,6 +141,32 @@ test("recruiting source columns retain hometown and birthplace labels", async ()
     assert.equal(player.hometown,"Boston, MA");
     assert.equal(player.birthplace,"Paris, France");
   }
+});
+
+test("class sources retain listed dimensions without mixing different draft identities", async () => {
+  const {parseEspnRecruits,handleClassData} = await import("../class-sources.js");
+  const recruit = parseEspnRecruits(`<table><tr><th>Rank</th><th>Player</th><th>Height</th><th>Weight</th></tr>
+    <tr><td>1</td><td><a href="/recruiting/player/1">Sample Recruit</a></td><td>6-8</td><td>109 kg</td></tr></table>`)[0];
+  assert.equal(recruit.height,80);
+  assert.equal(recruit.weight,240);
+  const original = global.fetch;
+  try {
+    global.fetch = async url => {
+      const request = new URL(url);
+      if (request.hostname === "en.wikipedia.org") return Response.json({parse:{text:`<table>
+        <tr><th>Pick</th><th>Player</th><th>Height</th><th>Weight</th></tr>
+        <tr><td>1</td><td>LeBron James</td><td>6 ft 8 in</td><td>240 lb</td></tr></table>`}});
+      if (request.hostname === "stats.nba.com") return Response.json({resultSets:[{
+        headers:["PLAYER_NAME","OVERALL_PICK","PERSON_ID","ROUND_NUMBER"],
+        rowSet:[["Different Player",1,22,1]]
+      }]});
+      return missing();
+    };
+    const body = await (await handleClassData(new Request("https://example.test/api/class-data?type=draft&gender=men&year=2003"))).json();
+    assert.equal(body.players[0].fn,"Different");
+    assert.equal(body.players[0].height,null);
+    assert.equal(body.players[0].weight,null);
+  } finally { global.fetch = original; }
 });
 
 test("freshman roster identity supplies hometowns and distinguishes team, season, and gender", async () => {
@@ -254,7 +341,7 @@ test("transformed preparation preserves the source hometown and exports its coun
     document:{getElementById:()=>({value:"freshman"})},
     fetch:async url=>{
       query=new URL(String(url),"https://example.test").searchParams;
-      return Response.json({home:"Toronto, Ontario, Canada",countryName:"Canada",x:4365,y:-7938,headshots:[]});
+      return Response.json({home:"Toronto, Ontario, Canada",countryName:"Canada",x:4365,y:-7938,headshots:[],height:74,weight:175});
     }
   });
 
@@ -264,6 +351,8 @@ test("transformed preparation preserves the source hometown and exports its coun
   assert.equal(query.get("home"),"Toronto, Ontario, Canada");
   assert.equal(query.get("espnId"),"20");
   assert.equal(players[0].homeCountry,"Canada");
+  assert.equal(players[0].height,74);
+  assert.equal(players[0].weight,175);
   const assigned=c.window.__HOOPLAND_RESOLVE_LOCATION({
     isReal:true,fn:"Test",ln:"Origin",home:players[0].hometown,homeCountry:players[0].homeCountry,
     homeX:players[0].homeX,homeY:players[0].homeY,ctry:"US"
@@ -271,11 +360,13 @@ test("transformed preparation preserves the source hometown and exports its coun
   assert.equal(assigned.home,"Toronto, Ontario, Canada");
   const locations=c.window.__HOOPLAND_LOCATION_RECORDS;
   assert.ok(locations.some(location=>location.country==="Canada" && location.x===assigned.loc.x && location.y===assigned.loc.y));
-  const mismatched=[{fn:"Different",ln:"Origin",hometown:"Boston, MA",recruitYear:2025}];
+  const mismatched=[{fn:"Different",ln:"Origin",hometown:"Boston, MA",recruitYear:2025,height:75,weight:180}];
   await c.window.__HOOPLAND_PREPARE_REAL_PLAYERS(mismatched,"1");
   assert.equal(mismatched[0].hometown,"Boston, MA");
   assert.equal(mismatched[0].homeX,undefined);
   assert.equal(mismatched[0].homeCountry,undefined);
+  assert.equal(mismatched[0].height,75);
+  assert.equal(mismatched[0].weight,180);
 });
 
 test("all named catalog countries are selectable and resolve fictional players within that country", async () => {
