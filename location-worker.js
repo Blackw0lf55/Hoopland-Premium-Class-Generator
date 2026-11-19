@@ -403,6 +403,74 @@ async function handleHometown(request) {
 }
 
 const HEADSHOT_HOSTS = ["a.espncdn.com", "cdn.nba.com", "commons.wikimedia.org", "upload.wikimedia.org"];
+
+export class SharedAppearance {
+  constructor(state) { this.state = state; }
+  async fetch(request) {
+    if (request.method === "GET") {
+      return Response.json({ ok: true, appearances: (await this.state.storage.get("appearances")) || [] },
+        { headers: { "cache-control": "no-store" } });
+    }
+    const appearance = await request.json();
+    await this.state.storage.transaction(async txn => {
+      const previous = await txn.get("appearances") || [];
+      await txn.put("appearances", [...previous, appearance].slice(-5));
+    });
+    return Response.json({ ok: true }, { headers: { "cache-control": "no-store" } });
+  }
+}
+
+async function handleSharedAppearance(request, env) {
+  const headers = { "cache-control": "no-store" };
+  const fail = (error, status) => Response.json({ ok: false, error }, { status, headers });
+  if (!env.APPEARANCES) return fail("Shared appearance storage is unavailable.", 503);
+  if (!["GET", "PUT"].includes(request.method)) return fail("Method not allowed.", 405);
+  const url = new URL(request.url);
+  const name = (url.searchParams.get("name") || "").trim();
+  const gender = url.searchParams.get("gender");
+  const type = url.searchParams.get("type");
+  const year = Number(url.searchParams.get("year"));
+  const normalized = normalizePersonName(name);
+  if (name.length > 100 || !normalized || normalized.length > 100 || !["men", "women"].includes(gender) ||
+      !["draft", "freshman"].includes(type) || !Number.isInteger(year) || year < 1900 || year > 2100) {
+    return fail("Invalid player identity.", 400);
+  }
+  let appearance;
+  if (request.method === "PUT") {
+    if (request.headers.get("origin") !== url.origin) return fail("Invalid request origin.", 403);
+    if ((request.headers.get("content-type") || "").split(";")[0] !== "application/json") return fail("JSON required.", 415);
+    if (Number(request.headers.get("content-length")) > 1024) return fail("Request too large.", 413);
+    if (!request.body) return fail("JSON required.", 400);
+    const reader = request.body.getReader();
+    const decoder = new TextDecoder();
+    let body = "", size = 0;
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > 1024) {
+        await reader.cancel();
+        return fail("Request too large.", 413);
+      }
+      body += decoder.decode(value, { stream:true });
+    }
+    body += decoder.decode();
+    try { appearance = JSON.parse(body); } catch { return fail("Invalid JSON.", 400); }
+    if (!appearance || typeof appearance !== "object" || Array.isArray(appearance) ||
+        !Object.keys(appearance).length || Object.keys(appearance).some(key => !["skinC","hairC","hair","fHair"].includes(key)) ||
+        Object.values(appearance).some(value => typeof value !== "string") ||
+        ("skinC" in appearance && !/^[0-9a-f]{6}$/i.test(appearance.skinC)) ||
+        ("hairC" in appearance && !/^[0-9a-f]{6}$/i.test(appearance.hairC)) ||
+        ("hair" in appearance && (!/^\d{4}$/.test(appearance.hair) || Number(appearance.hair) > 170)) ||
+        ("fHair" in appearance && (!/^\d{4}$/.test(appearance.fHair) || Number(appearance.fHair) > 31 || gender === "women"))) return fail("Invalid appearance.", 400);
+  }
+  const id = env.APPEARANCES.idFromName(JSON.stringify([gender, type, year, normalized]));
+  return env.APPEARANCES.get(id).fetch("https://appearance.internal/", {
+    method: request.method,
+    ...(appearance ? { body: JSON.stringify(appearance), headers: { "content-type": "application/json" } } : {})
+  });
+}
+
 const VISION_MODEL = "@cf/moondream/moondream3.1-9B-A2B";
 const VISION_PROMPT = "The left side is a photo of a basketball player. The right side shows labeled skin and hair color swatches. Compare the player's visible face and hair directly to the swatches, allowing for lighting and shadows. Do not infer color from race or the background. Use unknown for an obscured or uncertain feature. Describe the visible hairstyle using simple words for length, texture, braids, locs, curls, buns or ponytail. Output only these semicolon-separated fields: skin: <skin swatch code such as L1 or D4 or unknown>; hair color: <hair swatch code such as H1, T2, R1, K2 or unknown>; hairstyle: <visible description or unknown>; facial hair: <clean shaven, chin patch, mustache, goatee, short beard, full beard, long beard or unknown>; accessory: <none, headband, wide headband, goggles, glasses, bandana, visor, cap or unknown>.";
 
@@ -458,7 +526,8 @@ async function handleDescribe(request, env, ctx) {
     const digest = [...new Uint8Array(await crypto.subtle.digest("SHA-256", bytes))]
       .map(value => value.toString(16).padStart(2, "0")).join("");
     const cache = caches.default;
-    const cacheKey = new Request("https://describe.local/?version=5&src=" + encodeURIComponent(target.toString()) + "&image=" + digest);
+    const gender = new URL(request.url).searchParams.get("gender") === "women" ? "women" : "men";
+    const cacheKey = new Request("https://describe.local/?version=6&gender=" + gender + "&src=" + encodeURIComponent(target.toString()) + "&image=" + digest);
     const cached = await cache.match(cacheKey);
     if (cached) return cached;
     let binary = "";
@@ -469,27 +538,33 @@ async function handleDescribe(request, env, ctx) {
       const raw = result?.answer ?? result?.response ?? result?.text ?? (typeof result === "string" ? result : "");
       return String(raw || "");
     };
-    const usable = value => value && !value.split("; ").every(field => /:\s*(unknown|unclear|not visible)$/.test(field));
     const rawFull = await ask(VISION_PROMPT);
-    let text = normalizeVisionResponse(rawFull);
-    if (!usable(text)) text = salvageVisionResponse(rawFull);
-    let rawParts = "";
-    if (!usable(text)) {
-      const [skin, hairColor, hairstyle] = await Promise.all([
-        ask("The left side is a photo of a person. The right side has labeled skin swatches (L, M, B, D rows). Which single skin swatch code best matches the person's face? Answer with only the code, like M2."),
-        ask("The left side is a photo of a person. The right side has labeled hair color swatches (H, T, R, K rows). Which single hair swatch code best matches the person's hair? Answer with only the code, like K1."),
-        ask("Describe this person's hairstyle in a few simple words (length, texture, braids, locs, curls, bun, ponytail).")
-      ]);
-      rawParts = [skin, hairColor, hairstyle].join(" | ");
-      text = salvageVisionResponse([
-        "skin: " + (skin.match(/\b[lmbd][1-9]\b/i)?.[0] || "unknown"),
-        "hair color: " + (hairColor.match(/\b[htrk][1-9]\b/i)?.[0] || "unknown"),
-        "hairstyle: " + (/\b(hair|braid|loc|curl|afro|bun|pony|bald|short|long|straight|wavy|shaved|twist|fade|bangs|updo)/i.test(hairstyle) ? hairstyle.replace(/[^a-zA-Z ,-]/g, " ").trim().slice(0, 120) : "unknown")
-      ].join("; "));
+    const initial = normalizeVisionResponse(rawFull) || salvageVisionResponse(rawFull);
+    const fields = new Map(initial.split("; ").map(part => {
+      const i = part.indexOf(": ");
+      return i < 0 ? ["", ""] : [part.slice(0, i), part.slice(i + 2)];
+    }));
+    const unknown = value => !value || /\b(?:unknown|unclear|not visible|cannot (?:see|tell|determine)|can't (?:see|tell))\b/i.test(value);
+    const questions = [
+      ["skin", "Compare the face in the photo on the left with the labeled skin swatches on the right. Return only the closest code (L1, M2, B3, D4 etc), or unknown if obscured."],
+      ["hair color", "Compare the hair in the photo on the left with the labeled hair swatches on the right. Return only the closest code (H1, T2, R1, K2 etc), or unknown if obscured."],
+      ["hairstyle", "Describe only the visible hairstyle in a few words: length, texture, braids, locs, curls, bun, ponytail, fade or bald. Say unknown if obscured."]
+    ];
+    if (gender === "men") questions.push(["facial hair", "Describe visible facial hair as exactly one of: clean shaven, chin patch, mustache, goatee, short beard, full beard, long beard, or unknown if obscured."]);
+    for (const [field, question] of questions) {
+      if (!unknown(fields.get(field))) continue;
+      const answer = await ask(question);
+      if (unknown(answer)) continue;
+      let value = "";
+      if (field === "skin") value = answer.match(/\b[lmbd][1-6]\b/i)?.[0] || "";
+      else if (field === "hair color") value = answer.match(/\b[htrk][1-6]\b/i)?.[0] || "";
+      else if (field === "hairstyle" && /\b(?:braid|cornrow|loc|dread|curl|coil|afro|bun|puff|ponytail|bald|buzz|fade|straight|wavy|shaved|twist|bob|mohawk|hair)\w*/i.test(answer)) value = answer.replace(/[^a-zA-Z ,'-]/g, " ").trim().slice(0, 120);
+      else if (field === "facial hair") value = answer.match(/\b(?:clean[- ]shaven|chin patch|soul patch|mustache|moustache|goatee|short beard|stubble|full beard|long beard|no facial hair|no beard)\b/i)?.[0]?.toLowerCase().replace("moustache", "mustache").replace("soul patch", "chin patch").replace("stubble", "short beard").replace(/clean-shaven|no facial hair|no beard/, "clean shaven") || "";
+      if (value) fields.set(field, value);
     }
-    if (!usable(text)) {
-      return json({ ok: false, error: "unusable vision response: " + String(rawFull || rawParts).slice(0, 160) });
-    }
+    if (gender === "women") fields.delete("facial hair");
+    const text = [...fields].filter(([key, value]) => key && !unknown(value)).map(([key, value]) => key + ": " + value).join("; ");
+    if (!text) return json({ ok: false, error: "unusable vision response: " + String(rawFull).slice(0, 160) });
     const response = new Response(JSON.stringify({ ok: true, text }), { headers: { "content-type": "application/json", "cache-control": "public, max-age=2592000" } });
     ctx.waitUntil(cache.put(cacheKey, response.clone()));
     return response;
@@ -662,9 +737,33 @@ window.__HOOPLAND_PREPARE_REAL_PLAYERS=async function(players,gender){
     if(type==="draft"&&Number.isInteger(year))await prepareProfessionalPotential(players,gender,year);
   }catch(e){console.warn("Professional potential lookup failed",e);}
   const queue=players.slice();
+  const identityCounts=new Map();
+  for(const p of players){
+    const key=window.__HOOPLAND_NORMALIZE_LOCATION_NAME([p.fn,p.ln].filter(Boolean).join(" "));
+    identityCounts.set(key,(identityCounts.get(key)||0)+1);
+  }
   const worker=async()=>{
     while(queue.length){
       const p=queue.shift();
+      const name=[p.fn,p.ln].filter(Boolean).join(" ");
+      const identity={name,gender:gender==="1"?"women":"men",type,year:String(year)};
+      const identityKey=window.__HOOPLAND_NORMALIZE_LOCATION_NAME(name);
+      if(identityKey&&identityCounts.get(identityKey)===1&&Number.isInteger(year)&&year>=1900&&year<=2100){
+        p.sharedAppearanceIdentity=identity;
+        try{
+          const response=await fetch("/api/shared-appearance?"+new URLSearchParams(identity),{cache:"no-store"});
+          const result=await response.json();
+          if(!response.ok||!result.ok)throw new Error(result.error||("HTTP "+response.status));
+          if(Array.isArray(result.appearances)&&result.appearances.length){
+            const valid=result.appearances.filter(appearance=>validSharedAppearance(appearance,gender));
+            if(valid.length)p.sharedAppearance=combineSharedAppearances(valid,gender);
+            if(valid.length!==result.appearances.length)p.sharedAppearanceError="Some community appearance values were unsupported and were not applied.";
+          }
+        }catch(e){
+          console.warn("Shared appearance lookup failed for",name,e);
+          p.sharedAppearanceError="Shared appearance lookup failed: "+String(e&&e.message||e);
+        }
+      }
       let d=null;
       try{
         const q=new URLSearchParams({name:[p.fn,p.ln].filter(Boolean).join(" "),gender:gender==="1"?"women":"men",ctry:String(p.ctry||p.country||""),home:window.__HOOPLAND_REAL_HOMETOWN(p),birthplace:String(p.birthplace||""),espnId:String(p.espnId||""),team:String(p.collegeTeamId||""),college:String(p.committedCollege||(type==="draft"&&(p.school||(p.bart&&p.bart.team)))||""),recruitYear:String(p.recruitYear||""),recruit:p.recruitYear?"1":"",draftYear:type==="draft"?String(year):"",v:"5"});
@@ -696,6 +795,10 @@ window.__HOOPLAND_PREPARE_REAL_PLAYERS=async function(players,gender){
         }catch(e){console.warn('Invalid headshot URL for',[p.fn,p.ln].join(' '),e);return false;}
       }).slice(0,8);
       p.referencePhotos=shots;
+      if(p.sharedAppearance && ["skinC","hairC","hair",...(gender==="1"?[]:["fHair"])].every(field=>field in p.sharedAppearance)){
+        p.appearanceWarnings=["Using community-approved appearance edits. Anyone can submit edits; please review."];
+        continue;
+      }
       if(shots.length){
         const descriptions=[];
         const failures=[];
@@ -705,7 +808,7 @@ window.__HOOPLAND_PREPARE_REAL_PLAYERS=async function(players,gender){
           attempted++;
           try{
             const sheet=await window.__HOOPLAND_VISION_SHEET(shot);
-            const r=await fetch("/api/describe?src="+encodeURIComponent(shot),{method:"POST",headers:{"content-type":"image/jpeg"},body:sheet});
+            const r=await fetch("/api/describe?src="+encodeURIComponent(shot)+"&gender="+(gender==="1"?"women":"men"),{method:"POST",headers:{"content-type":"image/jpeg"},body:sheet});
             const j=r.ok?await r.json():null;
             if(j&&j.ok&&j.text)descriptions.push(j.text);
             else {
@@ -742,6 +845,9 @@ window.__HOOPLAND_PREPARE_REAL_PLAYERS=async function(players,gender){
         if(parsed.hairId===undefined&&!parsed.hairStyle&&savedLook.hairId===undefined&&!savedLook.hairStyle){
           p.appearanceWarnings.push('Hair style was not identified and is a placeholder.');
         }
+        if(gender!=="1"&&parsed.facialHair===undefined&&savedLook.facialHair===undefined){
+          p.appearanceWarnings.push('Facial hair was not identified and is a placeholder.');
+        }
         if(combined.conflicts.includes('skin')){
           p.appearanceWarnings.push('No photo skin tone was selected; check the saved tone or placeholder.');
         }
@@ -753,6 +859,16 @@ window.__HOOPLAND_PREPARE_REAL_PLAYERS=async function(players,gender){
           ? 'No photo was found in the configured sources; features not covered by the saved profile are placeholders.'
           : 'No photo was found in the configured sources; skin tone and other unsaved features are placeholders.'];
       }
+      if(p.sharedAppearance){
+        if(!shots.length)p.appearanceWarnings=["No photo was found; features without community edits or a saved profile may be placeholders."];
+        p.appearanceWarnings=p.appearanceWarnings.filter(warning =>
+          !(p.sharedAppearance.skinC && /^(Skin tone could not|No photo skin tone)/.test(warning)) &&
+          !(p.sharedAppearance.hairC && /^Hair color was not/.test(warning)) &&
+          !(p.sharedAppearance.hair && /^Hair style was not/.test(warning)) &&
+          !(p.sharedAppearance.fHair && /^Facial hair was not/.test(warning)));
+        p.appearanceWarnings.push("Community-approved edits override matching photo estimates; please review.");
+      }
+      if(p.sharedAppearanceError)p.appearanceWarnings.push(p.sharedAppearanceError);
     }
   };
   await Promise.all(Array.from({length:Math.min(6,queue.length)},worker));
@@ -878,6 +994,7 @@ export default {
     if (pathname === "/api/stats") return handleStats(request, env);
     if (pathname === "/api/pro-season") return handleProSeason(request);
     if (pathname === "/api/hometown") return handleHometown(request);
+    if (pathname === "/api/shared-appearance") return handleSharedAppearance(request, env);
     if (pathname === "/api/headshot") return handleHeadshot(request);
     if (pathname === "/api/describe") return handleDescribe(request, env, context);
     if (pathname === "/" || pathname === "/index.html") {

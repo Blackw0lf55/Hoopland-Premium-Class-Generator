@@ -295,6 +295,40 @@ test("draft photo lookup receives the season and college from the stats profile"
   ]);
 });
 
+test("community looks bypass photo inference and ambiguous same-name players do not share edits", async () => {
+  const {default:worker} = await import("../location-worker.js");
+  const csv = fs.readFileSync(path.join(__dirname, "..", "data/location-catalog.csv"),"utf8");
+  const env = {ASSETS:{fetch:async r=>new URL(r.url).pathname.endsWith(".csv")?new Response(csv):new Response(html)}};
+  const transformed = await (await worker.fetch(new Request("https://example.test/"),env)).text();
+  const script=transformed.match(/<script>\nwindow\.__HOOPLAND_LOCATION_RECORDS[\s\S]*?<\/script>/)[0].slice(8,-9);
+  const look={skinC:"835444",hairC:"202020",hair:"0001",fHair:"0016"};
+  const requests=[];
+  const c=vm.createContext({
+    window:{},URL,URLSearchParams,console:{warn(){}},
+    REAL_PLAYER_APPEARANCE_PROFILES:{},REAL_PLAYER_DESCRIPTIONS:{},
+    normalizeAppearancePlayerName:name=>name.toLowerCase().replace(/[^a-z0-9]/g,""),
+    mergeLookDescriptions:merge,parseLookDescription:parse,validSharedAppearance:()=>true,combineSharedAppearances:items=>items[0],
+    prepareProfessionalPotential:async()=>{},
+    document:{getElementById:id=>({value:id==="classType"?"draft":"2026"})},
+    fetch:async url=>{
+      requests.push(String(url));
+      if(String(url).startsWith("/api/stats"))return Response.json({ok:true,players:{}});
+      if(String(url).startsWith("/api/shared-appearance"))return Response.json({ok:true,appearances:[look]});
+      if(String(url).startsWith("/api/hometown"))return Response.json({headshots:[]});
+      throw new Error("Unexpected request "+url);
+    }
+  });
+  vm.runInContext(script,c);
+  const players=[{fn:"AJ",ln:"Dynasty"},{fn:"Same",ln:"Name"},{fn:"Same",ln:"Name"}];
+  await c.window.__HOOPLAND_PREPARE_REAL_PLAYERS(players,"0");
+  assert.deepEqual(players[0].sharedAppearance,look);
+  assert.equal(players[0].sharedAppearanceIdentity.year,"2026");
+  assert.match(players[0].appearanceWarnings[0],/community-approved/);
+  assert.equal(players[1].sharedAppearanceIdentity,undefined);
+  assert.equal(requests.filter(url=>url.startsWith("/api/shared-appearance")).length,1);
+  assert.ok(!requests.some(url=>url.startsWith("/api/describe")));
+});
+
 test("photo service failures are reported instead of looking like successful matches", async () => {
   const {default:worker} = await import("../location-worker.js");
   const csv = fs.readFileSync(path.join(__dirname, "..", "data/location-catalog.csv"),"utf8");

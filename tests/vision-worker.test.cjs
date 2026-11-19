@@ -11,7 +11,7 @@ test("vision endpoint sends the visual reference sheet to Moondream and keys the
   try {
     global.crypto = require("node:crypto").webcrypto;
     global.caches = {default:{match:async request => {
-      assert.match(request.url, /version=5/);
+      assert.match(request.url, /version=6/);
       assert.match(request.url, /image=[0-9a-f]{64}/);
       return null;
     }, put:async (...args) => {writes.push(args);}}};
@@ -20,7 +20,7 @@ test("vision endpoint sends the visual reference sheet to Moondream and keys the
       return {answer:'{"skin tone":"D4 (dark brown)", "hair colour":"K2 (black)", "hair style":"long braids"}'};
     }}};
     const pending = [];
-    const request = new Request("https://example.test/api/describe?src="+encodeURIComponent("https://a.espncdn.com/test.png"),{
+    const request = new Request("https://example.test/api/describe?gender=women&src="+encodeURIComponent("https://a.espncdn.com/test.png"),{
       method:"POST",headers:{"content-type":"image/jpeg"},body:Uint8Array.from([255,216,255,1,2,3])
     });
     const response = await worker.fetch(request,env,{waitUntil:promise=>pending.push(promise)});
@@ -39,6 +39,36 @@ test("vision endpoint sends the visual reference sheet to Moondream and keys the
     global.caches = previousCaches;
     global.crypto = previousCrypto;
   }
+});
+
+test("vision retries missing features independently and asks about facial hair only for men", async () => {
+  const {default:worker}=await import("../location-worker.js");
+  const previousCaches=global.caches,previousCrypto=global.crypto;
+  try {
+    global.crypto=require("node:crypto").webcrypto;
+    global.caches={default:{match:async()=>null,put:async()=>{}}};
+    for (const gender of ["men","women"]) {
+      const questions=[];
+      const env={AI:{run:async (_,input)=>{
+        questions.push(input.question);
+        if (input.question.includes("Output only")) return {answer:"skin: unknown; hair color: K2; hairstyle: unknown; facial hair: unknown"};
+        if (input.question.includes("skin swatches")) return {answer:"D4"};
+        if (input.question.includes("hairstyle")) return {answer:"short curly hair with a fade"};
+        if (input.question.includes("facial hair")) return {answer:"short beard"};
+        throw new Error("Unexpected question");
+      }}};
+      const request=new Request("https://example.test/api/describe?gender="+gender+"&src="+encodeURIComponent("https://a.espncdn.com/a.png"),{
+        method:"POST",headers:{"content-type":"image/jpeg"},body:Uint8Array.from([255,216,255,1])
+      });
+      const body=await (await worker.fetch(request,env,{waitUntil(){}})).json();
+      assert.equal(body.ok,true);
+      assert.match(body.text,/skin: D4/);
+      assert.match(body.text,/hair color: k2/);
+      assert.match(body.text,/hairstyle: short curly hair with a fade/);
+      assert.equal(questions.some(q=>q.startsWith("Describe visible facial hair")),gender==="men");
+      assert.equal(body.text.includes("facial hair: short beard"),gender==="men");
+    }
+  } finally {global.caches=previousCaches;global.crypto=previousCrypto;}
 });
 
 test("vision requests reject unsafe sources, invalid images, and unusable results", async () => {

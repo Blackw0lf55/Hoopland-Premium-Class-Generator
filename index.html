@@ -5523,10 +5523,10 @@ function parseLookDescription(text) {
   else if (/long beard/.test(t)) look.facialHair = 22;
   else if (/full beard|big beard|thick beard/.test(t)) look.facialHair = 21;
   else if (/short beard|stubble|trimmed beard/.test(t)) look.facialHair = 16;
-  else if (/goatee/.test(t)) look.facialHair = 9;
+  else if (/goatee/.test(t)) look.facialHair = 10;
   else if (/chin patch|soul patch/.test(t)) look.facialHair = 1;
   else if (/beard/.test(t)) look.facialHair = 19;
-  else if (/m(?:o)?ustache/.test(t)) look.facialHair = 6;
+  else if (/m(?:o)?ustache/.test(t)) look.facialHair = 15;
 
   if (/no (?:head )?accessor|nothing on (?:his|her) head/.test(t)) look.accessory = 0;
   else if (/goggle/.test(t)) look.accessory = 6;
@@ -5569,12 +5569,17 @@ function mergeLookDescriptions(texts) {
         const code = v.match(/^([htrk])\s*([1-6])$/);
         if (code) v = ({h:"blonde",t:"brunette",r:"red",k:"black"})[code[1]] + " " + code[2];
         else {
-          const named = v.match(/^(black|brown|brunette|blond|blonde|red)(?: hair)?$/);
+          const named = v.match(/^(?:(light|dark) )?(black|brown|brunette|blond|blonde|red)(?: hair)?$/);
           if (named) {
-            const group = named[1] === "brown" ? "brunette" : named[1] === "blond" ? "blonde" : named[1];
-            v = group + " " + Math.ceil(appearanceHairPalette(group).length / 2);
+            const group = named[2] === "brown" ? "brunette" : named[2] === "blond" ? "blonde" : named[2];
+            const count = appearanceHairPalette(group).length;
+            v = group + " " + (named[1] === "light" ? 1 : named[1] === "dark" ? count : Math.ceil(count / 2));
           }
         }
+      }
+      if (field === "facial hair") {
+        v = v.replace(/\bmoustache\b/g, "mustache").replace(/\bstubble\b/g, "short beard")
+          .replace(/\bsoul patch\b/g, "chin patch").replace(/^(?:none|no facial hair|no beard|clean-shaven)$/, "clean shaven");
       }
       if (field === "hairstyle" && !allowedStyles.has(v) && v !== "unknown") {
         const parsed = parseLookDescription("hairstyle: " + v);
@@ -5730,8 +5735,56 @@ function applyLookDescription(baseAppearance, text, gender) {
   return result;
 }
 
+function validSharedAppearance(saved, gender) {
+  return Boolean(saved && typeof saved === "object" && !Array.isArray(saved) && Object.keys(saved).length &&
+    Object.keys(saved).every(key => ["skinC","hairC","hair","fHair"].includes(key)) &&
+    (!("skinC" in saved) || APPEARANCE_PALETTES.some(group => group.skins.includes(saved.skinC))) &&
+    (!("hairC" in saved) || ["blonde","brunette","red","black"].some(group => appearanceHairPalette(group).includes(saved.hairC))) &&
+    (!("hair" in saved) || (typeof saved.hair === "string" && /^\d{4}$/.test(saved.hair) && getHairReference(Number(saved.hair)))) &&
+    (!("fHair" in saved) || (gender !== "1" && typeof saved.fHair === "string" && /^\d{4}$/.test(saved.fHair) && getFacialHairReference(Number(saved.fHair)))));
+}
+
+function combineSharedAppearances(appearances, gender) {
+  const valid = appearances.filter(item => validSharedAppearance(item, gender));
+  const result = {};
+  const skins = APPEARANCE_PALETTES.flatMap(group => group.skins);
+  for (const field of ["skinC","hairC","hair","fHair"]) {
+    const values = valid.map(item => item[field]).filter(value => value !== undefined);
+    if (!values.length) continue;
+    if (field === "skinC") {
+      const sorted = values.slice().sort((a,b) => skins.indexOf(a) - skins.indexOf(b));
+      result[field] = sorted[Math.floor((sorted.length - 1) / 2)];
+    } else {
+      const counts = new Map();
+      values.forEach(value => counts.set(value, (counts.get(value) || 0) + 1));
+      result[field] = values.slice().reverse().sort((a,b) => counts.get(b) - counts.get(a))[0];
+    }
+  }
+  return result;
+}
+
+function applySharedAppearance(appearance, saved, gender) {
+  if (!validSharedAppearance(saved, gender)) return appearance;
+  const oldSkin = appearance.skinC;
+  const result = { ...appearance, ...saved };
+  if (saved.skinC) {
+    const group = APPEARANCE_PALETTES.find(item => item.skins.includes(saved.skinC));
+    result.eyeC = group.eyes[group.eyes.length - 1];
+    result.accessories = (appearance.accessories || []).map(accessory => {
+      const next = { ...accessory };
+      Object.keys(next).forEach(key => {
+        if (/^[LR]_(Shoulder|Elbow|Wrist|Knee|Shin)$/.test(key) && next[key] === oldSkin) next[key] = saved.skinC;
+      });
+      return next;
+    });
+  }
+  if (saved.hairC) result.browC = result.fHairC = saved.hairC;
+  return result;
+}
+
 function appearanceSourceFor(sourcePlayer) {
   if (!sourcePlayer) return "fictional";
+  if (sourcePlayer.sharedAppearance) return "community";
   const key = normalizeAppearancePlayerName(
     [sourcePlayer.fn, sourcePlayer.ln].filter(Boolean).join(" ")
   );
@@ -8466,6 +8519,9 @@ else {
     referencePhotos:
       (sourcePlayer && sourcePlayer.referencePhotos) || [],
 
+    sharedAppearanceIdentity:
+      sourcePlayer && sourcePlayer.sharedAppearanceIdentity,
+
     appearance:
   sourcePlayer
     ? generateRealPlayerAppearance(
@@ -8477,6 +8533,10 @@ else {
       )
 
   };
+
+  if (sourcePlayer && sourcePlayer.sharedAppearance) {
+    player.appearance = applySharedAppearance(player.appearance, sourcePlayer.sharedAppearance, gender);
+  }
 
   if (gender === "1" && !reportedDunk) player.tendencies.dunk = -5;
 
@@ -8651,7 +8711,7 @@ async function generateClass() {
         );
       }
 
-      const unmatched = realPlayers.filter(player => !player.lookText).length;
+      const unmatched = realPlayers.filter(player => !player.lookText && !player.sharedAppearance).length;
       if (unmatched) {
         const status = document.getElementById("status");
         status.textContent += ` Photo matching unavailable or inconclusive for ${unmatched} real players; open their previews for details.`;
@@ -9952,7 +10012,6 @@ function downloadHoopLand() {
 
     return;
   }
-
 
   const classType =
     document.getElementById(
@@ -11333,6 +11392,50 @@ function downloadHoopLand() {
 }
 
 
+async function requestHoopLandDownload() {
+  if (!generated.length) {
+    downloadHoopLand();
+    return;
+  }
+  const edited = generated.filter(player => player.sharedAppearanceIdentity &&
+    player.sharedAppearanceEdits && Object.keys(player.sharedAppearanceEdits).length);
+  const message = edited.length
+    ? `Are you happy with the appearances? OK downloads the class and shares edited appearance details for ${edited.length} real player(s) with everyone. Cancel returns to editing.`
+    : "Are you happy with the appearances? OK downloads the class. Cancel returns to editing.";
+  if (!window.confirm(message)) return;
+  const failures = [];
+  const queue = edited.slice();
+  const save = async () => {
+    while (queue.length) {
+      const player = queue.shift();
+      const appearance = { ...player.sharedAppearanceEdits };
+      if (!validSharedAppearance(appearance, player.gender)) {
+        failures.push(player.fn + " " + player.ln + ": unsupported appearance values");
+        continue;
+      }
+      try {
+        const response = await fetch("/api/shared-appearance?" + new URLSearchParams(player.sharedAppearanceIdentity), {
+          method:"PUT", headers:{"content-type":"application/json"}, body:JSON.stringify(appearance)
+        });
+        const result = await response.json();
+        if (!response.ok || !result.ok) throw new Error(result.error || ("HTTP " + response.status));
+        Object.keys(appearance).forEach(key => {
+          if (player.sharedAppearanceEdits[key] === appearance[key]) delete player.sharedAppearanceEdits[key];
+        });
+      } catch (error) {
+        failures.push(player.fn + " " + player.ln + ": " + String(error && error.message || error));
+      }
+    }
+  };
+  await Promise.all(Array.from({length:Math.min(6,queue.length)}, save));
+  if (failures.length) {
+    setStatus("Could not save shared appearance edits: " + failures.join("; ") + ". Please retry.", "error");
+    if (window.confirm("Some appearance edits could not be shared. Download the class without sharing those edits?")) downloadHoopLand();
+    return;
+  }
+  downloadHoopLand();
+}
+
 function syncClassDefaults(){
   populateClassYears();
   const freshman=document.getElementById("classType").value==="freshman";
@@ -11372,7 +11475,7 @@ document
   )
   .addEventListener(
     "click",
-    downloadHoopLand
+    requestHoopLandDownload
   );
 
 function populateClassYears() {
@@ -11668,8 +11771,11 @@ classSizePlus.addEventListener(
       drawList();
     }
   });
-  $("hlDownload").addEventListener("click",()=>{
-    $("downloadHoopLand").click();
+  $("hlDownload").addEventListener("click",async()=>{
+    const button=$("hlDownload");
+    button.disabled=true;
+    try { await requestHoopLandDownload(); }
+    finally { button.disabled=false; }
     $("hlResultStatus").textContent=$("status").textContent;
     $("hlResultStatus").className=$("status").className;
   });
@@ -11697,6 +11803,7 @@ classSizePlus.addEventListener(
       <div class="hl-pv-field">Head accessory<div class="hl-pv-choice" data-field="accessory"><button type="button" class="secondary" data-direction="-1" aria-label="Previous head accessory">◀</button><output id="hlPvAcc" aria-live="polite"></output><button type="button" class="secondary" data-direction="1" aria-label="Next head accessory">▶</button></div></div>
     </div>
     <div class="hl-pv-desc"><input id="hlPvDesc" type="text" placeholder="Or describe: dark 4 skin, afro, goggles"><button type="button" class="primary" id="hlPvApply">APPLY</button></div>
+    <div class="hl-hint">Edited skin and hair details can be shared when you approve the class before download.</div>
     </div>
     <div class="hl-pv-nav"><button type="button" class="secondary" id="hlPvPrev">◀ PREV</button><button type="button" class="secondary" id="hlPvNext">NEXT ▶</button></div>
   </div>
@@ -12008,11 +12115,23 @@ classSizePlus.addEventListener(
 
   function edit(change,colorsChanged){
     const p=generated[idx];
-    let a={...p.appearance};
+    const before=p.appearance;
+    let a={...before};
     change(a,p);
     p.appearance=colorsChanged?harmonizeFaceColors(a,true):a;
+    markAppearanceEdits(p,before,p.appearance);
     $("hlPvArt").innerHTML=renderArt(p);
     buildChoices(p);
+  }
+
+  function markAppearanceEdits(player,before,after){
+    if(!player.sharedAppearanceIdentity)return;
+    for(const field of ["skinC","hairC","hair",...(player.gender==="1"?[]:["fHair"])]){
+      if(before[field]!==after[field]){
+        if(!player.sharedAppearanceEdits)player.sharedAppearanceEdits={};
+        player.sharedAppearanceEdits[field]=after[field];
+      }
+    }
   }
 
   document.querySelectorAll(".hl-pv-choice button").forEach(button=>button.addEventListener("click",()=>{
@@ -12036,7 +12155,9 @@ classSizePlus.addEventListener(
     if(!text)return;
     const p=generated[idx];
     p.lookText=text;p.appearanceSource="manual";
+    const before=p.appearance;
     p.appearance=harmonizeFaceColors(applyLookDescription(p.appearance,text,p.gender),true);
+    markAppearanceEdits(p,before,p.appearance);
     show(idx);
   });
   $("hlPvPrev").addEventListener("click",()=>show(idx-1));

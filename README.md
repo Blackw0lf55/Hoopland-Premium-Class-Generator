@@ -21,6 +21,19 @@ are included in the export.
 Awa Fam's source name variations are normalized before matching. Getty Images
 is not used as a photo source.
 
+Before downloading, approve the appearances to share manually changed skin,
+hair color, hairstyle and facial-hair (men only) selections. Only changed
+fields of real players are shared, not unedited placeholders or whole class
+files. Future generations of the same player, gender, class type and year
+combine up to five recent approvals per player: the middle skin shade and most
+common other selections, with the most recent selection breaking ties. Shared
+fields override photo estimates; other fields still use photo matching.
+Anyone can contribute; these edits are not moderated or guaranteed accurate.
+Same-name duplicates in a class cannot be shared. Edits to fictional players
+and other appearance details remain local to the generated class. Shared
+storage uses a SQLite-backed Durable Object configured in `wrangler.jsonc`;
+if storage is unavailable, an error is shown instead of silently saving.
+
 Draft classes also check ESPN's draft endpoint for headshots and attach them
 only when the returned year, player name, and (where provided) draft pick
 match. This includes the separately sourced 2026 women's class. If ESPN returns

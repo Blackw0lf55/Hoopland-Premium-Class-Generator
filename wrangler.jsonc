@@ -15,6 +15,11 @@
     "binding": "AI"
   },
 
+  "durable_objects": {
+    "bindings": [{ "name": "APPEARANCES", "class_name": "SharedAppearance" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["SharedAppearance"] }],
+
   "observability": {
     "enabled": true,
     "head_sampling_rate": 1
