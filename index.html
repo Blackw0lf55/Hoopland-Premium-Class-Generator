@@ -2138,6 +2138,11 @@ html body .hl-arrow{padding:2px 12px!important;font-size:.8rem!important;margin:
 .hl-name label{display:block;margin-bottom:8px;font-weight:900;text-transform:uppercase;}
 .hl-start{display:flex;flex-direction:column;align-items:stretch;gap:18px;margin:26px auto;max-width:480px;}
 #wizardProgress[hidden]{display:none;}
+.hl-physical-limits{display:grid;gap:8px;margin:0 6px 16px;}
+.hl-physical-row{display:grid;grid-template-columns:2.4em repeat(4,minmax(0,1fr));gap:6px;align-items:end;}
+.hl-physical-row label{display:block;font-size:.7rem;line-height:1.2;margin-bottom:4px;}
+html body .hl-physical-row input{width:100%;min-width:0;padding:6px 2px;text-align:center;}
+.hl-physical-position{font-weight:900;padding-bottom:10px;}
 
 html body #secAttr,html body #secPhys,html body #secAppear,html body #secGen,html body #secPreview{display:none!important;}
 .hl-sub{margin:14px 6px 8px;}
@@ -2499,53 +2504,7 @@ html{background-color:#06143a!important;}
     Height and weight are generated with position in mind.
   </p>
 
-  <div class="grid">
-
-    <div>
-      <label>Minimum Height (inches)</label>
-      <input
-        id="minHt"
-        type="number"
-        min="55"
-        max="90"
-        value="63"
-      >
-    </div>
-
-    <div>
-      <label>Maximum Height (inches)</label>
-      <input
-        id="maxHt"
-        type="number"
-        min="55"
-        max="90"
-        value="80"
-      >
-    </div>
-
-    <div>
-      <label>Minimum Weight (lbs)</label>
-      <input
-        id="minWt"
-        type="number"
-        min="90"
-        max="300"
-        value="120"
-      >
-    </div>
-
-    <div>
-      <label>Maximum Weight (lbs)</label>
-      <input
-        id="maxWt"
-        type="number"
-        min="90"
-        max="300"
-        value="230"
-      >
-    </div>
-
-  </div>
+  <div id="positionPhysicalLimits" class="hl-physical-limits"></div>
 
 
 </section>
@@ -2800,29 +2759,8 @@ html{background-color:#06143a!important;}
   }
   window.hlShowPage=showPage;
 
-  const RECOMMENDED={
-    men:{minHt:66,maxHt:88,minWt:150,maxWt:285,text:"Men's recommended: 5'6\" to 7'4\", 150 to 285 lb"},
-    women:{minHt:62,maxHt:80,minWt:115,maxWt:225,text:"Women's recommended: 5'2\" to 6'8\", 115 to 225 lb"}
-  };
-  const physTouched={};
-  let physAppliedFor=null;
-  function applyRecommended(force){
-    const key=$("gender").value==="1"?"women":"men";
-    const rec=RECOMMENDED[key];
-    ["minHt","maxHt","minWt","maxWt"].forEach(id=>{
-      if(force||!physTouched[id]){$(id).value=rec[id];physTouched[id]=false;}
-    });
-    physAppliedFor=key;
-    const hint=$("hlPhysHint");
-    if(hint)hint.textContent=rec.text;
-  }
-  ["minHt","maxHt","minWt","maxWt"].forEach(id=>$(id).addEventListener("input",()=>{physTouched[id]=true;}));
   const baseShowPage=showPage;
   window.hlShowPage=function(n,back){
-    if(n===3){
-      const key=$("gender").value==="1"?"women":"men";
-      applyRecommended(key!==physAppliedFor);
-    }
     const title=$("hlScreenTitle");
     if(title)title.textContent=n===-1?"HOOPLAND CLASS GENERATOR":n===-2?"IMPORT APPEARANCES":["CREATE NEW CLASS","CLASS SETUP","ATTRIBUTE CONTROL","PHYSICALS AND SPECS","CLASS PREVIEW"][n];
     return baseShowPage(n,back);
@@ -8298,6 +8236,95 @@ function calibratedTendencies(attributes, calibration) {
     [key, Math.max(-5, Math.min(5, Math.round((value + calibration.tendencies[key]) / 2)))]));
 }
 
+function positionPhysicalLimits(position) {
+  const name = POS[position][1];
+  const fields = ["minHt","maxHt","minWt","maxWt"];
+  const values = fields.map(field => {
+    const text = document.getElementById(field + position).value.trim();
+    const value = Number(text);
+    if (!text || !Number.isSafeInteger(value) || value <= 0) {
+      throw new Error(`${name}: height and weight limits must be positive whole numbers.`);
+    }
+    return value;
+  });
+  if (values[0] > values[1] || values[2] > values[3]) {
+    throw new Error(`${name}: minimum height or weight is greater than the maximum.`);
+  }
+  return values;
+}
+
+function initializePositionPhysicalLimits() {
+  const box = document.getElementById("positionPhysicalLimits");
+  const fields = [["minHt","Min height (in)"],["maxHt","Max height (in)"],
+    ["minWt","Min weight (lb)"],["maxWt","Max weight (lb)"]];
+  const saved = new Map();
+  let activeKey = "";
+  function render() {
+    const gender = document.getElementById("gender").value;
+    const type = document.getElementById("classType").value;
+    const key = gender + ":" + type;
+    if (key === activeKey) return;
+    activeKey = key;
+    if (!saved.has(key)) {
+      saved.set(key, POS.map(([position]) => {
+        const index = Number(position);
+        const reference = rosterCalibration(gender,type,index);
+        return (reference ? [...reference.height,...reference.weight] : POS_PROFILE[index].slice(0,4)).map(String);
+      }));
+    }
+    box.replaceChildren();
+    POS.forEach(([position,name]) => {
+      const index = Number(position);
+      const row = document.createElement("div");
+      row.className = "hl-physical-row";
+      const heading = document.createElement("div");
+      heading.className = "hl-physical-position";
+      heading.textContent = name;
+      row.appendChild(heading);
+      fields.forEach(([field,label],fieldIndex) => {
+        const wrapper = document.createElement("div");
+        const text = document.createElement("label");
+        const input = document.createElement("input");
+        input.id = field + position;
+        input.type = "number";
+        input.min = "1";
+        input.step = "1";
+        input.value = saved.get(key)[index][fieldIndex];
+        text.htmlFor = input.id;
+        text.textContent = label;
+        input.setAttribute("aria-label",name + " " + label);
+        input.addEventListener("input",() => { saved.get(key)[index][fieldIndex] = input.value; });
+        wrapper.append(text,input);
+        row.appendChild(wrapper);
+      });
+      box.appendChild(row);
+    });
+    document.getElementById("hlPhysHint").textContent =
+      "Recommended limits are shown for each position. Heights are in inches and weights in pounds.";
+  }
+  document.getElementById("gender").addEventListener("change",render);
+  document.getElementById("classType").addEventListener("change",render);
+  render();
+}
+
+function generatePlayerDimensions(position, gender, sourcePlayer) {
+  const [minimumHeight, maximumHeight, minimumWeight, maximumWeight] = positionPhysicalLimits(position);
+  const sourceHeight = sourcePlayer && sourcePlayer.height != null && sourcePlayer.height !== "" &&
+    Number.isFinite(Number(sourcePlayer.height)) && Number(sourcePlayer.height) > 0
+      ? Math.round(Number(sourcePlayer.height)) : null;
+  const women = gender === "1";
+  const giantOutlier = sourceHeight === null && position >= 5 &&
+    maximumHeight >= (women ? 77 : 80) && rng() < 0.08;
+  const giantMaxHeight = Math.max(minimumHeight, Math.min(maximumHeight, women ? 84 : 91));
+  const giantMinHeight = Math.min(giantMaxHeight, Math.max(minimumHeight, women ? 77 : 80));
+  const height = sourceHeight !== null ? clamp(sourceHeight,minimumHeight,maximumHeight)
+    : giantOutlier ? randomInteger(giantMinHeight,giantMaxHeight) : randomInteger(minimumHeight,maximumHeight);
+  const weight = giantOutlier
+    ? randomInteger(Math.min(maximumWeight,Math.max(minimumWeight,women ? 200 : 240)),maximumWeight)
+    : randomInteger(minimumWeight,maximumWeight);
+  return {height,weight,giantOutlier};
+}
+
 function makePlayer(
   id,
   tierName,
@@ -8338,80 +8365,7 @@ const position =
     : POS_PROFILE[position];
 
 
-  const userMinHt = numberValue("minHt", 63);
-  const userMaxHt = numberValue("maxHt", 80);
-  const userMinWt = numberValue("minWt", 120);
-  const userMaxWt = numberValue("maxWt", 230);
-
-  if (userMinHt > userMaxHt || userMinWt > userMaxWt) {
-    throw new Error(
-      "Minimum height or weight is greater than the maximum."
-    );
-  }
-
-  // Position norms only narrow the user's range; if they don't overlap, the user's range wins.
-  let minimumHeight = Math.max(userMinHt, profile[0]);
-  let maximumHeight = Math.min(userMaxHt, profile[1]);
-  if (minimumHeight > maximumHeight) {
-    minimumHeight = userMinHt;
-    maximumHeight = userMaxHt;
-  }
-
-  let minimumWeight = Math.max(userMinWt, profile[2]);
-  let maximumWeight = Math.min(userMaxWt, profile[3]);
-  if (minimumWeight > maximumWeight) {
-    minimumWeight = userMinWt;
-    maximumWeight = userMaxWt;
-  }
-
-
-  const sourceHeight =
-  sourcePlayer &&
-  sourcePlayer.height != null &&
-  sourcePlayer.height !== "" &&
-  Number.isFinite(
-    Number(sourcePlayer.height)
-  ) && Number(sourcePlayer.height) > 0
-    ? Math.round(
-        Number(sourcePlayer.height)
-      )
-    : null;
-
-
-const womenClass = document.getElementById("gender").value === "1";
-  const giantOutlier =
-    sourceHeight === null &&
-    Number(position) >= 5 &&
-    maximumHeight >= (womenClass ? 76 : 78) &&
-    Math.random() < 0.08;
-  const giantMaxHeight = Math.min(userMaxHt, womenClass ? 84 : 91);
-  const giantMinHeight = Math.min(giantMaxHeight, Math.max(userMinHt, womenClass ? 77 : 80));
-
-const height =
-  sourceHeight !== null
-    ? clamp(
-        sourceHeight,
-        numberValue("minHt", 63),
-        numberValue("maxHt", 80)
-      )
-    : giantOutlier
-      ? randomInteger(giantMinHeight, giantMaxHeight)
-      : randomInteger(
-          minimumHeight,
-          maximumHeight
-        );
-
-
-  const weight =
-    giantOutlier
-      ? randomInteger(
-          Math.min(userMaxWt, Math.max(minimumWeight, womenClass ? 200 : 240)),
-          userMaxWt
-        )
-      : randomInteger(
-          minimumWeight,
-          maximumWeight
-        );
+  const {height, weight, giantOutlier} = generatePlayerDimensions(position, gender, sourcePlayer);
 
 
   const country =
@@ -8817,6 +8771,7 @@ async function generateClass() {
         "gender"
       ).value;
 
+    POS.forEach(([position]) => positionPhysicalLimits(Number(position)));
 
     const tierPlan =
       buildTierPlan(
@@ -11878,8 +11833,9 @@ classSizePlus.addEventListener(
 (function(){
   const $=id=>document.getElementById(id);
   initializeAppearanceImport();
+  initializePositionPhysicalLimits();
   $("hlAttrSlot").appendChild($("attrGrid"));
-  $("hlPhysSlot").appendChild($("secPhys").querySelector(".grid"));
+  $("hlPhysSlot").appendChild($("positionPhysicalLimits"));
   $("hlStatusSlot").appendChild($("status"));
   $("setupWizard").parentNode.insertBefore($("wizardProgress"),$("setupWizard"));
 
