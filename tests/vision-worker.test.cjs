@@ -123,8 +123,24 @@ test("worker transforms retain location and player export fields", async () => {
   assert.equal(exported.wt,200);
   assert.equal(exported.arc,"GOAT");
   assert.equal(exported.pot,10);
+  assert.equal(exported.pot,player.pot);
   assert.equal(exported.attributes.DRB[1],20);
   assert.deepEqual(Array.from(exported.attributes.STR),[10,10]);
   assert.deepEqual(Array.from(exported.attributes.SPD),[10,10]);
   assert.deepEqual(Array.from(exported.attributes.STM),[10,10]);
+  const codes=["LAY","DNK","INS","MID","TPT","FTS","DRB","PAS","ORE","DRE","STL","BLK"];
+  player.attributes=Object.fromEntries(codes.map((code,index)=>[code,[index===0?17:2,index<7?20:index===7?6:2]]));
+  const ratingCode=html.slice(html.indexOf("function budgetForStars("),html.indexOf("function starText("))+
+    html.slice(html.indexOf("function refreshPlayerRatingTotals("),html.indexOf("function applySharedRatings("));
+  const refresh=vm.runInNewContext(ratingCode+"\nrefreshPlayerRatingTotals",{
+    ATTRS:codes.map(code=>[code,code]),clamp:(value,min,max)=>Math.min(max,Math.max(min,value))
+  });
+  refresh(player);
+  assert.equal(player.currentStars,0.5);
+  assert.equal(exportPlayer(player,0).pot,9);
+  player.attributes.PAS[1]++;
+  refresh(player);
+  const updated=exportPlayer(player,0);
+  assert.equal(updated.pot,10);
+  assert.deepEqual(Array.from(updated.attributes.PAS),[2,7]);
 });

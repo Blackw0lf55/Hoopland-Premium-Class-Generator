@@ -22,7 +22,7 @@ const api = vm.runInContext(`
   ${section("const TIER_RULES = ", "function shuffle(")}
   ${section("function randomHalfStar(", "function generateRegressionAge(")}
   ${section("function validSharedRating(", "function makePlayer(")}
-  ({ budgetForStars, starsForBudget, qualityForTier, ratingStatsProfile,
+  ({ budgetForStars, starsForBudget, currentBudgetForStars, minimumPotentialStars, refreshPlayerRatingTotals, qualityForTier, ratingStatsProfile,
      makeAttributeRatings, isReportedWomanDunker, archetypeWeights, ARCHETYPES,
      validSharedRating, applySharedRatings, applyEraRules,
      setRng(value) { rng = value; },
@@ -38,9 +38,87 @@ const quality = (potentialStars, currentStars = 5) => ({ potentialStars, current
 test("potential caps and overall use the requested point scale", () => {
   for (const [stars, cap] of [[2,60], [2.5,74], [3,88], [3.5,102], [4,116], [4.5,130], [5,144]]) {
     assert.equal(api.budgetForStars(stars), cap);
-    assert.equal(api.starsForBudget(cap), stars);
+    assert.equal(api.minimumPotentialStars(cap), stars);
+    if (stars < 5) assert.equal(api.minimumPotentialStars(cap + 1), stars + 0.5);
   }
-  assert.equal(api.starsForBudget(53), 2);
+  for (let halfStars=1;halfStars<=10;halfStars++) {
+    const threshold = Math.ceil(144 * halfStars / 10);
+    assert.equal(api.currentBudgetForStars(halfStars/2),threshold);
+    assert.equal(api.starsForBudget(threshold),halfStars/2);
+    assert.equal(api.starsForBudget(threshold-1),(halfStars-1)/2);
+  }
+  assert.equal(api.starsForBudget(53), 1.5);
+  assert.equal(api.minimumPotentialStars(145),5);
+});
+
+test("edited ratings recalculate actual stars and potential tiers independently", () => {
+  const attributes = Object.fromEntries(codes.map(code=>[code,[2,2]]));
+  const player = {attributes};
+  const setPoints = (side, points) => {
+    for (const code of codes) {
+      const added=Math.min(points,18);
+      attributes[code][side]=2+added;
+      points-=added;
+    }
+    assert.equal(points,0);
+  };
+  setPoints(0,29);
+  for (const [points,stars] of [[60,2],[61,2.5],[74,2.5],[75,3],[130,4.5],[131,5],[144,5]]) {
+    setPoints(1,points);
+    api.refreshPlayerRatingTotals(player);
+    assert.equal(player.currentStars,1);
+    assert.equal(player.potentialStars,stars);
+    assert.equal(player.pot,stars*2);
+  }
+});
+
+test("attribute editor updates star tiers and enforces the non-GOAT cap", () => {
+  class Element {
+    constructor(){this.children=[];this.handlers={};this.value="";this.textContent="";}
+    replaceChildren(){this.children=[];}
+    appendChild(child){this.children.push(child);}
+    setAttribute(){}
+    addEventListener(type,handler){this.handlers[type]=handler;}
+  }
+  const elements=Object.fromEntries(["hlPvRatings","hlPvRatingSummary","hlPvRatingError","hlPvArchetype"]
+    .map(id=>[id,new Element()]));
+  const attributes=Object.fromEntries(codes.map((code,index)=>[code,[2,index<7?20:index===7?6:2]]));
+  const player={attributes,gender:"0",pos:2,arc:"Floor General",physical:{SPD:14,STR:12,STA:12}};
+  api.refreshPlayerRatingTotals(player);
+  assert.equal(player.potentialPoints,130);
+  const source=section("  function showRatings(player){", '  $("hlPvArchetype").addEventListener');
+  const context=vm.createContext({
+    ATTRS:codes.map(code=>[code,code]),ARCHETYPES:api.ARCHETYPES,
+    document:{createElement:()=>new Element()},$:id=>elements[id],generated:[player],idx:0,
+    window:{hlRefreshPreviewList(){}},starText:stars=>stars+"★",
+    validSharedRating:api.validSharedRating,refreshPlayerRatingTotals:api.refreshPlayerRatingTotals,
+    minimumPotentialStars:api.minimumPotentialStars
+  });
+  const show=vm.runInContext(source+"\nshowRatings",context);
+  show(player);
+  const change=(row,side,value)=>{
+    const input=elements.hlPvRatings.children[row].children[side+1];
+    input.value=String(value);
+    input.handlers.change();
+  };
+  change(7,1,3.5);
+  assert.equal(player.potentialPoints,131);
+  assert.equal(player.potentialStars,5);
+  assert.equal(player.pot,10);
+  change(0,0,8.5);
+  assert.equal(player.currentPoints,15);
+  assert.equal(player.currentStars,0.5);
+  for (const code of codes) player.attributes[code]=[2,14];
+  api.refreshPlayerRatingTotals(player);
+  show(player);
+  change(0,1,7.5);
+  assert.equal(player.potentialPoints,144);
+  assert.match(elements.hlPvRatingError.textContent,/144 points/);
+  player.arc="GOAT";
+  show(player);
+  change(0,1,7.5);
+  assert.equal(player.potentialPoints,145);
+  assert.equal(player.pot,10);
 });
 
 test("rookie references influence ratings without violating caps or losing position differences", () => {
@@ -111,7 +189,7 @@ test("archetypes define position-appropriate priorities and real statistics sele
 test("shared archetypes respect position, gender and historical rules", () => {
   const makePlayer=(gender="0",pos=2)=>({
     gender,pos,arc:"Floor General",pri:6,sec:5,potentialStars:5,
-    attributes:Object.fromEntries(codes.map(code=>[code,[10,18]])),
+    attributes:Object.fromEntries(codes.map(code=>[code,[10,14]])),
     physical:{SPD:14,STR:12,STA:12},appearanceWarnings:[],tendencies:{},skills:[]
   });
   const modern=makePlayer();
@@ -143,6 +221,29 @@ test("shared archetypes respect position, gender and historical rules", () => {
   }
 });
 
+test("shared edits enforce normal potential caps while allowing GOAT exceptions", () => {
+  const player={
+    gender:"0",pos:2,arc:"Floor General",pri:6,sec:5,potentialStars:5,pot:10,
+    attributes:Object.fromEntries(codes.map(code=>[code,[2,14]])),
+    physical:{SPD:14,STR:12,STA:12},appearanceWarnings:[]
+  };
+  api.refreshPlayerRatingTotals(player);
+  api.applySharedRatings(player,[{LAY:[2,15]}]);
+  assert.equal(player.potentialPoints,144);
+  assert.match(player.appearanceWarnings[0],/not applied/);
+  player.appearanceWarnings=[];
+  api.applySharedRatings(player,[{LAY:[2,15],arc:"GOAT"}]);
+  assert.equal(player.potentialPoints,145);
+  assert.equal(player.arc,"GOAT");
+  assert.equal(player.pot,10);
+  api.applySharedRatings(player,[{arc:"Sharpshooter"}]);
+  assert.equal(player.arc,"GOAT");
+  assert.match(player.appearanceWarnings[0],/not applied/);
+  api.applySharedRatings(player,[{LAY:[2,14],arc:"Sharpshooter"}]);
+  assert.equal(player.potentialPoints,144);
+  assert.equal(player.arc,"Sharpshooter");
+});
+
 test("playmaking bigs can develop more handles than the position cap", () => {
   let exceeds = false;
   for (let i=0;i<80;i++) {
@@ -171,7 +272,7 @@ test("archetype priorities change current and potential ratings within the same 
   assert.ok(shooter[1]>interior[1]+100);
 });
 
-test("GOATs are rare, have unusually broad potential and respect women's dunk rules", () => {
+test("GOATs are rare, have variable over-cap potential and respect women's dunk rules", () => {
   api.setRng(()=>0.0005);
   assert.equal(api.archetypeWeights(4,null,quality(5)).arc,"GOAT");
   assert.notEqual(api.archetypeWeights(4,null,quality(4.5)).arc,"GOAT");
@@ -180,11 +281,13 @@ test("GOATs are rare, have unusually broad potential and respect women's dunk ru
   assert.notEqual(api.archetypeWeights(4,null,quality(5)).arc,"GOAT");
   api.setBounds({});
   api.setRng(Math.random);
-  for (const gender of ["0","1"]) for (let i=0;i<20;i++) {
-    const style=api.archetypeWeights(8,{arc:"GOAT"},quality(5));
-    const result=api.makeAttributeRatings(8,gender,null,quality(5,4),style.weights,style.arc);
-    assert.equal(result.potentialBudget,192);
-    assert.equal(sum(result.attributes,1),192);
+  const budgets=new Set();
+  for (const gender of ["0","1"]) for (let position=0;position<9;position++) for (let i=0;i<12;i++) {
+    const style=api.archetypeWeights(position,{arc:"GOAT"},quality(5),gender);
+    const result=api.makeAttributeRatings(position,gender,null,quality(5,4),style.weights,style.arc);
+    assert.ok(result.potentialBudget>144 && result.potentialBudget<=192);
+    budgets.add(result.potentialBudget);
+    assert.equal(sum(result.attributes,1),result.potentialBudget);
     assert.equal(sum(result.attributes,0),result.currentBudget);
     for (const code of codes) {
       if (gender==="1" && code==="DNK") assert.deepEqual(Array.from(result.attributes[code]),[2,2]);
@@ -194,6 +297,15 @@ test("GOATs are rare, have unusually broad potential and respect women's dunk ru
       }
     }
   }
+  assert.ok(budgets.size>1);
+  api.setBounds(Object.fromEntries(codes.map(code=>[code+"p",[2,17]])));
+  api.setRng(()=>0.0005);
+  const limitedStyle=api.archetypeWeights(4,null,quality(5,3.5));
+  assert.equal(limitedStyle.arc,"GOAT");
+  const limited=api.makeAttributeRatings(4,"0",null,quality(5,3.5),limitedStyle.weights,"GOAT");
+  assert.ok(limited.potentialBudget>=168 && limited.potentialBudget<=180);
+  api.setBounds({});
+  api.setRng(Math.random);
 });
 
 test("women dunk only with a sourced name and matching school, and stay below 5", () => {

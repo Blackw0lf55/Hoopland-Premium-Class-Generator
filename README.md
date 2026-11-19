@@ -189,11 +189,14 @@ the country is unavailable in the catalog, the fallback may be elsewhere.
 
 Ratings are estimates, not measured pro-level ability. Each of the 12 core
 attributes starts at 1 (export value 2), and added points use the export's
-2–20 scale. Potential tiers of 2.5, 3, 3.5, 4, 4.5 and 5 stars cap added
-points at 74, 88, 102, 116, 130 and 144 respectively, except for the rare
-GOAT archetype described below. Orange overall is
-approximated at one half-star per 14 added points; growth is the potential cap
-minus current points. Tier names refer to potential, not guaranteed careers.
+2–20 scale. Potential tiers of 2, 2.5, 3, 3.5, 4, 4.5 and 5 stars cap added
+points at 60, 74, 88, 102, 116, 130 and 144 respectively, except for the rare
+GOAT archetype described below. Potential stars use the lowest tier whose cap
+can hold the assigned potential points, including after edits. Gold actual
+stars are estimated at one half-star per 14.4 added points (rounded down), so
+144 points reaches five stars. The precise in-game threshold is not verified.
+Growth is the assigned potential points minus current points. Tier names refer
+to potential, not guaranteed careers.
 
 For past NBA and WNBA draft classes, the generator looks up professional
 regular-season player impact estimate (PIE) and ranks each qualifying season
@@ -265,9 +268,11 @@ Playmaking Big or GOAT. Position-appropriate archetypes prioritize different
 attributes within the player's tier budget; reliable college statistics help
 choose an archetype for real players, otherwise the choice is an estimate.
 For fictional 5-star prospects there is a 0.1% chance of GOAT, provided the
-selected attribute limits permit it. GOATs use 192 potential points, with at
-least 8/10 in each non-exempt attribute and at least 4/10 current ability;
-women's dunk restrictions still apply. Their exported `pot` remains 5 stars.
+selected attribute limits permit it. GOATs can exceed the normal 144-point
+limit; their generated potential varies rather than being fixed at 192. They
+have at least 8/10 in each non-exempt potential attribute and at least 4/10
+current ability; women's dunk restrictions still apply. Their exported `pot`
+remains 5 stars.
 Compatibility of over-144-point players with Hoop Land has not been verified.
 
 Maximum dribbling potential on the displayed 1–10 scale is PG 10, G 9, SG 8,

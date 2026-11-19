@@ -109,7 +109,8 @@ test("historical appearance colors are grayscale and era rules follow league ado
   const code=html.slice(html.indexOf("function grayscalePlayerAppearance("),html.indexOf("function makePlayer("));
   const api=vm.runInNewContext(`
     const ATTRS=["LAY","DNK","INS","MID","TPT","FTS","DRB","PAS","ORE","DRE","STL","BLK"].map(x=>[x,x]);
-    function starsForBudget(p){return Math.max(0,Math.min(5,Math.round(p/14)/2))}
+    const clamp=(v,min,max)=>Math.min(max,Math.max(min,v));
+    ${html.slice(html.indexOf("function budgetForStars("),html.indexOf("function starText("))}
     function colorLum(hex){const c=[0,2,4].map(i=>parseInt(hex.slice(i,i+2),16));return .299*c[0]+.587*c[1]+.114*c[2]}
     ${code}
     ({gray:grayscalePlayerAppearance,era:applyEraRules,attrs:ATTRS})`);

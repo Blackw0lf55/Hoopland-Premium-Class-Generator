@@ -6506,10 +6506,18 @@ function budgetForStars(stars) {
 function starsForBudget(points) {
 
   return clamp(
-    Math.round(points / 14) / 2,
+    Math.floor(points * 10 / 144) / 2,
     0,
     5
   );
+}
+
+function currentBudgetForStars(stars) {
+  return Math.ceil(144 * clamp(Math.round(stars * 2), 0, 10) / 10);
+}
+
+function minimumPotentialStars(points) {
+  return clamp(2 + Math.ceil(Math.max(0, points - 60) / 14) / 2, 2, 5);
 }
 
 
@@ -6995,7 +7003,7 @@ function archetypeWeights(position, sourcePlayer = null, quality = null, gender 
   const profile = ratingStatsProfile(sourcePlayer?.bart);
   let style = explicit;
   if (!style && !sourcePlayer && quality?.potentialStars === 5 && rng() < 0.001) {
-    let potentialCapacity = 0, currentCapacity = 0, currentFloor = 0, compatible = true;
+    let potentialCapacity = 0, potentialFloor = 0, currentCapacity = 0, currentFloor = 0, compatible = true;
     for (const [code] of ATTRS) {
       const [cMin, cMax] = attributeBounds(code, "c");
       const [pMin, pMax] = attributeBounds(code, "p");
@@ -7006,11 +7014,12 @@ function archetypeWeights(position, sourcePlayer = null, quality = null, gender 
       const currentMax = Math.min(cMax, max, code === "DRB" ? max - 8 : max);
       compatible &&= min <= max && base <= currentMax;
       potentialCapacity += max - 2;
+      potentialFloor += min - 2;
       currentCapacity += currentMax - 2;
       currentFloor += base - 2;
     }
-    const budget = Math.max(108, budgetForStars(quality.currentStars));
-    if (compatible && potentialCapacity >= 192 && currentCapacity >= budget && currentFloor <= budget) {
+    const budget = Math.max(108, currentBudgetForStars(quality.currentStars));
+    if (compatible && potentialCapacity >= Math.max(145, potentialFloor) && currentCapacity >= budget && currentFloor <= budget) {
       style = ARCHETYPES.find(item => item.name === "GOAT");
     }
   }
@@ -7512,14 +7521,7 @@ function isReportedWomanDunker(sourcePlayer) {
 function makeAttributeRatings(position, gender, sourcePlayer, quality, weights, arc = "", calibration = null) {
   const isGoat = arc === "GOAT";
   if (isGoat && quality.potentialStars !== 5) throw new Error("GOAT archetypes require 5-star potential.");
-  const potentialBudget = isGoat ? 192 : budgetForStars(quality.potentialStars);
   const profile = ratingStatsProfile(sourcePlayer && sourcePlayer.bart);
-  const estimatedBudget = isGoat ? Math.max(108, profile ? Math.round(40 + profile.score * 80) : budgetForStars(quality.currentStars))
-    : profile ? Math.round(40 + profile.score * 80) : budgetForStars(quality.currentStars);
-  const currentBudget = Math.min(
-    potentialBudget - 8,
-    calibration && !isGoat ? Math.round((estimatedBudget + calibration.current) / 2) : estimatedBudget
-  );
   const currentMinimums = [], currentMaximums = [], potentialMinimums = [], potentialMaximums = [];
   const dribbleIndex = ATTRS.findIndex(([code]) => code === "DRB");
   const dunkIndex = ATTRS.findIndex(([code]) => code === "DNK");
@@ -7551,6 +7553,20 @@ function makeAttributeRatings(position, gender, sourcePlayer, quality, weights, 
     currentMaximums[index] = Math.min(currentMaximums[index], potentialMaximums[index]);
   });
 
+  const goatFloor = potentialMinimums.reduce((sum,value,index) =>
+    sum + Math.max(value, gender === "1" && index === dunkIndex ? 2 : 16) - 2, 0);
+  const goatCapacity = potentialMaximums.reduce((sum,value)=>sum+value-2,0);
+  if (isGoat && goatCapacity < Math.max(145, goatFloor)) {
+    throw new Error("Potential limits cannot fit a GOAT prospect. Increase the limits or change the class settings.");
+  }
+  const potentialBudget = isGoat ? randomInteger(Math.max(145,goatFloor),Math.max(goatFloor,Math.min(192,goatCapacity)))
+    : budgetForStars(quality.potentialStars);
+  const estimatedBudget = isGoat ? Math.max(108, profile ? Math.round(40 + profile.score * 80) : currentBudgetForStars(quality.currentStars))
+    : profile ? Math.round(40 + profile.score * 80) : currentBudgetForStars(quality.currentStars);
+  const currentBudget = Math.min(
+    potentialBudget - 8,
+    calibration && !isGoat ? Math.round((estimatedBudget + calibration.current) / 2) : estimatedBudget
+  );
   const desiredGrowth = calibration && !isGoat ? Math.round(calibration.dribbleGrowth) : 8;
   const growth = Math.max(0, Math.min(desiredGrowth, potentialBudget - currentBudget,
     potentialMaximums[dribbleIndex] - currentMinimums[dribbleIndex]));
@@ -8472,12 +8488,13 @@ function refreshPlayerRatingTotals(player) {
   player.potentialPoints = ATTRS.reduce((sum,[code])=>sum+player.attributes[code][1]-2,0);
   player.pointsRemaining = player.potentialPoints-player.currentPoints;
   player.currentStars = starsForBudget(player.currentPoints);
-  player.potentialStars = starsForBudget(player.potentialPoints);
+  player.potentialStars = minimumPotentialStars(player.potentialPoints);
   player.pot = Math.round(player.potentialStars*2);
 }
 
 function applySharedRatings(player,history) {
   const codes = [...ATTRS.map(([name])=>name),"SPD","STR","STM"];
+  const updatedAttributes = {...player.attributes};
   let rejected = history.some(item=>!item || typeof item!=="object" || Array.isArray(item) ||
     Object.keys(item).some(code=>code!=="arc" && !codes.includes(code)));
   for (const code of codes) {
@@ -8490,23 +8507,40 @@ function applySharedRatings(player,history) {
     const median = side => pairs.map(pair=>pair[side]).sort((a,b)=>a-b)[Math.floor(pairs.length/2)];
     const pair = [median(0),median(1)];
     if (["SPD","STR","STM"].includes(code)) player.physical[code==="STM"?"STA":code] = pair[0];
-    else player.attributes[code] = pair;
+    else updatedAttributes[code] = pair;
   }
-  refreshPlayerRatingTotals(player);
+  const updatedPoints = ATTRS.reduce((sum,[code])=>sum+updatedAttributes[code][1]-2,0);
+  const updatedStars = minimumPotentialStars(updatedPoints);
   const styleValues=history.filter(item=>item && Object.hasOwn(item,"arc")).map(item=>item.arc);
   const styles=styleValues.filter(value=>
-    validSharedRating("arc",value,player.pos,player.gender,player.potentialStars) &&
+    validSharedRating("arc",value,player.pos,player.gender,updatedStars) &&
     !(player.eraRestrictions?.noThree && archetypeUsesThree(ARCHETYPES.find(style=>style.name===value))) &&
     !(player.eraRestrictions?.noDunk && archetypeUsesDunking(ARCHETYPES.find(style=>style.name===value))));
   if (styles.length!==styleValues.length) rejected = true;
+  let name = player.arc;
   if (styles.length) {
     const counts=new Map();
     styles.forEach(style=>counts.set(style,(counts.get(style)||0)+1));
     const best=Math.max(...counts.values());
-    const name=styles.slice().reverse().find(style=>counts.get(style)===best);
+    name=styles.slice().reverse().find(style=>counts.get(style)===best);
+  }
+  if (updatedPoints > 144 && name !== "GOAT") {
+    rejected = true;
+    if (player.arc === "GOAT") name = player.arc;
+    else {
+      for (const [code] of ATTRS) updatedAttributes[code] = player.attributes[code];
+    }
+  }
+  if (name === "GOAT" && updatedStars < 5) {
+    rejected = true;
+    for (const [code] of ATTRS) updatedAttributes[code] = player.attributes[code];
+  }
+  player.attributes = updatedAttributes;
+  refreshPlayerRatingTotals(player);
+  if (name !== player.arc && validSharedRating("arc",name,player.pos,player.gender,player.potentialStars)) {
     const style=ARCHETYPES.find(item=>item.name===name);
     player.arc=style.name;player.pri=style.pri;player.sec=style.sec;
-  }
+  } else if (name !== player.arc) rejected = true;
   if (rejected) player.appearanceWarnings.push("Some shared attribute edits were incompatible with this player or era and were not applied.");
 }
 
@@ -12684,6 +12718,19 @@ classSizePlus.addEventListener(
             input.value=String((physical?player.physical[code==="STM"?"STA":code]:player.attributes[code][side])/2);
             return;
           }
+          if (!physical) {
+            const total=player.potentialPoints-player.attributes[code][1]+next[1];
+            if (total > 144 && player.arc !== "GOAT") {
+              $("hlPvRatingError").textContent="Potential is limited to 144 points. Reduce another attribute first.";
+              input.value=String(player.attributes[code][side]/2);
+              return;
+            }
+            if (player.arc === "GOAT" && minimumPotentialStars(total) < 5) {
+              $("hlPvRatingError").textContent="GOAT players require five-star potential.";
+              input.value=String(player.attributes[code][side]/2);
+              return;
+            }
+          }
           if (physical) player.physical[code==="STM"?"STA":code]=value;
           else player.attributes[code]=next;
           if (player.sharedAppearanceIdentity) {
@@ -12707,6 +12754,11 @@ classSizePlus.addEventListener(
         (player.eraRestrictions?.noThree && archetypeUsesThree(ARCHETYPES.find(style=>style.name===name))) ||
         (player.eraRestrictions?.noDunk && archetypeUsesDunking(ARCHETYPES.find(style=>style.name===name)))) {
       $("hlPvRatingError").textContent="That archetype is not available for this player.";
+      return;
+    }
+    if (name !== "GOAT" && player.potentialPoints > 144) {
+      $("hlPvRatingError").textContent="Reduce potential to 144 points before changing archetypes.";
+      $("hlPvArchetype").value=player.arc;
       return;
     }
     const style=ARCHETYPES.find(item=>item.name===name);
