@@ -132,15 +132,16 @@ test("saved appearance overrides the generated look and updates matching skin se
   assert.equal(combined.fHair,"0006");
 });
 
-test("download approval shares only edited fields, retries failures and does not download on cancellation", async () => {
+test("download approvals independently share, skip, return to editing and retry failures", async () => {
   const html=fs.readFileSync(path.join(__dirname,"..","index.html"),"utf8");
   const code=html.slice(html.indexOf("async function requestHoopLandDownload()"),html.indexOf("function syncClassDefaults()"));
-  const p={fn:"AJ",ln:"Dynasty",gender:"0",sharedAppearanceIdentity:{name:"AJ Dynasty",gender:"men",type:"draft",year:"2026"},sharedAppearanceEdits:{hair:"0008"}};
-  let approved=false, allowWithoutSharing=false, downloads=0, fail=false;
+  const p={fn:"AJ",ln:"Dynasty",gender:"0",pos:0,sharedAppearanceIdentity:{name:"AJ Dynasty",gender:"men",type:"draft",year:"2026"},sharedAppearanceEdits:{hair:"0008"},sharedRatingEdits:{LAY:[10,14]}};
+  let answers=["no"], downloads=0, fail=false;
   const writes=[],errors=[];
   const context=vm.createContext({
-    generated:[p,{fn:"Other",ln:"Player"}],URLSearchParams,window:{confirm:message=>message.startsWith("Some appearance") ? allowWithoutSharing : approved},
+    generated:[p,{fn:"Other",ln:"Player"}],URLSearchParams,askDownloadApproval:async()=>answers.shift(),
     downloadHoopLand:()=>downloads++,validSharedAppearance:()=>true,
+    validSharedRating:()=>true,
     setStatus:(message)=>errors.push(message),
     fetch:async (url,options)=>{
       writes.push(JSON.parse(options.body));
@@ -151,20 +152,53 @@ test("download approval shares only edited fields, retries failures and does not
   await request();
   assert.equal(downloads,0);
   assert.equal(writes.length,0);
-  approved=true;fail=true;
+  answers=["yes","no"];
+  await request();
+  assert.equal(downloads,0);
+  assert.equal(writes.length,0);
+  answers=["yes","skip"];fail=true;
   await request();
   assert.equal(downloads,0);
   assert.match(errors[0],/offline/);
   assert.deepEqual(p.sharedAppearanceEdits,{hair:"0008"});
-  fail=false;
+  answers=["yes","yes"];fail=false;
   await request();
   assert.equal(downloads,1);
-  assert.deepEqual(writes,[{hair:"0008"},{hair:"0008"}]);
+  assert.deepEqual(writes,[{hair:"0008"},{hair:"0008"},{LAY:[10,14]}]);
   assert.deepEqual(p.sharedAppearanceEdits,{});
-  p.sharedAppearanceEdits={hair:"0008"};fail=true;allowWithoutSharing=true;
+  assert.deepEqual(p.sharedRatingEdits,{});
+  p.sharedAppearanceEdits={hair:"0008"};p.sharedRatingEdits={LAY:[10,14]};
+  answers=["skip","skip"];fail=true;
   await request();
   assert.equal(downloads,2);
   assert.deepEqual(p.sharedAppearanceEdits,{hair:"0008"});
+  assert.deepEqual(p.sharedRatingEdits,{LAY:[10,14]});
+});
+
+test("shared ratings persist separately from appearances and validate values", async () => {
+  const {default:worker,SharedAppearance}=await import("../location-worker.js");
+  const objects=new Map();
+  const env={APPEARANCES:{idFromName:name=>name,get:id=>{
+    if(!objects.has(id)){
+      const values=new Map();
+      const storage={get:async k=>values.get(k),put:async(k,v)=>values.set(k,v)};
+      storage.transaction=fn=>fn(storage);
+      objects.set(id,new SharedAppearance({storage}));
+    }
+    return {fetch:(url,init)=>objects.get(id).fetch(new Request(url,init))};
+  }}};
+  const url="https://example.test/api/shared-attributes?"+new URLSearchParams({name:"Test Player",gender:"men",type:"draft",year:"2025"});
+  const put=body=>worker.fetch(new Request(url,{method:"PUT",headers:{origin:"https://example.test","content-type":"application/json"},body:JSON.stringify(body)}),env);
+  assert.equal((await put({LAY:[12,10]})).status,400);
+  assert.equal((await put({SPD:[7,7]})).status,400);
+  assert.equal((await put({arc:"Unknown"})).status,400);
+  assert.equal((await put({LAY:[10,14],SPD:[16,16],arc:"Floor General"})).status,200);
+  const result=await (await worker.fetch(new Request(url.replace("2025","2030")),env)).json();
+  assert.deepEqual(result.ratings,[{LAY:[10,14],SPD:[16,16],arc:"Floor General"}]);
+  const different=await (await worker.fetch(new Request(url.replace("men","women")),env)).json();
+  assert.deepEqual(different.ratings,[]);
+  const appearance=await (await worker.fetch(new Request(url.replace("shared-attributes","shared-appearance")),env)).json();
+  assert.deepEqual(appearance.appearances,[]);
 });
 
 test("edit tracking shares only changed supported features of real players", () => {

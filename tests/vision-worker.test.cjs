@@ -106,7 +106,7 @@ test("worker transforms retain location and player export fields", async () => {
   const env = {ASSETS:{fetch:async r=>new URL(r.url).pathname.endsWith(".csv")?new Response(csv):new Response(html)}};
   const transformed = await (await worker.fetch(new Request("https://example.test/"),env)).text();
   for (const text of ["__HOOPLAND_RESOLVE_LOCATION(player)","assignedLocation.loc","isReal: Boolean"])assert.ok(transformed.includes(text),text);
-  assert.match(transformed,/STR:\s*\[0, 0\]/);
+  assert.match(transformed,/STR:\s*\[\s*player\.physical\.STR,\s*player\.physical\.STR/);
   assert.ok(!transformed.includes("__HOOPLAND_SAMPLE_HEADSHOT"));
   const code=transformed.slice(transformed.indexOf("function makeHoopLandPlayer("),transformed.indexOf("function downloadHoopLand()"));
   const exportPlayer=vm.runInNewContext(code+"\nmakeHoopLandPlayer",{
@@ -122,4 +122,7 @@ test("worker transforms retain location and player export fields", async () => {
   assert.equal(exported.arc,"GOAT");
   assert.equal(exported.pot,10);
   assert.equal(exported.attributes.DRB[1],20);
+  assert.deepEqual(Array.from(exported.attributes.STR),[10,10]);
+  assert.deepEqual(Array.from(exported.attributes.SPD),[10,10]);
+  assert.deepEqual(Array.from(exported.attributes.STM),[10,10]);
 });

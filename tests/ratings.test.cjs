@@ -21,8 +21,10 @@ const api = vm.runInContext(`
   ${section("function allocatePoints(", "const TIER_TARGETS = ")}
   ${section("const TIER_RULES = ", "function shuffle(")}
   ${section("function randomHalfStar(", "function generateRegressionAge(")}
+  ${section("function validSharedRating(", "function makePlayer(")}
   ({ budgetForStars, starsForBudget, qualityForTier, ratingStatsProfile,
      makeAttributeRatings, isReportedWomanDunker, archetypeWeights, ARCHETYPES,
+     validSharedRating, applySharedRatings, applyEraRules,
      setRng(value) { rng = value; },
      setBounds(value) { bounds = value; },
      setDunkEdited(edited) { dunkInput.dataset.userModified = edited ? "true" : ""; } })
@@ -104,6 +106,41 @@ test("archetypes define position-appropriate priorities and real statistics sele
   assert.ok(floor.weights[codes.indexOf("PAS")] > floor.weights[codes.indexOf("BLK")]);
   assert.equal(api.archetypeWeights(6,{arc:"Playmaking Big"},quality(3)).arc,"Playmaking Big");
   assert.throws(()=>api.archetypeWeights(0,{arc:"GOAT"},quality(3)),/5-star/);
+});
+
+test("shared archetypes respect position, gender and historical rules", () => {
+  const makePlayer=(gender="0",pos=2)=>({
+    gender,pos,arc:"Floor General",pri:6,sec:5,potentialStars:5,
+    attributes:Object.fromEntries(codes.map(code=>[code,[10,18]])),
+    physical:{SPD:14,STR:12,STA:12},appearanceWarnings:[],tendencies:{},skills:[]
+  });
+  const modern=makePlayer();
+  api.applySharedRatings(modern,[{arc:"Sharpshooter"}]);
+  assert.equal(modern.arc,"Sharpshooter");
+  assert.equal(modern.pri,9);
+  assert.equal(modern.sec,1);
+  const past=makePlayer();
+  api.applyEraRules(past,"draft","0",1965);
+  api.applySharedRatings(past,[{arc:"Sharpshooter",TPT:[12,16]}]);
+  assert.equal(past.arc,"Floor General");
+  assert.deepEqual(Array.from(past.attributes.TPT),[2,2]);
+  assert.match(past.appearanceWarnings[0],/not applied/);
+  const women=makePlayer("1",6);
+  api.applySharedRatings(women,[{arc:"Rim Runner"},{SPD:[20,20]}]);
+  assert.equal(women.arc,"Floor General");
+  assert.match(women.appearanceWarnings[0],/not applied/);
+  const banned=makePlayer("0",5);
+  api.applyEraRules(banned,"freshman","0",1970);
+  api.applySharedRatings(banned,[{arc:"Rim Runner",DNK:[12,16]}]);
+  assert.equal(banned.arc,"Floor General");
+  assert.deepEqual(Array.from(banned.attributes.DNK),[2,2]);
+  assert.match(banned.appearanceWarnings[0],/not applied/);
+  for(const gender of ["0","1"]) for(let pos=0;pos<9;pos++) {
+    const choice=api.archetypeWeights(pos,null,quality(3),gender,true,true);
+    const style=api.ARCHETYPES.find(item=>item.name===choice.arc);
+    assert.ok(style.pri!==9 && style.sec!==9 && !style.focus.includes("TPT") && !style.secondary.includes("TPT"));
+    assert.ok(style.pri!==3 && style.sec!==3 && !style.focus.includes("DNK") && !style.secondary.includes("DNK"));
+  }
 });
 
 test("playmaking bigs can develop more handles than the position cap", () => {

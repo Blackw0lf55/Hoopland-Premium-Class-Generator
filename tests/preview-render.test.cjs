@@ -30,6 +30,17 @@ test("bald is empty and distinct hairstyles have distinct mock-ups", () => {
   assert.notEqual(render(167), render(1));
 });
 
+test("all documented styles 0 through 170 render and close cuts have pixel silhouettes", () => {
+  for (let id=0;id<=170;id++) {
+    assert.ok(hair(id), `missing hairstyle ${id}`);
+    const parts=hairParts(hair(id),"#303030");
+    if (id) assert.ok(parts.front || parts.back, `empty hairstyle ${id}`);
+  }
+  assert.notEqual(hairParts(hair(1),"#303030").front,hairParts(hair(4),"#303030").front);
+  assert.notEqual(hairParts(hair(168),"#303030").front,hairParts(hair(67),"#303030").front);
+  assert.notEqual(hairParts(hair(53),"#303030").front,hairParts(hair(5),"#303030").front);
+});
+
 test("facial hair mock-ups distinguish clean shaven, mustache and beard", () => {
   assert.equal(facialSvg(0, "#303030"), "");
   assert.notEqual(facialSvg(5, "#303030"), facialSvg(4, "#303030"));
@@ -52,6 +63,7 @@ test("preview renders a black jersey with white trim", () => {
   const svg = renderArt({appearance});
   assert.match(svg, /fill="#17171d"/);
   assert.match(svg, /stroke="#fff" stroke-width="2"/);
+  assert.match(svg, /stroke-linejoin="miter"/);
   assert.doesNotMatch(svg, /#d93a3a/);
 });
 

@@ -28,8 +28,9 @@ Draft players can receive one level-1 starter skill (HIG, SPA, CLA or DIM),
 with higher current ability making a skill more likely. HIG is limited to men
 with at least 4 dunk ability. Freshman players receive no starter skills. The
 skill objects follow the save-file format; in-game behavior is not verified.
-Fictional players have a 30% chance of tattoo-style body colors and a 45%
-chance of accessories, including arm or leg sleeves. Real-player placeholder
+Fictional players have a 33% chance of tattoo-style body colors and a 45%
+chance of accessories, including arm or leg sleeves. Sleeve and head accessory
+colors use team primary, secondary or tertiary colors. Real-player placeholder
 appearances do not invent tattoos or sleeves. Random shoe, lace and sole colors
 use a broader palette when random shoe colors are enabled.
 
@@ -106,6 +107,35 @@ Same-name duplicates in a class cannot be shared. Edits to fictional players
 and other appearance details remain local to the generated class. Shared
 storage uses a SQLite-backed Durable Object configured in `wrangler.jsonc`;
 if storage is unavailable, an error is shown instead of silently saving.
+
+Click a player in Class Preview to see current and potential stars and edit
+attributes, physical ratings and the position-appropriate archetype. Before
+download, separate appearance and attribute questions offer Yes (share eligible
+edits), No (return to editing), and Skip (continue without sharing that
+category). Approved attribute and archetype edits for real players are shared
+separately from appearances and reused across years and class types by name
+and gender, combining up to five recent edits. Imports remain appearance-only.
+These unmoderated name-based matches can confuse namesakes. The vision model
+performs inference; it does not train itself from edits. Approved edits can
+improve later references for the same matched name, but autonomous learning
+would require a separate training and evaluation pipeline.
+
+Speed, strength and stamina are generated separately from the core attribute
+budget and exported in half-point steps. Speed uses position-specific limits,
+with rare outliers; a 10 is reserved for PG/G. A 10 strength is rare and
+reserved for centers. Classes through 1965 use grayscale player appearances,
+including accessories and shoes; their grayscale appearance edits are not
+shared as modern color references.
+
+Men's draft classes are selectable from 1947, women's drafts from 1997, and
+freshman classes from 1900. Historical real rosters depend on available
+sources and are not guaranteed for every year; where a freshman source reports
+no class, the generator warns and fills with fictional players. A supplied
+1965–66 roster informs estimated early men's draft attributes and matching
+appearances; its rookie flags are not independently verified. Before the
+league's three-point era, three-point ratings and tendencies are suppressed;
+freshman classes during the 1967–75 college dunk ban also suppress dunking.
+These are simplified era rules, not a reconstruction of every historical rule.
 
 Draft classes also check ESPN's draft endpoint for headshots and attach them
 only when the returned year, player name, and (where provided) draft pick

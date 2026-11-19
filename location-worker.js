@@ -408,7 +408,10 @@ export class SharedAppearance {
   constructor(state) { this.state = state; }
   async fetch(request) {
     const baseline = new URL(request.url).pathname === "/baseline";
+    const ratings = new URL(request.url).pathname === "/ratings";
     if (request.method === "GET") {
+      if (ratings) return Response.json({ok:true, ratings:await this.state.storage.get("ratings") || []},
+        { headers: { "cache-control":"no-store" } });
       const appearances = await this.state.storage.get("appearances");
       const reference = await this.state.storage.get("baseline");
       return Response.json({ ok: true, appearances: appearances || [], hasEdits: appearances !== undefined, baseline: reference || null },
@@ -420,6 +423,9 @@ export class SharedAppearance {
       if (baseline) {
         if (await txn.get("baseline")) { saved = false; return; }
         await txn.put("baseline", data);
+      } else if (ratings) {
+        const previous = await txn.get("ratings") || [];
+        await txn.put("ratings", [...previous, data.ratings].slice(-5));
       } else {
         const previous = await txn.get("appearances") || data.legacy || [];
         await txn.put("appearances", [...previous, data.appearance].slice(-5));
@@ -427,6 +433,52 @@ export class SharedAppearance {
     });
     return Response.json({ ok: true, saved }, { headers: { "cache-control": "no-store" } });
   }
+}
+
+async function handleSharedRatings(request, env) {
+  const headers = {"cache-control":"no-store"};
+  const fail = (error,status) => Response.json({ok:false,error},{status,headers});
+  if (!env.APPEARANCES) return fail("Shared attribute storage is unavailable.",503);
+  if (!["GET","PUT"].includes(request.method)) return fail("Method not allowed.",405);
+  const url = new URL(request.url);
+  const gender = url.searchParams.get("gender");
+  const name = (url.searchParams.get("name") || "").trim();
+  const normalized = normalizePersonName(name);
+  if (!normalized || name.length>100 || normalized.length>100 || !["men","women"].includes(gender)) {
+    return fail("Invalid player identity.",400);
+  }
+  const object = env.APPEARANCES.get(env.APPEARANCES.idFromName(JSON.stringify(["player",gender,normalized])));
+  if (request.method === "GET") return object.fetch("https://appearance.internal/ratings",{method:"GET"});
+  if (request.headers.get("origin") !== url.origin) return fail("Invalid request origin.",403);
+  if ((request.headers.get("content-type") || "").split(";")[0] !== "application/json") return fail("JSON required.",415);
+  if (Number(request.headers.get("content-length")) > 1024 || !request.body) return fail("Invalid request size.",413);
+  const reader = request.body.getReader(), decoder = new TextDecoder();
+  let text="", size=0;
+  while (true) {
+    const {value,done}=await reader.read();
+    if (done) break;
+    size+=value.byteLength;
+    if (size>1024) { await reader.cancel(); return fail("Request too large.",413); }
+    text+=decoder.decode(value,{stream:true});
+  }
+  text+=decoder.decode();
+  let ratings;
+  try { ratings=JSON.parse(text); } catch { return fail("Invalid JSON.",400); }
+  const skills=["LAY","DNK","INS","MID","TPT","FTS","DRB","PAS","ORE","DRE","STL","BLK"];
+  const physical=["SPD","STR","STM"];
+  const archetypes=["Floor General","Scoring Guard","Sharpshooter","Slasher","3-and-D Wing","Shot-Creating Wing",
+    "Point Forward","Stretch Big","Post Scorer","Rim Runner","Rim Protector","Playmaking Big","GOAT"];
+  if (!ratings || typeof ratings!=="object" || Array.isArray(ratings) || !Object.keys(ratings).length ||
+      Object.entries(ratings).some(([key,pair])=>
+        key==="arc" ? typeof pair!=="string" || !archetypes.includes(pair)
+        : ![...skills,...physical].includes(key) || !Array.isArray(pair) || pair.length!==2 ||
+        pair.some(value=>!Number.isInteger(value) || value<(physical.includes(key)?8:2) || value>20) ||
+        pair[0]>pair[1] || (physical.includes(key) && pair[0]!==pair[1]))) {
+    return fail("Invalid attribute values.",400);
+  }
+  return object.fetch("https://appearance.internal/ratings",{
+    method:"PUT",headers:{"content-type":"application/json"},body:JSON.stringify({ratings})
+  });
 }
 
 const builtInAppearanceCache = new WeakMap();
@@ -706,7 +758,7 @@ function transformGenerator(html) {
   if (!generateCode) return null;
 
   let exportCode = html.slice(exportStart);
-  const exportHeader = /(function makeHoopLandPlayer\(\s*player\s*,\s*index\s*\)\s*\{\s*)return\s*\{/;
+  const exportHeader = /(function makeHoopLandPlayer\(\s*player\s*,\s*index\s*\)\s*\{\s*const exportedAppearance = [^\n]+;\s*)return\s*\{/;
   exportCode = replaceOnce(
     exportCode,
     exportHeader,
@@ -718,11 +770,6 @@ function transformGenerator(html) {
   if (!exportCode) return null;
   exportCode = replaceOnce(exportCode, /loc:\s*\{\s*x:\s*0\s*,\s*y:\s*0\s*\}\s*,/, "loc: assignedLocation.loc,");
   if (!exportCode) return null;
-
-  exportCode = exportCode
-    .replace(/(\bSTR\s*:\s*)\[\s*player\.physical\.STR\s*,\s*player\.physical\.STR\s*\]/, "$1[0, 0]")
-    .replace(/(\bSPD\s*:\s*)\[\s*player\.physical\.SPD\s*,\s*player\.physical\.SPD\s*\]/, "$1[0, 0]")
-    .replace(/(\bSTM\s*:\s*)\[\s*player\.physical\.STA\s*,\s*player\.physical\.STA\s*\]/, "$1[0, 0]");
 
   return html.slice(0, makePlayerStart) + makePlayerCode + generateCode + exportCode;
 }
@@ -812,6 +859,15 @@ window.__HOOPLAND_PREPARE_REAL_PLAYERS=async function(players,gender){
       const identityKey=window.__HOOPLAND_NORMALIZE_LOCATION_NAME(name);
       if(identityKey&&identityCounts.get(identityKey)===1&&Number.isInteger(year)&&year>=1900&&year<=2100){
         p.sharedAppearanceIdentity=identity;
+        try {
+          const response=await fetch("/api/shared-attributes?"+new URLSearchParams(identity),{cache:"no-store"});
+          const result=await response.json();
+          if(!response.ok||!result.ok||!Array.isArray(result.ratings))throw new Error(result.error||("HTTP "+response.status));
+          p.sharedRatings=result.ratings;
+        } catch(e) {
+          console.warn("Shared attribute lookup failed for",name,e);
+          p.sharedRatingsError="Shared attribute lookup failed: "+String(e&&e.message||e);
+        }
         try{
           const response=await fetch("/api/shared-appearance?"+new URLSearchParams(identity),{cache:"no-store"});
           const result=await response.json();
@@ -1072,6 +1128,7 @@ export default {
     if (pathname === "/api/pro-season") return handleProSeason(request);
     if (pathname === "/api/hometown") return handleHometown(request);
     if (pathname === "/api/shared-appearance") return handleSharedAppearance(request, env);
+    if (pathname === "/api/shared-attributes") return handleSharedRatings(request, env);
     if (pathname === "/api/appearance-baseline") return handleSharedAppearance(request, env);
     if (pathname === "/api/headshot") return handleHeadshot(request);
     if (pathname === "/api/describe") return handleDescribe(request, env, context);
