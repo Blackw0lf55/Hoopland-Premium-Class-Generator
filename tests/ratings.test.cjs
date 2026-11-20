@@ -121,6 +121,16 @@ test("attribute editor updates star tiers and enforces the non-GOAT cap", () => 
   change(0,1,7.5);
   assert.equal(player.potentialPoints,145);
   assert.equal(player.pot,10);
+  player.arc="Floor General";
+  player.draftOverallCap=122;
+  for (const [index,code] of codes.entries()) {
+    player.attributes[code]=index<6?[20,20]:index===6?[16,20]:[2,2];
+  }
+  api.refreshPlayerRatingTotals(player);
+  show(player);
+  change(6,0,8.5);
+  assert.equal(player.currentPoints,122);
+  assert.match(elements.hlPvRatingError.textContent,/cannot exceed 85/);
 });
 
 test("rookie references influence ratings without violating caps or losing position differences", () => {
@@ -345,6 +355,54 @@ test("real statistics change budgets with sample shrinkage and avoid unreliable 
   const lowAttrs = Object.fromEntries(codes.map(code => [code, 2]));
   const low = api.makeAttributeRatings(0, "0", { bart: { ...stats, attrs: lowAttrs } }, quality(5), weights);
   assert.equal(low.currentBudget, 40);
+});
+
+test("draft rookies favor 55–85 overall without exceeding their potential", () => {
+  const profiles = [
+    null,
+    {bart:{attrs:Object.fromEntries(codes.map(code=>[code,20])),g:30,mpg:30,shotZones:true}},
+    {bart:{attrs:Object.fromEntries(codes.map(code=>[code,2])),g:30,mpg:30,shotZones:true}}
+  ];
+  for (const gender of ["0","1"]) for (let position=0;position<9;position++) {
+    for (const stars of [2.5,3,3.5,4,4.5,5]) for (const source of profiles) {
+      for (let i=0;i<8;i++) {
+        const result=api.makeAttributeRatings(position,gender,source,quality(stars,5),weights,"",null,{},"draft");
+        assert.ok(result.currentBudget<=122);
+        assert.ok(result.currentBudget<=result.potentialBudget-8);
+        assert.equal(sum(result.attributes,0),result.currentBudget);
+        assert.equal(sum(result.attributes,1),result.potentialBudget);
+        if (stars>=3) assert.ok(result.currentBudget>=80);
+      }
+    }
+  }
+  let maxed=0;
+  for (let i=0;i<1000;i++) {
+    const result=api.makeAttributeRatings(0,"0",null,quality(5,5),weights,"",null,{},"draft");
+    if(result.currentBudget===122) maxed++;
+  }
+  assert.ok(maxed<50,`85 overall must be rare: ${maxed}/1000`);
+  api.setRng(()=>0.99999);
+  for (const gender of ["0","1"]) {
+    const ref={current:80,dribbleGrowth:3,attrs:codes.map(()=>12)};
+    const elite=api.makeAttributeRatings(0,gender,null,quality(5,5),weights,"",ref,{},"draft");
+    assert.equal(elite.currentBudget,122);
+  }
+  api.setRng(Math.random);
+});
+
+test("shared edits cannot raise a draft rookie above 85 overall", () => {
+  const player={
+    gender:"0",pos:2,arc:"Floor General",pri:6,sec:5,potentialStars:5,draftOverallCap:122,
+    attributes:Object.fromEntries(codes.map((code,index)=>[code,
+      index<6?[20,20]:index===6?[16,20]:[2,2]])),
+    physical:{SPD:14,STR:12,STA:12},appearanceWarnings:[]
+  };
+  api.refreshPlayerRatingTotals(player);
+  assert.equal(player.currentPoints,122);
+  api.applySharedRatings(player,[{DRB:[17,20]}]);
+  assert.equal(player.currentPoints,122);
+  assert.equal(player.attributes.DRB[0],16);
+  assert.match(player.appearanceWarnings[0],/not applied/);
 });
 
 test("draft position and professional peak determine potential, with a 2.5-star minimum", () => {

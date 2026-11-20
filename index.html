@@ -7502,6 +7502,24 @@ function ratingStatsProfile(bart) {
   return { score: 0.5 + (score - 0.5) * confidence, confidence, codes };
 }
 
+const DRAFT_CURRENT_MAX = Math.floor(144 * 0.85);
+
+function draftCurrentBudget(quality, profile, calibration) {
+  const ranges = {
+    2.5:[80,88], 3:[80,95], 3.5:[84,104], 4:[88,111], 4.5:[94,116], 5:[99,122]
+  };
+  const [minimum, maximum] = ranges[quality.potentialStars];
+  const tierEstimate = minimum + rng() * (maximum - minimum);
+  const statsEstimate = profile ? 80 + profile.score * (DRAFT_CURRENT_MAX - 80) : tierEstimate;
+  const estimate = profile
+    ? tierEstimate * (1 - 0.6 * profile.confidence) + statsEstimate * 0.6 * profile.confidence
+    : tierEstimate;
+  const calibrated = calibration
+    ? estimate + (calibration.current - 85) * 0.25 * (DRAFT_CURRENT_MAX - estimate) / (DRAFT_CURRENT_MAX - 80)
+    : estimate;
+  return clamp(Math.round(calibrated), 80, DRAFT_CURRENT_MAX);
+}
+
 // NCAA and ESPN reports of in-game dunks, matched with school to avoid namesakes.
 const WOMEN_DUNKERS = {
   "georgeann wells": ["west virginia"],
@@ -7524,7 +7542,7 @@ function isReportedWomanDunker(sourcePlayer) {
   return Boolean(WOMEN_DUNKERS[name] && WOMEN_DUNKERS[name].some(team => school.includes(team)));
 }
 
-function makeAttributeRatings(position, gender, sourcePlayer, quality, weights, arc = "", calibration = null, era = {}) {
+function makeAttributeRatings(position, gender, sourcePlayer, quality, weights, arc = "", calibration = null, era = {}, classType = "freshman") {
   const isGoat = arc === "GOAT";
   if (isGoat && quality.potentialStars !== 5) throw new Error("GOAT archetypes require 5-star potential.");
   const profile = ratingStatsProfile(sourcePlayer && sourcePlayer.bart);
@@ -7577,10 +7595,9 @@ function makeAttributeRatings(position, gender, sourcePlayer, quality, weights, 
     : budgetForStars(quality.potentialStars);
   const estimatedBudget = isGoat ? Math.max(108, profile ? Math.round(40 + profile.score * 80) : currentBudgetForStars(quality.currentStars))
     : profile ? Math.round(40 + profile.score * 80) : currentBudgetForStars(quality.currentStars);
-  const currentBudget = Math.min(
-    potentialBudget - 8,
-    calibration && !isGoat ? Math.round((estimatedBudget + calibration.current) / 2) : estimatedBudget
-  );
+  const currentBudget = Math.min(potentialBudget - 8, classType === "draft"
+    ? Math.max(isGoat ? 108 : 0, draftCurrentBudget(quality,profile,isGoat ? null : calibration))
+    : calibration && !isGoat ? Math.round((estimatedBudget + calibration.current) / 2) : estimatedBudget);
   const desiredGrowth = calibration && !isGoat ? Math.round(calibration.dribbleGrowth) : 8;
   const growth = Math.max(0, Math.min(desiredGrowth, potentialBudget - currentBudget,
     potentialMaximums[dribbleIndex] - currentMinimums[dribbleIndex]));
@@ -8546,6 +8563,11 @@ function applySharedRatings(player,history) {
     if (["SPD","STR","STM"].includes(code)) player.physical[code==="STM"?"STA":code] = pair[0];
     else updatedAttributes[code] = pair;
   }
+  const updatedCurrent = ATTRS.reduce((sum,[code])=>sum+updatedAttributes[code][0]-2,0);
+  if (player.draftOverallCap && updatedCurrent > player.draftOverallCap) {
+    rejected = true;
+    for (const [code] of ATTRS) updatedAttributes[code] = player.attributes[code];
+  }
   const updatedPoints = ATTRS.reduce((sum,[code])=>sum+updatedAttributes[code][1]-2,0);
   const updatedStars = minimumPotentialStars(updatedPoints);
   const styleValues=history.filter(item=>item && Object.hasOwn(item,"arc")).map(item=>item.arc);
@@ -8758,7 +8780,7 @@ const hometown =
     );
 
   const { attributes, currentBudget, potentialBudget, reportedDunk } =
-    makeAttributeRatings(position, gender, sourcePlayer, quality, archetype.weights, archetype.arc, calibration, era);
+    makeAttributeRatings(position, gender, sourcePlayer, quality, archetype.weights, archetype.arc, calibration, era, classType);
   const currentStars = starsForBudget(currentBudget);
 
 
@@ -8867,6 +8889,9 @@ else {
 
     id:
       id,
+
+    draftOverallCap:
+      classType === "draft" ? DRAFT_CURRENT_MAX : 0,
 
     gender:
       gender,
@@ -12758,6 +12783,12 @@ classSizePlus.addEventListener(
             return;
           }
           if (!physical) {
+            const currentTotal=player.currentPoints-player.attributes[code][0]+next[0];
+            if (player.draftOverallCap && currentTotal > player.draftOverallCap) {
+              $("hlPvRatingError").textContent="Draft overall cannot exceed 85. Reduce another actual attribute first.";
+              input.value=String(player.attributes[code][side]/2);
+              return;
+            }
             const total=player.potentialPoints-player.attributes[code][1]+next[1];
             if (total > 144 && player.arc !== "GOAT") {
               $("hlPvRatingError").textContent="Potential is limited to 144 points. Reduce another attribute first.";
