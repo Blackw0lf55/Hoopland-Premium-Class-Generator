@@ -139,7 +139,9 @@ The class preview lists position, name, jersey number, archetype and stars:
 white shows potential and gold overlays current ability. Real players use a
 matched college jersey number when available; otherwise a generated number is
 used and retained in the export. Opening a player shows the appearance editor
-first; the bottom button switches between appearances and attributes.
+first; the bottom button switches between appearances and attributes. The
+editable portrait uses approximate, catalog-based hairstyle, facial-hair and
+head-accessory drawings; it is not an exact in-game rendering.
 
 Three standalone 24×24 hairstyle grids are provided in
 `data/hairstyle-grids.json`. Values 0–3 mean transparent, base, 15% darker,

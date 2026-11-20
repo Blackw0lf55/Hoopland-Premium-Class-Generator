@@ -8,7 +8,7 @@ const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
 const catalog = html.slice(html.indexOf("const HAIR_CATALOG ="), html.indexOf("const MEN_FACIAL_HAIR="));
 const renderer = html.slice(html.indexOf("  function hairParts(ref,color)"), html.indexOf("  const lumOf="));
 const context = vm.createContext({});
-const { hairParts, facialSvg, renderArt, hair } = vm.runInContext(`
+const { hairParts, facialSvg, accessorySvg, renderArt, hair } = vm.runInContext(`
   ${catalog}
   const hex=c=>/^[0-9a-f]{6}$/i.test(String(c||""))?"#"+c:null;
   const rect=(x,y,w,h,fill,extra="")=>\`<rect x="\${x}" y="\${y}" width="\${w}" height="\${h}" fill="\${fill}" \${extra}/>\`;
@@ -16,7 +16,7 @@ const { hairParts, facialSvg, renderArt, hair } = vm.runInContext(`
     return [0,2,4].map(i=>Math.min(255,Math.round(parseInt(hex.slice(i,i+2),16)*factor)).toString(16).padStart(2,"0")).join("");
   }
   ${renderer}
-  ({ hairParts, facialSvg, renderArt, hair:getHairReference })
+  ({ hairParts, facialSvg, accessorySvg, renderArt, hair:getHairReference })
 `, context);
 
 test("bald is empty and distinct hairstyles have distinct mock-ups", () => {
@@ -44,6 +44,22 @@ test("all documented styles 0 through 170 render and close cuts have pixel silho
 test("facial hair mock-ups distinguish clean shaven, mustache and beard", () => {
   assert.equal(facialSvg(0, "#303030"), "");
   assert.notEqual(facialSvg(5, "#303030"), facialSvg(4, "#303030"));
+  for (let id=1;id<=31;id++) assert.ok(facialSvg(id,"#303030"), `empty facial hair ${id}`);
+  assert.notEqual(facialSvg(1,"#303030"),facialSvg(9,"#303030"));
+  assert.notEqual(facialSvg(4,"#303030"),facialSvg(16,"#303030"));
+});
+
+test("head accessory mock-ups distinguish eyewear, face masks, bands and a single eye cover", () => {
+  const draw=id=>accessorySvg(id,"FF00AA");
+  assert.equal(draw(0),"");
+  for (let id=1;id<=25;id++) assert.ok(draw(id), `empty accessory ${id}`);
+  assert.notEqual(draw(7),draw(1));
+  assert.notEqual(draw(8),draw(9));
+  assert.notEqual(draw(10),draw(6));
+  assert.match(draw(10),/x="34"/);
+  assert.doesNotMatch(draw(16),/width="20" height="9"/);
+  assert.match(draw(17),/#FF00AA/i);
+  assert.notEqual(draw(24),draw(25));
 });
 
 test("swept, tied and textured hairstyles follow their catalog features", () => {
