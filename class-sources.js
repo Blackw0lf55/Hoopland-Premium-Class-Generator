@@ -621,13 +621,38 @@ function espnDraftPhotos(data, year) {
   });
 }
 
+function espnDraftSelections(data, year) {
+  const statedYear = Number(String(data?.displayName || "").match(/\b(?:19|20)\d{2}\b/)?.[0] || data?.season?.year);
+  if (statedYear !== year || !Array.isArray(data?.picks) || !data.picks.length) return [];
+  const picks = new Set(), names = new Set(), players = [];
+  for (const pick of data.picks) {
+    const athlete = pick.athlete;
+    const name = splitName(String(athlete?.displayName || ""));
+    const number = Number(pick.overall);
+    if (pick.status !== "SELECTION_MADE" || !name || !Number.isSafeInteger(number) || number < 1) return [];
+    const key = nameKey(name);
+    if (picks.has(number) || names.has(key)) return [];
+    picks.add(number);
+    names.add(key);
+    players.push({
+      ...name,
+      draftPick: number,
+      draftRound: Number(pick.round?.number || pick.round) || 1,
+      position: String(athlete.position?.abbreviation || ""),
+      school: String(athlete.college?.name || athlete.college?.displayName || "")
+    });
+  }
+  return players.sort((a, b) => a.draftPick - b.draftPick);
+}
+
 async function loadEspnDraftPhotos(gender, year) {
   const league = gender === "women" ? "wnba" : "nba";
   const url = `https://site.api.espn.com/apis/site/v2/sports/basketball/${league}/draft?season=${year}`;
   try {
     const response = await fetch(url, { headers: { "User-Agent": UA, Accept: "application/json" } });
     if (!response.ok) return { players: [], status: response.status };
-    return { players: espnDraftPhotos(await response.json(), year), status: response.status };
+    const data = await response.json();
+    return { players: espnDraftPhotos(data, year), selections: espnDraftSelections(data, year), status: response.status };
   } catch (error) {
     console.warn("ESPN draft photo lookup failed", gender, year, error);
     return { players: [], status: 0 };
@@ -782,6 +807,10 @@ export async function handleClassData(request, options = {}) {
 
     if (nba.players.length) {
       loaded.players = mergeDraftSources(loaded.players, nba.players);
+    }
+    if (!loaded.players.length && espn.selections?.length) {
+      loaded.players = espn.selections;
+      loaded.diagnostics.fallback = "ESPN draft selections";
     }
     loaded.players = attachEspnDraftPhotos(loaded.players, espn.players);
 

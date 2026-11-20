@@ -154,6 +154,9 @@ Draft classes also check ESPN's draft endpoint for headshots and attach them
 only when the returned year, player name, and (where provided) draft pick
 match. This includes the separately sourced 2026 women's class. If ESPN returns
 another year or a source fails, no photo is substituted from that response.
+If the other draft sources return no players, an ESPN draft can also supply
+selections when the year matches and every listed pick has a unique valid
+selection; incomplete or ambiguous drafts are not used as a fallback.
 Draft players with a known college also check that college's ESPN roster for
 the draft-year season. The team, season, exact unique player name and athlete
 headshot must all match; unavailable or ambiguous rosters are not used.

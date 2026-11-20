@@ -58,6 +58,46 @@ test("ESPN draft portraits are matched by year, name, and pick", async () => {
   assert.equal(attachEspnDraftPhotos([{...people[0],height:72,weight:165}],dimensions)[0].weight,165);
 });
 
+test("completed ESPN draft selections are a fallback when other draft sources fail", async () => {
+  const { handleClassData } = await import("../class-sources.js");
+  const draft = {displayName:"2025 NBA Draft",picks:[
+    {overall:2,status:"SELECTION_MADE",athlete:{id:"101",displayName:"Dylan Harper"}},
+    {overall:1,status:"SELECTION_MADE",athlete:{id:"100",displayName:"Cooper Flagg",
+      position:{abbreviation:"F"},displayHeight:"6' 9\"",displayWeight:"221 lbs"}}
+  ]};
+  const original = global.fetch;
+  let data = draft;
+  try {
+    global.fetch = async url => {
+      const request = new URL(url);
+      if (request.hostname === "en.wikipedia.org") throw new Error("offline");
+      if (request.hostname === "stats.nba.com") return new Response("",{status:503});
+      if (request.hostname === "site.api.espn.com") return Response.json(data);
+      throw new Error("Unexpected request " + url);
+    };
+    const request = () => handleClassData(new Request("https://example.test/api/class-data?type=draft&gender=men&year=2025"));
+    let response = await request();
+    let body = await response.json();
+    assert.equal(response.status,200);
+    assert.equal(body.source.fallback,"ESPN draft selections");
+    assert.deepEqual(body.players.map(p=>p.fn),["Cooper","Dylan"]);
+    assert.equal(body.players[0].position,"F");
+    assert.equal(body.players[0].espnId,"100");
+    assert.equal(body.players[0].height,81);
+    assert.equal(body.players[0].weight,221);
+    for (const invalid of [
+      {...draft,displayName:"2024 NBA Draft"},
+      {...draft,picks:[draft.picks[0],{...draft.picks[1],status:"PENDING"}]},
+      {...draft,picks:[draft.picks[0],draft.picks[0]]},
+      {...draft,picks:[draft.picks[0],{...draft.picks[1],athlete:{displayName:"Unknown"}}]}
+    ]) {
+      data = invalid;
+      response = await request();
+      assert.equal(response.status,502);
+    }
+  } finally { global.fetch = original; }
+});
+
 test("the curated 2026 WNBA route also attaches ESPN draft photos", async () => {
   const { default: worker } = await import("../location-worker.js");
   const { default: existingWorker } = await import("../worker.js");
