@@ -8444,23 +8444,41 @@ function sourceDimension(player, field, min, max) {
     Number(value) >= min && Number(value) <= max ? Math.round(Number(value)) : null;
 }
 
+function centeredDimension(minimum, maximum, referenceMinimum, referenceMaximum) {
+  const center = clamp(Math.floor((referenceMinimum + referenceMaximum) / 2), minimum, maximum);
+  const deviation = Math.max(1, (referenceMaximum - referenceMinimum) / 4);
+  const first = Math.max(minimum, Math.ceil(center - 8 * deviation));
+  const last = Math.min(maximum, Math.floor(center + 8 * deviation));
+  const weights = [];
+  let total = 0;
+  for (let value = first; value <= last; value++) {
+    const weight = Math.exp(-0.5 * ((value - center) / deviation) ** 2);
+    weights.push(weight);
+    total += weight;
+  }
+  let choice = rng() * total;
+  for (let index = 0; index < weights.length; index++) {
+    choice -= weights[index];
+    if (choice < 0) return first + index;
+  }
+  return last;
+}
+
 function generatePlayerDimensions(position, gender, sourcePlayer) {
   const real = document.getElementById("mode").value === "real";
+  const reference = recommendedFictionalPhysicalLimits(position,gender,document.getElementById("classType").value);
   const [minimumHeight, maximumHeight, minimumWeight, maximumWeight] = real
-    ? recommendedPhysicalLimits(position,gender,document.getElementById("classType").value)
+    ? reference
     : positionPhysicalLimits(position);
   const sourceHeight = sourceDimension(sourcePlayer, "height", 48, 100);
   const sourceWeight = sourceDimension(sourcePlayer, "weight", 70, 500);
-  const women = gender === "1";
-  const giantOutlier = sourceHeight === null && !(real && sourcePlayer) && position >= 5 &&
-    maximumHeight >= (women ? 77 : 80) && rng() < 0.08;
-  const giantMaxHeight = Math.max(minimumHeight, Math.min(maximumHeight, women ? 84 : 91));
-  const giantMinHeight = Math.min(giantMaxHeight, Math.max(minimumHeight, women ? 77 : 80));
   const height = sourceHeight !== null ? (real ? sourceHeight : clamp(sourceHeight,minimumHeight,maximumHeight))
-    : giantOutlier ? randomInteger(giantMinHeight,giantMaxHeight) : randomInteger(minimumHeight,maximumHeight);
+    : centeredDimension(minimumHeight, maximumHeight, reference[0], reference[1]);
   const weight = sourceWeight !== null ? (real ? sourceWeight : clamp(sourceWeight,minimumWeight,maximumWeight))
-    : giantOutlier ? randomInteger(Math.min(maximumWeight,Math.max(minimumWeight,women ? 200 : 240)),maximumWeight)
-    : randomInteger(minimumWeight,maximumWeight);
+    : centeredDimension(minimumWeight, maximumWeight, reference[2], reference[3]);
+  const giantOutlier = sourceHeight === null && !(real && sourcePlayer) && position >= 5 &&
+    height >= (gender === "1" ? 77 : 80) &&
+    height > Math.floor((reference[0] + reference[1]) / 2) + (reference[1] - reference[0]) / 2;
   return {height,weight,giantOutlier};
 }
 

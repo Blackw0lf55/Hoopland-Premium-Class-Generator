@@ -48,7 +48,11 @@ college roster was supplied, fictional men's freshmen use the men's draft
 rookie ranges as an approximation. The PG minimum defaults to 67 inches for
 both genders. Generated heights and weights
 stay within those limits, including outliers; an invalid range identifies the
-position. Edits are retained when switching between class types or genders.
+position. Generated dimensions favor the midpoint of the relevant gender and
+class position-group reference ranges, becoming less likely farther from it.
+These midpoints approximate averages; they are not measured position-specific
+means. When custom limits exclude the midpoint, the nearest limit becomes the
+most likely value. Edits are retained when switching between class types or genders.
 Real classes skip Spec Limits and use available player-specific heights and
 weights from class tables, matched ESPN draft identities and basketball
 profiles, NBA/WNBA player-ID profiles, or season-matched college rosters. Women's school-roster heights
@@ -56,7 +60,9 @@ are also used when the name and season match unambiguously. Profile
 measurements may reflect a later season, and source data can be missing or
 incorrect; accuracy for every player cannot be guaranteed. When a measurement
 is missing, it is estimated from recommended position ranges, marked `est.`
-in the player preview, and reported after generation. Height (inches) and
+in the player preview, and reported after generation. Missing measurements use
+the same center-weighted estimates; supplied real measurements are not altered.
+Height (inches) and
 weight (pounds) can be corrected in Edit Attributes before download; changes
 are local to the class. Men's freshman ratings retain the previous model because
 no men's college roster was supplied. These are estimates, not verified

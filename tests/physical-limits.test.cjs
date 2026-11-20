@@ -74,7 +74,7 @@ test("position controls use named recommended ranges and preserve context-specif
   elements.maxHt8.value="84";elements.maxHt8.handlers.input();
   elements.minWt8.value="225";elements.minWt8.handlers.input();
   elements.maxWt8.value="250";elements.maxWt8.handlers.input();
-  assert.deepEqual({...api.generate(8,"0",null)},{height:84,weight:250,giantOutlier:true});
+  assert.deepEqual({...api.generate(8,"0",null)},{height:82,weight:225,giantOutlier:true});
   elements.classType.value="draft";elements.classType.handlers.change();
   assert.equal(elements.minHt0.value,"80");
   elements.classType.value="freshman";elements.classType.handlers.change();
@@ -125,13 +125,68 @@ test("real players preserve sourced dimensions independently of fictional edits"
   elements.minHt0.value="100";elements.maxHt0.value="101";
   elements.minWt0.value="300";elements.maxWt0.value="301";
   elements.mode.value="real";
-  assert.deepEqual({...api.generate(0,"0",{height:65})},{height:65,weight:223,giantOutlier:false});
+  assert.deepEqual({...api.generate(0,"0",{height:65})},{height:65,weight:166,giantOutlier:false});
   assert.deepEqual({...api.generate(0,"0",{height:80,weight:240})},{height:80,weight:240,giantOutlier:false});
-  assert.deepEqual({...api.generate(0,"0",{height:0,weight:250})},{height:78,weight:250,giantOutlier:false});
-  assert.deepEqual({...api.generate(8,"0",{height:null,weight:null})},{height:78,weight:223,giantOutlier:false});
-  assert.deepEqual({...api.generate(0,"0",null)},{height:78,weight:223,giantOutlier:false});
+  assert.deepEqual({...api.generate(0,"0",{height:0,weight:250})},{height:67,weight:250,giantOutlier:false});
+  assert.deepEqual({...api.generate(8,"0",{height:null,weight:null})},{height:72,weight:166,giantOutlier:false});
+  assert.deepEqual({...api.generate(0,"0",null)},{height:67,weight:166,giantOutlier:false});
   elements.maxHt0.value="";
   assert.equal(api.generate(0,"0",{height:81}).height,81);
+});
+
+test("height and weight favor position centers rather than a uniform distribution", () => {
+  const {api,elements,context}=harness();
+  const refsContext={window:{}};
+  vm.runInNewContext(fs.readFileSync(path.join(__dirname,"..","data/roster-reference.js"),"utf8"),refsContext);
+  const refs=refsContext.window.HOOPLAND_ROSTER_REFERENCE.calibration;
+  context.rosterCalibration=(gender,type,position) => type==="draft"
+    ? refs[gender==="1"?"wnba":"nba"][Math.floor(position/3)]
+    : gender==="1"?refs.ncaaw[Math.floor(position/3)]:null;
+  elements.gender.value="1";api.initialize();
+  for (const [gender,type] of [["0","draft"],["1","draft"],["0","freshman"],["1","freshman"]]) {
+    elements.gender.value=gender;elements.gender.handlers.change();
+    elements.classType.value=type;elements.classType.handlers.change();
+    for (let position=0;position<9;position++) {
+      const [minH,maxH,minW,maxW]=api.limits(position);
+      const centerH=Math.floor((minH+maxH)/2),centerW=Math.floor((minW+maxW)/2);
+      const heights=new Map(),weights=new Map();
+      for (let i=0;i<2000;i++) {
+        context.rng=()=>(i+0.5)/2000;
+        const result=api.generate(position,gender,null);
+        assert.ok(result.height>=minH && result.height<=maxH);
+        assert.ok(result.weight>=minW && result.weight<=maxW);
+        heights.set(result.height,(heights.get(result.height)||0)+1);
+        weights.set(result.weight,(weights.get(result.weight)||0)+1);
+      }
+      assert.ok(heights.get(centerH)>heights.get(minH),`${gender} ${type} ${position} height`);
+      assert.ok(weights.get(centerW)>weights.get(minW),`${gender} ${type} ${position} weight`);
+      for (const [counts,center,min,max] of [[heights,centerH,minH,maxH],[weights,centerW,minW,maxW]]) {
+        for (const direction of [-1,1]) {
+          for (let value=center+direction;value>=min && value<=max;value+=direction) {
+            assert.ok((counts.get(value)||0) <= (counts.get(value-direction)||0)+1,
+              `${gender} ${type} ${position}: frequency at ${value}`);
+          }
+        }
+      }
+      if (gender==="0" && position===8) {
+        assert.equal(centerH,83);
+        const sevenFoot=[...heights].filter(([height])=>height>=84).reduce((sum,[,count])=>sum+count,0);
+        assert.ok(sevenFoot < 2000*(maxH-83)/(maxH-minH+1));
+      }
+    }
+  }
+  elements.gender.value="0";elements.gender.handlers.change();
+  elements.classType.value="draft";elements.classType.handlers.change();
+  for(const [field,value] of [["minHt",90],["maxHt",95],["minWt",300],["maxWt",320]])
+    elements[field+"8"].value=String(value);
+  const heights=new Map();
+  for(let i=0;i<2000;i++) {
+    context.rng=()=>(i+0.5)/2000;
+    const p=api.generate(8,"0",null);
+    assert.ok(p.height>=90 && p.height<=95 && p.weight>=300 && p.weight<=320);
+    heights.set(p.height,(heights.get(p.height)||0)+1);
+  }
+  assert.ok(heights.get(90)>heights.get(91));
 });
 
 test("legacy draft biography merging preserves measurements when no biography matches", () => {
