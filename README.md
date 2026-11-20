@@ -219,11 +219,12 @@ to potential, not guaranteed careers.
 For men's and women's draft classes, rookie current ratings are estimated
 primarily in the 55–85 overall range using the player's potential tier,
 available college statistics and roster calibration. An 85 is rare, and
-current ratings cannot exceed 122 distributable points (84.7%, displayed as
-85%). Two-and-a-half-star potential caps at 74 points, so those players must
-start below 55 overall to stay within their potential and leave growth room.
-Shared or manual attribute edits that would exceed the draft ceiling are
-rejected. Freshman class ratings are unaffected by this draft-only ceiling.
+the lowest tier starts around 50–51 overall. Draft current ratings range from
+72 to 122 distributable points (50% to 84.7%, displayed as 85%). A 2.5-star
+potential caps at 74 points, so those players have only one or two points of
+growth available, including for dribbling. Shared or manual attribute edits
+outside the draft range are rejected. Freshman class ratings are unaffected
+by these draft-only limits.
 
 For past NBA and WNBA draft classes, the generator looks up professional
 regular-season player impact estimate (PIE) and ranks each qualifying season

@@ -7502,22 +7502,27 @@ function ratingStatsProfile(bart) {
   return { score: 0.5 + (score - 0.5) * confidence, confidence, codes };
 }
 
+const DRAFT_CURRENT_MIN = Math.ceil(144 * 0.50);
 const DRAFT_CURRENT_MAX = Math.floor(144 * 0.85);
 
 function draftCurrentBudget(quality, profile, calibration) {
   const ranges = {
-    2.5:[80,88], 3:[80,95], 3.5:[84,104], 4:[88,111], 4.5:[94,116], 5:[99,122]
+    2.5:[72,73], 3:[80,95], 3.5:[84,104], 4:[88,111], 4.5:[94,116], 5:[99,122]
   };
   const [minimum, maximum] = ranges[quality.potentialStars];
   const tierEstimate = minimum + rng() * (maximum - minimum);
-  const statsEstimate = profile ? 80 + profile.score * (DRAFT_CURRENT_MAX - 80) : tierEstimate;
+  const statsEstimate = profile
+    ? quality.potentialStars === 2.5 ? minimum + profile.score * (maximum - minimum)
+      : 80 + profile.score * (DRAFT_CURRENT_MAX - 80)
+    : tierEstimate;
   const estimate = profile
     ? tierEstimate * (1 - 0.6 * profile.confidence) + statsEstimate * 0.6 * profile.confidence
     : tierEstimate;
   const calibrated = calibration
-    ? estimate + (calibration.current - 85) * 0.25 * (DRAFT_CURRENT_MAX - estimate) / (DRAFT_CURRENT_MAX - 80)
+    ? estimate + (calibration.current - 85) * 0.25 * (DRAFT_CURRENT_MAX - estimate) / (DRAFT_CURRENT_MAX - 80) *
+      (quality.potentialStars === 2.5 ? (maximum - minimum) / (DRAFT_CURRENT_MAX - 80) : 1)
     : estimate;
-  return clamp(Math.round(calibrated), 80, DRAFT_CURRENT_MAX);
+  return clamp(Math.round(calibrated), DRAFT_CURRENT_MIN, DRAFT_CURRENT_MAX);
 }
 
 // NCAA and ESPN reports of in-game dunks, matched with school to avoid namesakes.
@@ -7595,7 +7600,8 @@ function makeAttributeRatings(position, gender, sourcePlayer, quality, weights, 
     : budgetForStars(quality.potentialStars);
   const estimatedBudget = isGoat ? Math.max(108, profile ? Math.round(40 + profile.score * 80) : currentBudgetForStars(quality.currentStars))
     : profile ? Math.round(40 + profile.score * 80) : currentBudgetForStars(quality.currentStars);
-  const currentBudget = Math.min(potentialBudget - 8, classType === "draft"
+  const minimumGrowth = classType === "draft" && quality.potentialStars === 2.5 ? 1 : 8;
+  const currentBudget = Math.min(potentialBudget - minimumGrowth, classType === "draft"
     ? Math.max(isGoat ? 108 : 0, draftCurrentBudget(quality,profile,isGoat ? null : calibration))
     : calibration && !isGoat ? Math.round((estimatedBudget + calibration.current) / 2) : estimatedBudget);
   const desiredGrowth = calibration && !isGoat ? Math.round(calibration.dribbleGrowth) : 8;
@@ -8564,7 +8570,8 @@ function applySharedRatings(player,history) {
     else updatedAttributes[code] = pair;
   }
   const updatedCurrent = ATTRS.reduce((sum,[code])=>sum+updatedAttributes[code][0]-2,0);
-  if (player.draftOverallCap && updatedCurrent > player.draftOverallCap) {
+  if (player.draftOverallCap && (updatedCurrent > player.draftOverallCap ||
+      updatedCurrent < player.draftOverallFloor)) {
     rejected = true;
     for (const [code] of ATTRS) updatedAttributes[code] = player.attributes[code];
   }
@@ -8892,6 +8899,9 @@ else {
 
     draftOverallCap:
       classType === "draft" ? DRAFT_CURRENT_MAX : 0,
+
+    draftOverallFloor:
+      classType === "draft" ? DRAFT_CURRENT_MIN : 0,
 
     gender:
       gender,
@@ -12786,6 +12796,11 @@ classSizePlus.addEventListener(
             const currentTotal=player.currentPoints-player.attributes[code][0]+next[0];
             if (player.draftOverallCap && currentTotal > player.draftOverallCap) {
               $("hlPvRatingError").textContent="Draft overall cannot exceed 85. Reduce another actual attribute first.";
+              input.value=String(player.attributes[code][side]/2);
+              return;
+            }
+            if (player.draftOverallFloor && currentTotal < player.draftOverallFloor) {
+              $("hlPvRatingError").textContent="Draft overall cannot fall below 50. Increase another actual attribute first.";
               input.value=String(player.attributes[code][side]/2);
               return;
             }
