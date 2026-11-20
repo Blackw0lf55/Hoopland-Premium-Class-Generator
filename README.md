@@ -43,8 +43,10 @@ tendencies blend those references with tier, archetype and available college
 statistics. Dribbling growth uses the group’s observed average instead of
 forcing four full rating points of growth; potential remains a separate career estimate. The
 editable height and weight limits for fictional players default to the corresponding
-gender and class sample's position-group 5th–95th percentiles, except the PG
-minimum defaults to 67 inches for both genders. Generated heights and weights
+gender and class sample's position-group 5th–95th percentiles. Because no men's
+college roster was supplied, fictional men's freshmen use the men's draft
+rookie ranges as an approximation. The PG minimum defaults to 67 inches for
+both genders. Generated heights and weights
 stay within those limits, including outliers; an invalid range identifies the
 position. Edits are retained when switching between class types or genders.
 Real classes skip Spec Limits and use available player-specific heights and
@@ -56,7 +58,7 @@ incorrect; accuracy for every player cannot be guaranteed. When a measurement
 is missing, it is estimated from recommended position ranges, marked `est.`
 in the player preview, and reported after generation. Height (inches) and
 weight (pounds) can be corrected in Edit Attributes before download; changes
-are local to the class. Men’s freshmen retain the previous model because
+are local to the class. Men's freshman ratings retain the previous model because
 no men's college roster was supplied. These are estimates, not verified
 rookie-season outcomes.
 

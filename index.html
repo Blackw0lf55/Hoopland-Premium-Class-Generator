@@ -8366,6 +8366,11 @@ function recommendedPhysicalLimits(position, gender, classType) {
   return values;
 }
 
+function recommendedFictionalPhysicalLimits(position, gender, classType) {
+  const referenceType = gender === "0" && classType === "freshman" ? "draft" : classType;
+  return recommendedPhysicalLimits(position, gender, referenceType);
+}
+
 function initializePositionPhysicalLimits() {
   const box = document.getElementById("positionPhysicalLimits");
   const fields = [["minHt","Min height (in)"],["maxHt","Max height (in)"],
@@ -8381,7 +8386,7 @@ function initializePositionPhysicalLimits() {
     if (!saved.has(key)) {
       saved.set(key, POS.map(([position]) => {
         const index = Number(position);
-        return recommendedPhysicalLimits(index,gender,type).map(String);
+        return recommendedFictionalPhysicalLimits(index,gender,type).map(String);
       }));
     }
     box.replaceChildren();

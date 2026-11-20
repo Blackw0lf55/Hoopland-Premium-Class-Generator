@@ -33,7 +33,7 @@ function harness() {
   return {api,elements,context};
 }
 
-test("recommended limits use the matching women's roster for every position", () => {
+test("freshman defaults use men's draft and women's college reference ranges", () => {
   const {api,elements,context}=harness();
   const referenceContext={window:{}};
   vm.runInNewContext(fs.readFileSync(path.join(__dirname,"..","data/roster-reference.js"),"utf8"),referenceContext);
@@ -41,15 +41,19 @@ test("recommended limits use the matching women's roster for every position", ()
   context.rosterCalibration=(gender,type,position)=>type==="draft"
     ? references[gender==="1"?"wnba":"nba"][Math.floor(position/3)]
     : gender==="1"?references.ncaaw[Math.floor(position/3)]:null;
-  for (const [type,key] of [["draft","wnba"],["freshman","ncaaw"]]) {
+  for (const [gender,type,key] of [["0","freshman","nba"],["1","draft","wnba"],["1","freshman","ncaaw"]]) {
     elements.classType.value=type;
-    elements.gender.value="1";elements.gender.handlers.change();elements.classType.handlers.change();
+    elements.gender.value=gender;elements.gender.handlers.change();elements.classType.handlers.change();
     for(let position=0;position<9;position++){
       const expected=[...references[key][Math.floor(position/3)].height,...references[key][Math.floor(position/3)].weight];
       if(position===0)expected[0]=67;
       assert.deepEqual(Array.from(api.limits(position)),expected);
+      const generated=api.generate(position,gender,null);
+      assert.ok(generated.height>=expected[0]&&generated.height<=expected[1]);
+      assert.ok(generated.weight>=expected[2]&&generated.weight<=expected[3]);
     }
   }
+  assert.ok(api.limits(8)[0] < references.nba[2].height[0]);
 });
 
 test("position controls use named recommended ranges and preserve context-specific edits", () => {
@@ -65,9 +69,17 @@ test("position controls use named recommended ranges and preserve context-specif
   elements.gender.value="0";elements.gender.handlers.change();
   assert.equal(elements.minHt0.value,"80");
   elements.classType.value="freshman";elements.classType.handlers.change();
-  assert.deepEqual(Array.from(api.limits(0)),[67,70,100,150]);
+  assert.deepEqual(Array.from(api.limits(0)),[67,78,166,223]);
+  elements.minHt8.value="82";elements.minHt8.handlers.input();
+  elements.maxHt8.value="84";elements.maxHt8.handlers.input();
+  elements.minWt8.value="225";elements.minWt8.handlers.input();
+  elements.maxWt8.value="250";elements.maxWt8.handlers.input();
+  assert.deepEqual({...api.generate(8,"0",null)},{height:84,weight:250,giantOutlier:true});
   elements.classType.value="draft";elements.classType.handlers.change();
   assert.equal(elements.minHt0.value,"80");
+  elements.classType.value="freshman";elements.classType.handlers.change();
+  assert.deepEqual(Array.from(api.limits(8)),[82,84,225,250]);
+  elements.classType.value="draft";elements.classType.handlers.change();
   elements.gender.value="1";elements.gender.handlers.change();
   elements.classType.value="freshman";elements.classType.handlers.change();
   assert.equal(api.limits(0)[0],67);
