@@ -13,9 +13,9 @@ function validHairGrids(grids) {
       row.every(value => Number.isInteger(value) && value >= 0 && value <= 3)));
 }
 
-function hairPixelParts(ref, color, grids) {
-  if (!ref || ref.id === 0) return {back:"", front:""};
+function hairPixelParts(ref, grids) {
   const empty = () => Array.from({length:24}, () => Array(24).fill(0));
+  if (!ref || ref.id === 0) return {backGrid:empty(), frontGrid:empty()};
   const front = empty(), back = empty();
   const text = `${ref.structure || ""} ${ref.description || ""}`.toLowerCase();
   const texture = ref.texture || "straight", length = ref.length || "short";
@@ -103,12 +103,10 @@ function hairPixelParts(ref, color, grids) {
       fill(back,18,6,20,18,2); fill(back,19,7,19,17,1);
     }
   }
-  const base = /^#[0-9a-f]{6}$/i.test(color) ? color : "#202020";
-  const shade = factor => "#" + [1,3,5].map(i =>
-    Math.min(255,Math.round(parseInt(base.slice(i,i+2),16)*factor)).toString(16).padStart(2,"0")).join("");
-  const colors = ["",base,shade(.85),shade(1.15)];
-  const render = grid => grid.map((row,y) => row.map((value,x) => value
-    ? `<rect x="${8+x*2}" y="${6+y*2}" width="2" height="2" fill="${colors[value]}"/>`
-    : "").join("")).join("");
-  return {back:render(back), front:render(front)};
+  if (ref.structure === "central-strip") {
+    for (let y=0;y<24;y++) for (let x=0;x<24;x++) {
+      if (x<10 || x>13) front[y][x]=0;
+    }
+  }
+  return {backGrid:back, frontGrid:front};
 }
