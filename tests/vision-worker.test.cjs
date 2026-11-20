@@ -136,7 +136,7 @@ test("worker transforms retain location and player export fields", async () => {
     ATTRS:codes.map(code=>[code,code]),clamp:(value,min,max)=>Math.min(max,Math.max(min,value))
   });
   refresh(player);
-  assert.equal(player.currentStars,0.5);
+  assert.equal(player.currentStars,15*5/144);
   assert.equal(exportPlayer(player,0).pot,9);
   player.attributes.PAS[1]++;
   refresh(player);

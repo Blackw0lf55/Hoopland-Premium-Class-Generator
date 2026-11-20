@@ -135,6 +135,11 @@ matched college jersey number when available; otherwise a generated number is
 used and retained in the export. Opening a player shows the appearance editor
 first; the bottom button switches between appearances and attributes.
 
+Three standalone 24×24 hairstyle grids are provided in
+`data/hairstyle-grids.json`. Values 0–3 mean transparent, base, 15% darker,
+and 15% lighter, respectively. These concepts are not yet used by the preview
+renderer or mapped to in-game hairstyle IDs.
+
 Speed, strength and stamina are generated separately from the core attribute
 budget and exported in half-point steps. Speed uses position-specific limits,
 with rare outliers; a 10 is reserved for PG/G. A 10 strength is rare and
@@ -198,8 +203,10 @@ attributes starts at 1 (export value 2), and added points use the export's
 points at 60, 74, 88, 102, 116, 130 and 144 respectively, except for the rare
 GOAT archetype described below. Potential stars use the lowest tier whose cap
 can hold the assigned potential points, including after edits. Gold actual
-stars are estimated at one half-star per 14.4 added points (rounded down), so
-144 points reaches five stars. The precise in-game threshold is not verified.
+stars use a continuous scale of one half-star per 14.4 added points. The gold
+fill is the current points divided by 144, rounded to the nearest whole percent
+and capped at 100%; it is independent of the potential display. The precise
+in-game threshold is not verified.
 Growth is the assigned potential points minus current points. Tier names refer
 to potential, not guaranteed careers.
 
@@ -226,7 +233,8 @@ future peaks are unknown. Missing or ambiguous identities, insufficient
 minutes data, incomplete data, and unavailable services can prevent a peak match;
 the preview then identifies the draft-pick/tier fallback. Projected future
 drafts use draft-order tiers, with earlier picks never assigned lower potential
-than later picks. All classes have a minimum potential of 2.5 stars.
+than later picks. Real players and fictional draft players have a minimum
+potential of 2.5 stars; fictional freshmen have a minimum of 2 stars.
 
 Projected drafts exclude names found in the prior four draft years. If a
 needed year's results cannot be verified, men's generation stops with an error;

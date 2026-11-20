@@ -22,7 +22,7 @@ const api = vm.runInContext(`
   ${section("const TIER_RULES = ", "function shuffle(")}
   ${section("function randomHalfStar(", "function generateRegressionAge(")}
   ${section("function validSharedRating(", "function makePlayer(")}
-  ({ budgetForStars, starsForBudget, currentBudgetForStars, minimumPotentialStars, refreshPlayerRatingTotals, qualityForTier, ratingStatsProfile,
+  ({ budgetForStars, starsForBudget, overallFillPercent, currentBudgetForStars, minimumPotentialStars, refreshPlayerRatingTotals, qualityForTier, ratingStatsProfile,
      makeAttributeRatings, isReportedWomanDunker, archetypeWeights, ARCHETYPES,
      validSharedRating, applySharedRatings, applyEraRules,
      setRng(value) { rng = value; },
@@ -44,10 +44,12 @@ test("potential caps and overall use the requested point scale", () => {
   for (let halfStars=1;halfStars<=10;halfStars++) {
     const threshold = Math.ceil(144 * halfStars / 10);
     assert.equal(api.currentBudgetForStars(halfStars/2),threshold);
-    assert.equal(api.starsForBudget(threshold),halfStars/2);
-    assert.equal(api.starsForBudget(threshold-1),(halfStars-1)/2);
+    assert.ok(api.starsForBudget(threshold)>=halfStars/2);
+    assert.ok(api.starsForBudget(threshold-1)<halfStars/2);
   }
-  assert.equal(api.starsForBudget(53), 1.5);
+  assert.equal(api.starsForBudget(53), 53*5/144);
+  assert.equal(api.overallFillPercent(82),57);
+  assert.equal(api.overallFillPercent(145),100);
   assert.equal(api.minimumPotentialStars(145),5);
 });
 
@@ -66,7 +68,7 @@ test("edited ratings recalculate actual stars and potential tiers independently"
   for (const [points,stars] of [[60,2],[61,2.5],[74,2.5],[75,3],[130,4.5],[131,5],[144,5]]) {
     setPoints(1,points);
     api.refreshPlayerRatingTotals(player);
-    assert.equal(player.currentStars,1);
+    assert.equal(player.currentStars,29*5/144);
     assert.equal(player.potentialStars,stars);
     assert.equal(player.pot,stars*2);
   }
@@ -107,7 +109,7 @@ test("attribute editor updates star tiers and enforces the non-GOAT cap", () => 
   assert.equal(player.pot,10);
   change(0,0,8.5);
   assert.equal(player.currentPoints,15);
-  assert.equal(player.currentStars,0.5);
+  assert.equal(player.currentStars,15*5/144);
   for (const code of codes) player.attributes[code]=[2,14];
   api.refreshPlayerRatingTotals(player);
   show(player);
@@ -357,6 +359,24 @@ test("draft position and professional peak determine potential, with a 2.5-star 
     assert.ok(stars.every(value => value >= 2.5));
   }
   for (let i=0;i<100;i++) assert.equal(api.qualityForTier("bad").potentialStars,2.5);
+  api.setRng(()=>0);
+  assert.equal(api.qualityForTier("bad",null,"0","freshman").potentialStars,2);
+  assert.equal(api.qualityForTier("bad",{fn:"Real"},"0","freshman").potentialStars,2.5);
+  assert.equal(api.qualityForTier("bad",null,"0","freshman",false).potentialStars,2.5);
+  assert.equal(api.qualityForTier("bad",null,"0","draft").potentialStars,2.5);
+  api.setRng(Math.random);
+});
+
+test("era-restricted attributes keep the selected potential budget", () => {
+  for (const [gender,era] of [["0",{noThree:true,noDunk:true}],["1",{noThree:true,noDunk:false}]]) {
+    for (const stars of [2.5,3,3.5,4,4.5,5]) {
+      const result=api.makeAttributeRatings(6,gender,null,quality(stars,2),weights,"",null,era);
+      assert.equal(sum(result.attributes,1),api.budgetForStars(stars));
+      assert.equal(api.minimumPotentialStars(sum(result.attributes,1)),stars);
+      assert.deepEqual(Array.from(result.attributes.TPT),[2,2]);
+      if (era.noDunk) assert.deepEqual(Array.from(result.attributes.DNK),[2,2]);
+    }
+  }
 });
 
 test("conflicting limits fail explicitly", () => {

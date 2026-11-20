@@ -6506,10 +6506,14 @@ function budgetForStars(stars) {
 function starsForBudget(points) {
 
   return clamp(
-    Math.floor(points * 10 / 144) / 2,
+    points * 5 / 144,
     0,
     5
   );
+}
+
+function overallFillPercent(points) {
+  return Math.round(clamp(points / 144, 0, 1) * 100);
 }
 
 function currentBudgetForStars(stars) {
@@ -7002,7 +7006,7 @@ function archetypeWeights(position, sourcePlayer = null, quality = null, gender 
     !((women || noDunk) && archetypeUsesDunking(style)) && !(noThree && archetypeUsesThree(style)));
   const profile = ratingStatsProfile(sourcePlayer?.bart);
   let style = explicit;
-  if (!style && !sourcePlayer && quality?.potentialStars === 5 && rng() < 0.001) {
+  if (!style && !sourcePlayer && !noThree && !noDunk && quality?.potentialStars === 5 && rng() < 0.001) {
     let potentialCapacity = 0, potentialFloor = 0, currentCapacity = 0, currentFloor = 0, compatible = true;
     for (const [code] of ATTRS) {
       const [cMin, cMax] = attributeBounds(code, "c");
@@ -7416,7 +7420,9 @@ async function prepareProfessionalPotential(players, gender, draftYear, now = ne
 function qualityForTier(
   tierName,
   sourcePlayer = null,
-  gender = "0"
+  gender = "0",
+  classType = "draft",
+  fictionalClass = true
 ) {
 
   const pickNumber = Number(sourcePlayer && (sourcePlayer.draftPick || sourcePlayer.projectedPick));
@@ -7440,7 +7446,7 @@ function qualityForTier(
     validMeasured ? measuredStars : Number.isInteger(pickNumber) && pickNumber > 0
       ? (tierName === "starter" ? (pickNumber <= (gender === "1" ? 13 : 17) ? 4 : 3.5) : rule.potentialMin)
       : randomHalfStar(
-      rule.potentialMin,
+      tierName === "bad" && !sourcePlayer && fictionalClass && classType === "freshman" ? 2 : rule.potentialMin,
       rule.potentialMax
     );
 
@@ -7518,7 +7524,7 @@ function isReportedWomanDunker(sourcePlayer) {
   return Boolean(WOMEN_DUNKERS[name] && WOMEN_DUNKERS[name].some(team => school.includes(team)));
 }
 
-function makeAttributeRatings(position, gender, sourcePlayer, quality, weights, arc = "", calibration = null) {
+function makeAttributeRatings(position, gender, sourcePlayer, quality, weights, arc = "", calibration = null, era = {}) {
   const isGoat = arc === "GOAT";
   if (isGoat && quality.potentialStars !== 5) throw new Error("GOAT archetypes require 5-star potential.");
   const profile = ratingStatsProfile(sourcePlayer && sourcePlayer.bart);
@@ -7531,6 +7537,13 @@ function makeAttributeRatings(position, gender, sourcePlayer, quality, weights, 
   ATTRS.forEach(([code], index) => {
     const [currentMin, currentMax] = attributeBounds(code, "c");
     const [potentialMin, potentialMax] = attributeBounds(code, "p");
+    if ((code === "TPT" && era.noThree) || (code === "DNK" && era.noDunk)) {
+      currentMinimums.push(2);
+      currentMaximums.push(2);
+      potentialMinimums.push(2);
+      potentialMaximums.push(2);
+      return;
+    }
     const defaultDunker = index === dunkIndex && gender === "1" && reportedDunk &&
       document.getElementById("DNKcmax").dataset.userModified !== "true";
     currentMinimums.push(isGoat && !(index === dunkIndex && gender === "1")
@@ -7553,6 +7566,7 @@ function makeAttributeRatings(position, gender, sourcePlayer, quality, weights, 
     currentMaximums[index] = Math.min(currentMaximums[index], potentialMaximums[index]);
   });
 
+  if (isGoat && (era.noThree || era.noDunk)) throw new Error("GOAT archetype is incompatible with this era's attribute restrictions.");
   const goatFloor = potentialMinimums.reduce((sum,value,index) =>
     sum + Math.max(value, gender === "1" && index === dunkIndex ? 2 : 16) - 2, 0);
   const goatCapacity = potentialMaximums.reduce((sum,value)=>sum+value-2,0);
@@ -8707,7 +8721,9 @@ const hometown =
     qualityForTier(
       tierName,
       sourcePlayer,
-      gender
+      gender,
+      classType,
+      document.getElementById("mode").value === "fictional"
     );
 
   const potentialStars =
@@ -8724,7 +8740,7 @@ const hometown =
     );
 
   const { attributes, currentBudget, potentialBudget, reportedDunk } =
-    makeAttributeRatings(position, gender, sourcePlayer, quality, archetype.weights, archetype.arc, calibration);
+    makeAttributeRatings(position, gender, sourcePlayer, quality, archetype.weights, archetype.arc, calibration, era);
   const currentStars = starsForBudget(currentBudget);
 
 
@@ -12250,8 +12266,8 @@ classSizePlus.addEventListener(
       cells[2].textContent="#"+player.jersey;
       cells[3].textContent=player.arc;
       cells[4].children[0].style.width=(Math.max(0,Math.min(5,player.potentialStars))/5*100)+"%";
-      cells[4].children[1].style.width=(Math.max(0,Math.min(player.potentialStars,player.currentStars))/5*100)+"%";
-      cells[4].setAttribute("aria-label",player.currentStars+" current stars, "+player.potentialStars+" potential stars");
+      cells[4].children[1].style.width=overallFillPercent(player.currentPoints)+"%";
+      cells[4].setAttribute("aria-label",overallFillPercent(player.currentPoints)+"% current overall, "+player.potentialStars+" potential stars");
       row.tabIndex=0;
       row.setAttribute("role","button");
       const playerIndex=page*size+i;
