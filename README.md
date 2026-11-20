@@ -141,12 +141,14 @@ matched college jersey number when available; otherwise a generated number is
 used and retained in the export. Opening a player shows the appearance editor
 first; the bottom button switches between appearances and attributes. The
 editable portrait uses approximate, catalog-based hairstyle, facial-hair and
-head-accessory drawings; it is not an exact in-game rendering.
+head-accessory drawings made from square pixels, with translucent eyewear
+lenses; it is not an exact in-game rendering.
 
-Three standalone 24×24 hairstyle grids are provided in
+Three 24×24 hairstyle grids are provided in
 `data/hairstyle-grids.json`. Values 0–3 mean transparent, base, 15% darker,
-and 15% lighter, respectively. These concepts are not yet used by the preview
-renderer or mapped to in-game hairstyle IDs.
+and 15% lighter, respectively. The preview uses them as approximations for
+long rear braids/locs (26), tall textured flat-top (50), and braided top knot
+(70, with added hanging locs). Other styles use catalog-based pixel drawings.
 
 Speed, strength and stamina are generated separately from the core attribute
 budget and exported in half-point steps. Speed uses position-specific limits,

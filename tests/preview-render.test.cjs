@@ -5,18 +5,22 @@ const path = require("node:path");
 const vm = require("node:vm");
 
 const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
+const pixelRenderer = fs.readFileSync(path.join(__dirname, "..", "hair-preview.js"), "utf8");
+const grids = require("../data/hairstyle-grids.json");
 const catalog = html.slice(html.indexOf("const HAIR_CATALOG ="), html.indexOf("const MEN_FACIAL_HAIR="));
 const renderer = html.slice(html.indexOf("  function hairParts(ref,color)"), html.indexOf("  const lumOf="));
-const context = vm.createContext({});
-const { hairParts, facialSvg, accessorySvg, renderArt, hair } = vm.runInContext(`
+const context = vm.createContext({grids});
+const { hairParts, facialSvg, accessorySvg, renderArt, hair, validHairGrids } = vm.runInContext(`
   ${catalog}
+  ${pixelRenderer}
+  let hairstyleGrids=grids;
   const hex=c=>/^[0-9a-f]{6}$/i.test(String(c||""))?"#"+c:null;
-  const rect=(x,y,w,h,fill,extra="")=>\`<rect x="\${x}" y="\${y}" width="\${w}" height="\${h}" fill="\${fill}" \${extra}/>\`;
+  const rect=(x,y,w,h,fill,extra="")=>{let s="";for(let py=y;py<y+h;py++)for(let px=x;px<x+w;px++)s+=\`<rect x="\${px}" y="\${py}" width="1" height="1" fill="\${fill}" \${extra}/>\`;return s;};
   function shadeColor(hex,factor){
     return [0,2,4].map(i=>Math.min(255,Math.round(parseInt(hex.slice(i,i+2),16)*factor)).toString(16).padStart(2,"0")).join("");
   }
   ${renderer}
-  ({ hairParts, facialSvg, accessorySvg, renderArt, hair:getHairReference })
+  ({ hairParts, facialSvg, accessorySvg, renderArt, hair:getHairReference, validHairGrids })
 `, context);
 
 test("bald is empty and distinct hairstyles have distinct mock-ups", () => {
@@ -35,9 +39,11 @@ test("all documented styles 0 through 170 render and close cuts have pixel silho
     assert.ok(hair(id), `missing hairstyle ${id}`);
     const parts=hairParts(hair(id),"#303030");
     if (id) assert.ok(parts.front || parts.back, `empty hairstyle ${id}`);
+    const markup=parts.front+parts.back;
+    assert.doesNotMatch(markup, /<(?:path|polygon|circle|ellipse|line)\b/);
+    for (const [,width,height] of markup.matchAll(/width="(\d+)" height="(\d+)"/g))
+      assert.equal(width,height,`non-square pixel in hairstyle ${id}`);
   }
-  assert.notEqual(hairParts(hair(1),"#303030").front,hairParts(hair(4),"#303030").front);
-  assert.notEqual(hairParts(hair(168),"#303030").front,hairParts(hair(67),"#303030").front);
   assert.notEqual(hairParts(hair(53),"#303030").front,hairParts(hair(5),"#303030").front);
 });
 
@@ -60,27 +66,41 @@ test("head accessory mock-ups distinguish eyewear, face masks, bands and a singl
   assert.doesNotMatch(draw(16),/width="20" height="9"/);
   assert.match(draw(17),/#FF00AA/i);
   assert.notEqual(draw(24),draw(25));
+  for (const id of [4,5,6,15,24,25]) assert.match(draw(id),/opacity="\.45"/,`transparent eyewear ${id}`);
 });
 
 test("swept, tied and textured hairstyles follow their catalog features", () => {
   const draw = id => hairParts(hair(id), "#101010");
   assert.notEqual(draw(5).front, draw(4).front, "swept cut differs from a crop");
-  assert.match(draw(70).front, /stroke-opacity/, "locs have visible strand detail");
-  assert.match(draw(130).back, /opacity/, "coils have texture even with black hair");
+  assert.match(draw(70).front, /#121212/, "braids have lighter detail");
+  assert.match(draw(130).front, /#121212/, "coils have lighter detail");
   assert.notEqual(draw(125).back, draw(64).back, "high bun differs from loose long hair");
   assert.notEqual(draw(153).front, draw(73).front, "center-parted locs differ from hanging locs");
   assert.notEqual(draw(165).front, draw(164).front, "side-swept spikes have a different silhouette");
   assert.notEqual(draw(130).back, draw(112).back, "large afro differs from close coils");
-  assert.notEqual(draw(24).front, draw(71).front, "side-swept braids differ from rounded braids");
+  assert.notEqual(JSON.stringify(draw(24)), JSON.stringify(draw(71)), "side-swept braids differ from rounded braids");
 });
 
-test("preview renders a black jersey with white trim", () => {
-  const appearance = {skinC:"BF8C6B",hairC:"202020",browC:"181818",eyeC:"131009",hair:"0000",fHair:"0000",accessories:[]};
+test("the three grids are rendered with their colors and malformed grids are rejected", () => {
+  assert.equal(validHairGrids(grids),true);
+  assert.equal(validHairGrids({...grids,"high-top fade":[]}),false);
+  for (const [id,name] of [[26,"dreadlocks shoulder length"],[50,"high-top fade"],[70,"cornrows with bun"]]) {
+    const front=hairParts(hair(id),"#808080").front;
+    for(let y=0;y<24;y++) for(let x=0;x<24;x++) {
+      const value=grids[name][y][x];
+      if(value) assert.ok(front.includes(`x="${8+x*2}" y="${6+y*2}" width="2" height="2" fill="${["","#808080","#6d6d6d","#939393"][value]}"`),`${name} ${x},${y}`);
+    }
+  }
+});
+
+test("entire portrait including hair, facial hair and accessories uses square pixels", () => {
+  const appearance = {skinC:"BF8C6B",hairC:"202020",browC:"181818",eyeC:"131009",hair:"0050",fHair:"0004",accessories:[{headAcc:"0007",headAccC:"FF00AA"}]};
   const svg = renderArt({appearance});
   assert.match(svg, /fill="#17171d"/);
-  assert.match(svg, /stroke="#fff" stroke-width="2"/);
-  assert.match(svg, /M32 13 C24 13/);
-  assert.doesNotMatch(svg, /#d93a3a/);
+  assert.match(svg, /fill="#fff"/);
+  assert.doesNotMatch(svg, /<(?:path|polygon|circle|ellipse|line)\b/);
+  for(const [,width,height] of svg.matchAll(/width="(\d+)" height="(\d+)"/g))
+    assert.equal(width,height);
 });
 
 test("editor displays color swatches and numeric style IDs without losing accessible labels", () => {
