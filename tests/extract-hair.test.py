@@ -15,6 +15,15 @@ spec.loader.exec_module(module)
 
 
 class ExtractionTests(unittest.TestCase):
+    def test_facial_hair_position_on_base_canvas(self):
+        assets = path.parents[1] / "assets" / "facial_hair"
+        for filename, bounds in [
+            ("facial_001.png", (94, 176, 135, 194)),
+            ("facial_012.png", (80, 163, 162, 208)),
+        ]:
+            with self.subTest(filename=filename), Image.open(assets / filename) as image:
+                self.assertEqual(image.getchannel("A").getbbox(), bounds)
+
     def test_available_layers_have_the_canonical_canvas_and_manifest_ids(self):
         assets = path.parents[1] / "assets"
         with Image.open(assets / "player_base.png") as base:
