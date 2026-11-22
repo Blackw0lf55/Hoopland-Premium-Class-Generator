@@ -138,7 +138,8 @@ these layers are approximations, not pixel-exact game sprites.
 
 `sprite-preview.js` composes the base, hair, facial hair, then accessories. It
 recolors each layer while retaining shading and alpha and caches a bounded
-number of compositions by appearance. The three asset manifests list available
+number of compositions by appearance. A single packed sprite atlas avoids
+per-style image requests while editing. The three asset manifests list available
 styles. When a selected layer is unavailable, the editor reports that the
 preview is unavailable instead of displaying the old procedural portrait.
 This does not change exported values.
@@ -153,6 +154,8 @@ not register screenshots or resolve their differing skin tones, poses, or
 JPEG artifacts. Review and correct candidates before moving them into
 `assets/`; do not deploy the generated manifest as-is. Future layers must use
 the same dimensions and origin as the base.
+After changing any reviewed layer or manifest, rebuild the deployed atlas with
+`python3 scripts/build-sprite-atlas.py`.
 
 Speed, strength and stamina are generated separately from the core attribute
 budget and exported in half-point steps. Speed uses position-specific limits,
