@@ -61,10 +61,26 @@ test("historical regression requires sustained peak and decline with reliable se
   assert.equal(result.metric,"PIE");
   assert.equal(api(seasons,"0",2007,false),null);
   assert.equal(api(seasons,"0",2010,true),null);
+  assert.equal(api(seasons,"0",2010,false,true),null);
+  assert.equal(api(seasons,"0",2060,false,true).age,26);
   assert.equal(api(seasons.map(row=>({...row,age:undefined})),"0",2010,false),null);
   assert.equal(api(seasons.map((row,index)=>({...row,age:row.age+(index===4?4:0)})),"0",2010,false),null);
   assert.equal(api(seasons.map((row,index)=>({...row,impact:index===5?.20:row.impact})),"0",2010,false),null);
   assert.equal(api(seasons.map((row,index)=>({...row,metric:index<3?"box-score":"PIE"})),"0",2010,false),null);
+  const isolatedBounce=[.19,.18,.12,.17,.12,.11].map((impact,index)=>({
+    year:2001+index,age:23+index,impact,minutes:1200,metric:"PIE"
+  }));
+  assert.equal(api(isolatedBounce,"0",2010,false).age,24);
+  const shortCareer=[.19,.18,.12,.11].map((impact,index)=>({
+    year:2001+index,age:23+index,impact,minutes:1200,metric:"PIE"
+  }));
+  assert.equal(api(shortCareer,"0",2010,false).age,24);
+  assert.equal(api(shortCareer,"1",2010,false).age,24);
+  assert.equal(api(shortCareer.map((row,index)=>({...row,impact:[.19,.18,.17,.16][index]})),"0",2010,false),null);
+  assert.equal(api(shortCareer.map(row=>({...row,age:row.age+10})),"1",2010,false),null);
+  const fiveSeasons=[...shortCareer,{year:2005,age:27,impact:.1,minutes:40,metric:"PIE"}];
+  assert.equal(api(fiveSeasons,"0",2010,false).age,24);
+  assert.equal(api([...fiveSeasons,{year:2009,age:31,impact:.1,minutes:40,metric:"PIE"}],"0",2010,false),null);
 });
 
 test("professional season API requests correct league and season and retries failures", async () => {
@@ -142,6 +158,52 @@ test("peak averages best available seasons, excludes future classes and rejects 
   assert.equal(api.proPotentialStars(.75),4);
 });
 
+test("historical freshmen can use matching professional decline without changing freshman potential", async () => {
+  const impacts=[.12,.18,.19,.175,.13,.12];
+  const context=vm.createContext({AbortSignal,console:{warn(){}},fetch:async url=>{
+    const year=Number(new URL(url,"https://example.test").searchParams.get("year"));
+    const index=year-1996;
+    const rows=index>=0 && index<impacts.length ? [
+      {id:"1",name:"Example Player",age:19+index,minutes:1200,impact:impacts[index],percentile:.8},
+      {id:"2",name:"Wrong Age",age:35+index,minutes:1200,impact:impacts[index],percentile:.8}
+    ] : [];
+    return Response.json({ok:true,gender:"men",year,metric:"PIE",rows});
+  }});
+  const prepare=vm.runInContext(`${clientCode};prepareProfessionalPotential`,context);
+  const players=[{fn:"Example",ln:"Player"},{fn:"Wrong",ln:"Age"}];
+  await prepare(players,"0",1995,new Date("2005-11-01T00:00:00Z"),true);
+  assert.equal(players[0].historicalRegression.age,22);
+  assert.equal(players[0].proPotential,undefined);
+  assert.equal(players[1].historicalRegression,undefined);
+});
+
+test("historical freshman preparation requests regression-only professional history", async () => {
+  const {default:worker}=await import("../location-worker.js");
+  const csv=fs.readFileSync(path.join(__dirname,"..","data/location-catalog.csv"),"utf8");
+  const env={ASSETS:{fetch:async r=>new URL(r.url).pathname.endsWith(".csv")?new Response(csv):new Response(html)}};
+  const page=await (await worker.fetch(new Request("https://example.test/"),env)).text();
+  const script=page.match(/<script>\nwindow\.__HOOPLAND_LOCATION_RECORDS[\s\S]*?<\/script>/)[0].slice(8,-9);
+  const calls=[];
+  const c=vm.createContext({
+    window:{},URL,URLSearchParams,console:{warn(){}},lastCompletedProSeason:()=>2025,
+    prepareProfessionalPotential:async (...args)=>calls.push(args),
+    document:{getElementById:id=>({value:id==="classType"?"freshman":"1995"})},
+    fetch:async url=>{
+      if(String(url).startsWith("/api/imported-roster"))return Response.json({ok:true,player:null});
+      if(String(url).startsWith("/api/shared-attributes"))return Response.json({ok:true,ratings:[]});
+      if(String(url).startsWith("/api/shared-appearance"))return Response.json({ok:true,appearances:[]});
+      if(String(url).startsWith("/api/hometown"))return Response.json({});
+      throw new Error("Unexpected request "+url);
+    }
+  });
+  vm.runInContext(script,c);
+  await c.window.__HOOPLAND_PREPARE_REAL_PLAYERS([{fn:"Example",ln:"Player"}],"1");
+  assert.equal(calls.length,1);
+  assert.equal(calls[0][1],"1");
+  assert.equal(calls[0][2],1995);
+  assert.equal(calls[0][4],true);
+});
+
 test("partial season failures remain visible and old classes never borrow late-career namesakes", async () => {
   let requests=0;
   const context=vm.createContext({AbortSignal,console:{warn(){}},fetch:async url=>{
@@ -157,7 +219,7 @@ test("partial season failures remain visible and old classes never borrow late-c
   assert.equal(player.proPotential.stars,4.5);
   const old={fn:"Sample",ln:"Player",draftPick:5};
   await prepare([old],"0",1970,new Date("2024-11-01T00:00:00Z"));
-  assert.equal(requests,25);
+  assert.equal(requests,34);
   assert.match(old.proPotentialStatus,/unavailable/);
 });
 

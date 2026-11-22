@@ -247,6 +247,32 @@ test("real-player preparation loads only the matching roster year and level", as
   assert.equal(p.importedTendencies.pass,2);
 });
 
+test("independent player-data lookups run concurrently before hometown enrichment", async () => {
+  const {default:worker}=await import("../location-worker.js");
+  const csv=fs.readFileSync(path.join(__dirname,"..","data/location-catalog.csv"),"utf8");
+  const env={ASSETS:{fetch:async r=>new URL(r.url).pathname.endsWith(".csv")?new Response(csv):new Response(html)}};
+  const page=await (await worker.fetch(new Request("https://example.test/"),env)).text();
+  const script=page.match(/<script>\nwindow\.__HOOPLAND_LOCATION_RECORDS[\s\S]*?<\/script>/)[0].slice(8,-9);
+  const pending=[];
+  const c=vm.createContext({
+    window:{},URL,URLSearchParams,console:{warn(){}},lastCompletedProSeason:()=>2026,
+    document:{getElementById:id=>({value:id==="classType"?"freshman":"2026"})},
+    fetch:url=>{
+      const path=new URL(String(url),"https://example.test").pathname;
+      if(path==="/api/hometown")return Promise.resolve(Response.json({}));
+      return new Promise(resolve=>pending.push({path,resolve}));
+    }
+  });
+  vm.runInContext(script,c);
+  const work=c.window.__HOOPLAND_PREPARE_REAL_PLAYERS([{fn:"Example",ln:"Player"}],"0");
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.deepEqual(pending.map(item=>item.path).sort(),
+    ["/api/imported-roster","/api/shared-appearance","/api/shared-attributes"]);
+  for(const item of pending) item.resolve(Response.json(item.path==="/api/imported-roster" ? {ok:true,player:null}
+    : item.path==="/api/shared-attributes" ? {ok:true,ratings:[]} : {ok:true,appearances:[]}));
+  await work;
+});
+
 test("draft hometown lookup receives the season and college from the stats profile", async () => {
   const {default:worker} = await import("../location-worker.js");
   const csv = fs.readFileSync(path.join(__dirname, "..", "data/location-catalog.csv"),"utf8");

@@ -256,19 +256,21 @@ seasons (or one if that is all that qualifies) to estimate potential; the
 preview shows the seasons and flags incomplete history. Traded players use a
 combined season row, or a minutes-weighted approximation if only team stints
 are available. The search covers
-completed seasons from the draft through 23 years after it. For NBA seasons
+completed seasons from the draft through 32 years after it. For NBA seasons
 before 1996–97, when NBA advanced stats are unavailable, it instead uses a
 Game Score-style box-score impact per 36 minutes, omitting steals, blocks and
 offensive rebound splits before 1973–74 and turnovers before 1977–78. That is
 less complete than PIE and is labeled separately. The earliest NBA seasons may
 also lack minutes or other required data.
 
-For retired draft players with consistent reported season ages and complete
+For retired draft or freshman players with consistent reported season ages and complete
 history, regression age uses the last season near the best two-year sustained
 peak followed by two consecutive seasons below 90% of that peak. Only seasons
 meeting the minutes thresholds are used; PIE and the older box-score proxy are
 never mixed in one calculation. Without sufficient evidence, regression age
-remains a generated estimate.
+remains a generated estimate. Players with fewer than five NBA or WNBA seasons
+use fictional regression-age rules unless a peak ending by age 26 is followed
+by two consecutive qualifying seasons at least 20% below that peak.
 Uploaded regression ages are not stored or used.
 
 The mapping from percentile to potential is 97th: 5 stars, 90th: 4.5, 75th:

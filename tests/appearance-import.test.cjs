@@ -55,3 +55,17 @@ test("invalid files and oversized files return clear errors before upload", asyn
   await assert.rejects(api.importFile({name:"large.txt",size:257*1024*1024},"men","pro",2027,()=>{}),/256 MB/);
   await assert.rejects(api.importFile({name:"a.csv",size:1},"men","pro",2027,()=>{}),/json or .txt/);
 });
+
+test("invalid imported roster fields are omitted and reported", async () => {
+  requests.length=0;
+  const data={players:[{...player("New","Player"),attributes:{LAY:[20,2],PAS:[10,14]},
+    tendencies:{pass:9,dunk:2},age:200}]};
+  const json=JSON.stringify(data);
+  const result=await api.importFile({name:"roster.json",size:json.length,text:async()=>json},
+    "men","pro",2027,()=>{});
+  assert.equal(result.discarded,1);
+  const uploaded=requests.find(item=>item.url.startsWith("/api/imported-roster")).body;
+  assert.deepEqual(uploaded.attributes,{PAS:[10,14]});
+  assert.deepEqual(uploaded.tendencies,{dunk:2});
+  assert.equal(uploaded.bio.age,undefined);
+});

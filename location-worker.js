@@ -779,6 +779,8 @@ window.__HOOPLAND_PREPARE_REAL_PLAYERS=async function(players,gender){
   }catch(e){console.warn("College stats lookup failed",e);}})();
   const proPromise=(async()=>{try{
     if(type==="draft"&&Number.isInteger(year))await prepareProfessionalPotential(players,gender,year);
+    else if(type==="freshman"&&Number.isInteger(year)&&year<=lastCompletedProSeason(gender)-5)
+      await prepareProfessionalPotential(players,gender,year,new Date(),true);
   }catch(e){console.warn("Professional potential lookup failed",e);}})();
   const queue=players.slice();
   const identityCounts=new Map();
@@ -794,7 +796,7 @@ window.__HOOPLAND_PREPARE_REAL_PLAYERS=async function(players,gender){
       const identityKey=window.__HOOPLAND_NORMALIZE_LOCATION_NAME(name);
       if(identityKey&&identityCounts.get(identityKey)===1&&Number.isInteger(year)&&year>=1900&&year<=2100){
         p.sharedAppearanceIdentity=identity;
-        try {
+        await Promise.all([(async()=>{try {
           const rosterIdentity={...identity,type:type==="draft"?"pro":"college"};
           const response=await fetch("/api/imported-roster?"+new URLSearchParams(rosterIdentity),{cache:"no-store"});
           const result=await response.json();
@@ -816,8 +818,7 @@ window.__HOOPLAND_PREPARE_REAL_PLAYERS=async function(players,gender){
         }catch(e){
           console.warn("Imported roster lookup failed for",name,e);
           p.importedRosterError="Imported roster lookup failed: "+String(e&&e.message||e);
-        }
-        try {
+        }})(),(async()=>{try {
           const response=await fetch("/api/shared-attributes?"+new URLSearchParams(identity),{cache:"no-store"});
           const result=await response.json();
           if(!response.ok||!result.ok||!Array.isArray(result.ratings))throw new Error(result.error||("HTTP "+response.status));
@@ -825,8 +826,7 @@ window.__HOOPLAND_PREPARE_REAL_PLAYERS=async function(players,gender){
         } catch(e) {
           console.warn("Shared attribute lookup failed for",name,e);
           p.sharedRatingsError="Shared attribute lookup failed: "+String(e&&e.message||e);
-        }
-        try{
+        }})(),(async()=>{try{
           const response=await fetch("/api/shared-appearance?"+new URLSearchParams(identity),{cache:"no-store"});
           const result=await response.json();
           if(!response.ok||!result.ok)throw new Error(result.error||("HTTP "+response.status));
@@ -842,7 +842,7 @@ window.__HOOPLAND_PREPARE_REAL_PLAYERS=async function(players,gender){
         }catch(e){
           console.warn("Shared appearance lookup failed for",name,e);
           p.sharedAppearanceError="Shared appearance lookup failed: "+String(e&&e.message||e);
-        }
+        }})()]);
       }
       let d=null;
       await statsPromise;

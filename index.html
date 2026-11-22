@@ -7431,15 +7431,17 @@ function lastCompletedProSeason(gender, now = new Date()) {
   return gender === "1" ? year - (month < 10 ? 1 : 0) : year - (month < 7 ? 1 : 0);
 }
 
-function historicalRegressionFromSeasons(matches, gender, completed, partial) {
+function historicalRegressionFromSeasons(matches, gender, completed, partial, tailTruncated = false) {
   if (partial) return null;
+  const shortCareer = new Set(matches.filter(row=>Number(row.minutes)>0).map(row=>row.year)).size < 5;
   const minimumMinutes = gender === "1" ? 200 : 400;
   const rows = matches.filter(row => Number.isInteger(row.age) && row.age >= 18 && row.age <= 50 &&
     Number.isFinite(row.impact) && row.minutes >= minimumMinutes &&
     ["PIE", "box-score"].includes(row.metric)).sort((a,b) => a.year-b.year);
-  if (rows.length < 4 || rows[rows.length-1].year >= completed-1) return null;
+  if (rows.length < 4 || matches.some(row=>row.year >= completed-1 && Number(row.minutes)>0)) return null;
   const birthYears = rows.map(row => row.year-row.age);
   if (Math.max(...birthYears)-Math.min(...birthYears)>1) return null;
+  if (tailTruncated && completed-Math.max(...birthYears)<=50) return null;
   const candidates = [];
   for (let i=0; i<rows.length-3; i++) {
     const first=rows[i], second=rows[i+1];
@@ -7448,22 +7450,28 @@ function historicalRegressionFromSeasons(matches, gender, completed, partial) {
     if (peak<=0) continue;
     const later=rows.slice(i+2);
     if (later.some(row=>row.metric!==first.metric)) continue;
-    const threshold=peak*0.9;
+    const threshold=peak*(shortCareer ? 0.8 : 0.9);
+    if (first.impact<threshold || second.impact<threshold) continue;
     const decline=later.findIndex((row,index)=>index+1<later.length &&
       later[index+1].year===row.year+1 && row.impact<threshold &&
       later[index+1].impact<threshold &&
       later.slice(index+2).every(season=>season.impact<threshold));
     if (decline<0) continue;
-    const peakRows=rows.slice(i+1,i+2+decline).filter(row=>row.impact>=threshold);
-    candidates.push({peak, age:peakRows[peakRows.length-1].age, metric:first.metric});
+    let age=second.age;
+    const peakRows=rows.slice(i+1,i+2+decline);
+    for (let j=0; j<peakRows.length-1; j++) {
+      if (peakRows[j+1].year===peakRows[j].year+1 &&
+          peakRows[j].impact>=threshold && peakRows[j+1].impact>=threshold) age=peakRows[j+1].age;
+    }
+    if (!shortCareer || age<=26) candidates.push({peak, age, metric:first.metric});
   }
   if (!candidates.length) return null;
   return candidates.sort((a,b)=>b.peak-a.peak || b.age-a.age)[0];
 }
 
-async function prepareProfessionalPotential(players, gender, draftYear, now = new Date()) {
+async function prepareProfessionalPotential(players, gender, draftYear, now = new Date(), regressionOnly = false) {
   const completed = lastCompletedProSeason(gender, now);
-  const last = Math.min(completed, draftYear + 23);
+  const last = Math.min(completed, draftYear + 32);
   const firstPossible = gender === "1" ? draftYear : draftYear + 1;
   const first = Math.max(gender === "1" ? 1997 : 1947, firstPossible);
   if (!Number.isInteger(draftYear)) return;
@@ -7510,17 +7518,21 @@ async function prepareProfessionalPotential(players, gender, draftYear, now = ne
       player.proPotentialStatus = "Pro peak unavailable; pick/tier estimate";
       continue;
     }
-    const best = matches.sort((a, b) => b.percentile - a.percentile).slice(0, 2);
-    const percentile = best.reduce((sum, row) => sum + row.percentile, 0) / best.length;
-    player.proPotential = {
-      stars: proPotentialStars(percentile),
-      seasons: best.map(row => row.year),
-      metric: [...new Set(best.map(row => row.metric || "PIE"))].join(" + "),
-      limited: best.some(row => Number(row.minutes) > 0 && Number(row.minutes) < (gender === "1" ? 200 : 400)),
-      partial: failures > 0 || first > firstPossible
-    };
+    if (regressionOnly && !matches.some(row=>Number.isInteger(row.age) &&
+      draftYear-(row.year-row.age)>=16 && draftYear-(row.year-row.age)<=21)) continue;
+    if (!regressionOnly) {
+      const best = matches.slice().sort((a, b) => b.percentile - a.percentile).slice(0, 2);
+      const percentile = best.reduce((sum, row) => sum + row.percentile, 0) / best.length;
+      player.proPotential = {
+        stars: proPotentialStars(percentile),
+        seasons: best.map(row => row.year),
+        metric: [...new Set(best.map(row => row.metric || "PIE"))].join(" + "),
+        limited: best.some(row => Number(row.minutes) > 0 && Number(row.minutes) < (gender === "1" ? 200 : 400)),
+        partial: failures > 0 || first > firstPossible
+      };
+    }
     player.historicalRegression = historicalRegressionFromSeasons(
-      matches, gender, completed, failures > 0 || first > firstPossible
+      matches, gender, completed, failures > 0 || first > firstPossible, last < completed
     );
   }
 }
@@ -8389,6 +8401,7 @@ function collectRosterImports(data) {
   const fields={age:["age",15,60],height:["ht",48,100],weight:["wt",70,500],position:["pos",0,8],
     years:["yrs",0,30],jersey:["num",0,99]};
   const items = [];
+  let discarded = 0;
   for (const player of collections.flat()) {
     if (!player || typeof player.fn!=="string" || typeof player.ln!=="string" ||
         !player.fn.trim() || !player.ln.trim()) continue;
@@ -8396,28 +8409,34 @@ function collectRosterImports(data) {
     const name=identity.fn+" "+identity.ln;
     if (name.length>100) continue;
     const attributes={}, bio={}, tendencies={};
+    let invalid = false;
     for (const code of [...skills,...physical]) {
       const pair=player.attributes?.[code];
       if (Array.isArray(pair) && pair.length===2 &&
           pair.every(value=>Number.isInteger(value) && value>=(physical.includes(code)?8:2) && value<=20) &&
           pair[0]<=pair[1] && (!physical.includes(code) || pair[0]===pair[1])) attributes[code]=pair;
+      else if (pair !== undefined && pair !== null) invalid=true;
     }
     for (const [key,[source,min,max]] of Object.entries(fields)) {
       const value=player[source];
       if (Number.isInteger(value) && value>=min && value<=max) bio[key]=value;
+      else if (value !== undefined && value !== null && value !== "") invalid=true;
     }
     for (const [key,source] of [["home","home"],["country","ctry"]]) {
       const value=player[source];
       if (typeof value==="string" && value.trim() && value.length<=100) bio[key]=value.trim();
+      else if (value !== undefined && value !== null && value !== "") invalid=true;
     }
     for (const key of tendencyKeys) {
       const value=player.tendencies?.[key];
       if (Number.isInteger(value) && value>= -5 && value<=5) tendencies[key]=value;
+      else if (value !== undefined && value !== null) invalid=true;
     }
+    if (invalid) discarded++;
     if (Object.keys(attributes).length || Object.keys(bio).length || Object.keys(tendencies).length)
       items.push({name,data:{attributes,bio,tendencies}});
   }
-  return items;
+  return {items,discarded};
 }
 
 async function importAppearanceFile(file, gender, type, year, onProgress) {
@@ -8429,14 +8448,14 @@ async function importAppearanceFile(file, gender, type, year, onProgress) {
   let data;
   try { data = JSON.parse(await file.text()); } catch { throw new Error("The file is not valid JSON."); }
   const {candidates,invalid,ambiguous} = collectAppearanceImports(data,gender);
-  const roster = collectRosterImports(data);
+  const {items:roster,discarded} = collectRosterImports(data);
   data = null;
   if (!candidates.length && !roster.length) throw new Error(`No usable player data found (${invalid} invalid, ${ambiguous} ambiguous).`);
   const items = [
     ...candidates.map(item=>({...item,endpoint:"appearance-baseline",body:item.appearance})),
     ...roster.map(item=>({...item,endpoint:"imported-roster",body:item.data}))
   ];
-  const counts = {saved:0,skipped:0,invalid,ambiguous,failed:0,errors:[]};
+  const counts = {saved:0,skipped:0,invalid,ambiguous,discarded,failed:0,errors:[]};
   let index = 0, processed = 0;
   const run = async () => {
     while (index < items.length) {
@@ -8476,6 +8495,7 @@ document.getElementById("hlImportSubmit").addEventListener("click", async () => 
     status.textContent = `Imported ${result.saved} player data records.` +
       (result.skipped ? ` ${result.skipped} already saved.` : "") +
       (result.invalid || result.ambiguous ? ` ${result.invalid + result.ambiguous} could not be imported.` : "") +
+      (result.discarded ? ` ${result.discarded} players had invalid roster fields omitted.` : "") +
       (result.failed ? ` ${result.failed} failed; please retry. ${result.errors.join("; ")}` : "");
   } catch (error) {
     status.textContent = "Import failed: " + String(error.message || error);
@@ -9198,7 +9218,9 @@ else {
               (sourcePlayer.historicalRegression
                 ? " • Regression age from sustained " + sourcePlayer.historicalRegression.metric + " peak"
                 : " • Regression age is a generated estimate")
-            : sourcePlayer.proPotentialStatus ? " • " + sourcePlayer.proPotentialStatus : "")
+            : sourcePlayer.historicalRegression
+              ? " • Regression age from sustained " + sourcePlayer.historicalRegression.metric + " peak"
+              : sourcePlayer.proPotentialStatus ? " • " + sourcePlayer.proPotentialStatus : "")
         : "Fictional tier",
 
     outlier:
