@@ -2027,7 +2027,7 @@ html body textarea:focus{
 /* Buttons: pixel border with dark slab edge */
 html body button.primary,
 html body button.secondary,
-html body a.hl-discord,
+html body a.hl-home-link,
 html body .wizard-button{
   position:relative;
   border:0!important;
@@ -2056,13 +2056,13 @@ html body button.primary{
 }
 html body button.primary:hover,
 html body button.secondary:hover,
-html body a.hl-discord:hover,
+html body a.hl-home-link:hover,
 html body .wizard-button:hover{
   filter:brightness(1.15);
 }
 html body button.primary:active,
 html body button.secondary:active,
-html body a.hl-discord:active,
+html body a.hl-home-link:active,
 html body .wizard-button:active{
   transform:translateY(6px);
   box-shadow:
@@ -2072,7 +2072,7 @@ html body .wizard-button:active{
     4px 0 0 0 var(--px),
     0 4px 0 0 var(--px-slab)!important;
 }
-html body button:focus-visible,html body a.hl-discord:focus-visible{
+html body button:focus-visible,html body a.hl-home-link:focus-visible{
   outline:3px dashed var(--px-hi);
   outline-offset:6px;
 }
@@ -2141,7 +2141,8 @@ html body .hl-arrow{padding:2px 12px!important;font-size:.8rem!important;margin:
 .hl-name{margin:0 6px 24px;}
 .hl-name label{display:block;margin-bottom:8px;font-weight:900;text-transform:uppercase;}
 .hl-start{display:flex;flex-direction:column;align-items:stretch;gap:18px;margin:26px auto;max-width:480px;}
-html body a.hl-discord{display:block;margin-top:clamp(40px,12vh,120px);text-align:center;text-decoration:none;}
+.hl-home-links{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:clamp(40px,12vh,120px);}
+html body a.hl-home-link{display:flex;align-items:center;justify-content:center;text-align:center;text-decoration:none;padding:14px 8px;}
 #wizardProgress[hidden]{display:none;}
 .hl-physical-limits{display:grid;gap:8px;margin:0 6px 16px;}
 .hl-physical-row{display:grid;grid-template-columns:2.4em repeat(4,minmax(0,1fr));gap:6px;align-items:end;}
@@ -2482,7 +2483,10 @@ html{background-color:#06143a!important;}
     <div class="hl-start">
       <button type="button" class="primary" id="hlCreateClass">CREATE NEW CLASS</button>
       <button type="button" class="secondary" id="hlImportPage">IMPORT PLAYER DATA</button>
-      <a class="hl-discord" href="https://discord.com/channels/931029068147752990/1572677074869817474" target="_blank" rel="noopener noreferrer">DISCORD</a>
+      <div class="hl-home-links">
+        <a class="hl-home-link" href="https://discord.com/channels/931029068147752990/1572677074869817474" target="_blank" rel="noopener noreferrer">DISCORD</a>
+        <a class="hl-home-link" href="https://www.buymeacoffee.com/Blackwolf5" target="_blank" rel="noopener noreferrer">BUY ME A COFFEE</a>
+      </div>
     </div>
   </div>
   <div class="hl-page" data-page="-2">

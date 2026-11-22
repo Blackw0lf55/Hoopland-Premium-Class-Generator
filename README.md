@@ -1,7 +1,7 @@
 # Hoopland-Premium-Class-Generator
 Create realistic accurate classes for hoopland that you can upload and use right away! Control every aspect of player generation for easy class creation!
 
-The main screen includes a link to the Hoop Land Discord channel.
+The main screen includes links to the Hoop Land Discord channel and Buy Me a Coffee.
 
 Real-player looks use supplied roster references, imported appearances and
 community-approved edits. Features without a reference use neutral placeholders,
