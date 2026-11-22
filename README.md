@@ -146,6 +146,37 @@ of the eyebrows, faded styles have shaded temples, and eyewear lenses are
 translucent. The unnumbered V-neck jersey is preview-only; the export retains
 the player's jersey number. The portrait is not an exact in-game rendering.
 
+The appearance preview is migrating to aligned sprite layers. The supplied
+bald full-body base and a manually refined hairstyle 1 are available in
+`assets/`; their 256×336 canvases share the base's origin and include uniform
+transparent top padding for taller hairstyles. They are used
+only without facial hair or head accessories. Other appearances continue to
+use the existing procedural portrait, so changing a style may switch preview
+formats. This does not change the in-game appearance or exported values.
+The source screenshots show different players, colors, and animation poses;
+these layers are approximations, not pixel-exact game sprites.
+
+`sprite-preview.js` composes the base, hair, optional facial hair, then
+accessories. It recolors the base and hair while retaining shading and alpha,
+and caches a bounded number of compositions by appearance. Future facial-hair
+and accessory PNGs must use the same dimensions and origin as the base.
+`assets/hair_manifest.json` lists only available, reviewed styles; add new
+entries after inspecting each layer against its source and multiple skin and
+hair colors. `index.html` selects the sprite preview and retains the procedural
+fallback; `portrait-preview.js` and `hair-preview.js` remain in use for it.
+
+To prepare additional candidates, install Pillow and run
+`python3 scripts/extract-hair.py --reference bald.png --sources registered/ --masks masks/ --output candidates/`.
+Provide same-size, pre-registered PNGs named `style_001.png` through
+`style_170.png` and manually reviewed grayscale masks named `mask_001.png`
+etc. The utility compares each image to the bald reference, intersects changes
+with its mask, and writes full-canvas PNGs and a candidate manifest. It does
+not register screenshots or resolve their differing skin tones, poses, or
+JPEG artifacts. Review and correct candidates before moving them into
+`assets/`; do not deploy the generated manifest as-is. Complete the migration
+by reviewing the remaining 169 styles and creating aligned facial-hair and
+accessory layers before removing the fallback.
+
 Three 24×24 hairstyle grids are provided in
 `data/hairstyle-grids.json`. Values 0–3 mean transparent, base, 15% darker,
 and 15% lighter, respectively. The preview uses them as approximations for

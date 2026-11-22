@@ -12466,10 +12466,29 @@ classSizePlus.addEventListener(
 </div>
 <script src="hair-preview.js"></script>
 <script src="portrait-preview.js"></script>
+<script src="sprite-preview.js"></script>
 <script>
 (function(){
   const $=id=>document.getElementById(id);
-  let idx=0,photoIndex=0,hairstyleGrids=null;
+  let idx=0,photoIndex=0,hairstyleGrids=null,artVersion=0;
+  const spriteRenderer = fetch("assets/hair_manifest.json").then(response=>{
+    if(!response.ok)throw new Error(`HTTP ${response.status}`);
+    return response.json();
+  }).then(manifest=>createSpriteRenderer({
+    manifest,
+    loadImage:path=>new Promise((resolve,reject)=>{
+      const image=new Image();
+      image.onload=()=>resolve(image);
+      image.onerror=()=>reject(new Error(`Could not load ${path}`));
+      image.src=path;
+    }),
+    createCanvas:()=>document.createElement("canvas")
+  })).catch(error=>{
+    console.error("Could not load sprite preview:",error);
+    $("hlPvHairGridError").textContent="Sprite preview could not be loaded; showing the existing approximate portrait.";
+    $("hlPvHairGridError").hidden=false;
+    return null;
+  });
 
   fetch("data/hairstyle-grids.json").then(response=>{
     if(!response.ok)throw new Error(`HTTP ${response.status}`);
@@ -12486,12 +12505,40 @@ classSizePlus.addEventListener(
   });
 
   function showArt(player){
+    const version=++artVersion;
     const appearance=player.appearance;
     const hair=getHairReference(Number(appearance.hair));
     const parts=hairPixelParts(hair,hairstyleGrids);
     const set=(appearance.accessories || [])[0] || {};
     const accId=set.headAcc && set.headAcc!=="none" ? Number(set.headAcc) : 0;
     $("hlPvArt").replaceChildren(portraitCanvas(player,parts,getFacialHairReference(Number(appearance.fHair)),getPrimaryAccessoryReference(accId),hair));
+    // Keep the existing portrait for unreviewed hair or unsupported overlays.
+    if(Number(appearance.fHair) || accId) return;
+    spriteRenderer.then(renderer=>{
+      if(!renderer || !renderer.supportsStyle(Number(appearance.hair)))return null;
+      return renderer.renderPlayer({
+        skinColor:appearance.skinC,
+        hairStyle:Number(appearance.hair),
+        hairColor:appearance.hairC
+      });
+    }).then(sprite=>{
+      if(!sprite || version!==artVersion)return;
+      const canvas=document.createElement("canvas");
+      canvas.width=sprite.width;canvas.height=sprite.height;
+      canvas.setAttribute("role","img");
+      canvas.setAttribute("aria-label","Appearance mock-up");
+      const context=canvas.getContext("2d");
+      if(!context)throw new Error("The appearance preview requires canvas support.");
+      context.imageSmoothingEnabled=false;
+      context.drawImage(sprite,0,0);
+      $("hlPvArt").replaceChildren(canvas);
+    }).catch(error=>{
+      console.error("Could not render sprite preview:",error);
+      if(version===artVersion){
+        $("hlPvHairGridError").textContent="Sprite preview failed; showing the existing approximate portrait.";
+        $("hlPvHairGridError").hidden=false;
+      }
+    });
   }
 
   const lumOf=h=>.299*parseInt(h.slice(0,2),16)+.587*parseInt(h.slice(2,4),16)+.114*parseInt(h.slice(4,6),16);
