@@ -4,6 +4,15 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 
+test("preview deployments use local appearance storage and the AI binding", () => {
+  const config = JSON.parse(fs.readFileSync(path.join(__dirname, "../wrangler.jsonc"), "utf8"));
+  assert.deepEqual(config.previews.durable_objects.bindings, [
+    {name: "APPEARANCES", class_name: "SharedAppearance"}
+  ]);
+  assert.equal(config.previews.ai.binding, "AI");
+  assert.ok(config.migrations.some(migration => migration.new_sqlite_classes?.includes("SharedAppearance")));
+});
+
 test("community looks persist per player and gender across class years, with five-edit limit", async () => {
   const {default:worker,SharedAppearance} = await import("../location-worker.js");
   const objects = new Map();
