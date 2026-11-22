@@ -85,11 +85,11 @@ test("photo-derived features override an unverified profile, while missing featu
     generateRealPlayerAppearance
   `, context);
   const player = {fn:"Azzi",ln:"Fudd",lookText:"skin: dark 4; hairstyle: bald"};
-  const result = fn(player,"1");
+  const result = fn(player,"1",1950);
   assert.equal(result.skinC, palette.find(p => p.group === "dark").skins[3]);
   assert.equal(result.hair,"0000");
   assert.equal(result.accessories[0].L_Elbow,result.skinC);
-  assert.equal(fn({fn:"Azzi",ln:"Fudd",lookText:"skin: dark 4"},"1").hair,"0125");
+  assert.equal(fn({fn:"Azzi",ln:"Fudd",lookText:"skin: dark 4"},"1",1950).hair,"0125");
 });
 
 test("explicit hair descriptions are not randomly discarded for dark skin or gender", () => {
