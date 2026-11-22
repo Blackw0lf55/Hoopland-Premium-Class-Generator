@@ -141,11 +141,12 @@ continues to require independently sourced draft or freshman records.
 The class preview lists position, name, jersey number, archetype and stars:
 white shows potential and gold overlays current ability. Real players use a
 matched college jersey number when available; otherwise a generated number is
-used and retained in the export. The appearance preview shows that jersey number.
+used and retained in the export. Generation notes are available under the
+collapsed **Generation notes** control. The appearance preview shows that jersey number.
 Opening a player shows the appearance editor
 first; the bottom button switches between appearances and attributes.
 In a real class, use each player's ♻ button to select a batch, then choose
-**Recycle Players** to replace them with the next unused candidates from that
+**Recycle** to replace them with the next unused candidates from that
 year's eligibility-filtered class list. Unselected players and edits stay unchanged;
 recycled names cannot reappear in that class. If there are too few eligible
 candidates, no players are replaced. Recycling uses the same eligibility

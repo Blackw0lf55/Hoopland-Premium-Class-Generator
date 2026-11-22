@@ -265,7 +265,7 @@ test("spec validation, submission errors and review back follow the selected mod
   const end = html.indexOf('  $("hlDownload").addEventListener',start);
   const elements = {};
   for (const id of ["hlSubmit","hlAttrContinue","hlSpecContinue","hlReviewBack","hlLoading","hlLoadingText","hlLoadingProgressFill","hlRecyclePlayers",
-    "status","className","hlResultTitle","hlResultStatus","mode"]) {
+    "status","className","hlResultTitle","hlResultStatus","hlClassNotes","hlClassNotesText","mode"]) {
     elements[id]={style:{},classList:{add(){},remove(){},contains(name){return name==="error"&&elements.status.className.includes("error");}},
       addEventListener(type,fn){this[type]=fn;}};
   }
@@ -301,6 +301,9 @@ test("spec validation, submission errors and review back follow the selected mod
   failed=false;
   await elements.hlSubmit.click();
   assert.equal(page,5);
+  assert.equal(elements.hlClassNotesText.textContent,"Ready");
+  assert.equal(elements.hlClassNotes.open,false);
+  assert.equal(elements.hlResultStatus.textContent,"");
   elements.hlReviewBack.click();
   assert.equal(page,4);
   elements.mode.value="real";

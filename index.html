@@ -2158,11 +2158,11 @@ html body .hl-country input[type=number]{width:100%;min-width:0;min-height:44px;
 html body .hl-country button.secondary{display:block;width:44px;height:44px;min-height:44px;margin:4px auto 0;padding:0!important;box-shadow:none!important;font-size:1.2rem;line-height:1;opacity:.5;}
 html body .hl-country.on button.secondary{opacity:1;}
 .hl-country .code{display:block;margin-top:2px;font-size:.7rem;font-weight:700;line-height:1.2;}
-.hl-pager{height:min(52vh,430px);overflow:hidden;margin:0 6px;}
+.hl-pager{height:min(52vh,430px);overflow:auto;margin:0 6px;}
 .hl-list{display:flex;flex-direction:column;gap:6px;height:100%;}
-.hl-entry{display:flex;flex:1;min-height:0;gap:4px;}
-.hl-row{flex:1;min-height:0;display:grid;grid-template-columns:2.1em minmax(0,1.3fr) 2.1em minmax(0,1fr) 5.3em;cursor:pointer;align-items:center;gap:5px;background:var(--px-fill-dark);padding:0 8px;font-size:.85rem;font-weight:700;animation:hlPageIn .3s steps(4) both;}
-html body .hl-recycle-toggle{flex:0 0 34px;min-width:0;padding:2px;font-size:1.05rem;}
+.hl-entry{display:flex;flex:0 0 44px;min-height:44px;gap:4px;}
+.hl-row{flex:1;min-width:0;min-height:0;display:grid;grid-template-columns:2.1em minmax(0,1.3fr) 2.1em minmax(0,1fr) 5.3em;cursor:pointer;align-items:center;gap:5px;background:var(--px-fill-dark);padding:0 8px;font-size:.85rem;font-weight:700;animation:hlPageIn .3s steps(4) both;}
+html body button.secondary.hl-recycle-toggle{flex:0 0 40px;min-width:40px;min-height:44px;margin:0;padding:0!important;box-shadow:none!important;font-size:1rem;}
 html body .hl-recycle-toggle[aria-pressed="true"]{background:#167747!important;color:#fff;outline:2px solid #6aff9a;}
 html body .hl-recycle-toggle:disabled,html body #hlRecyclePlayers:disabled{opacity:.5;cursor:not-allowed;}
 .hl-row .n{font-family:"Press Start 2P",monospace;font-size:.5rem;}
@@ -2175,7 +2175,7 @@ html body .hl-recycle-toggle:disabled,html body #hlRecyclePlayers:disabled{opaci
 .hl-stars span{display:flex;overflow:hidden;white-space:nowrap;color:#fff;}
 .hl-stars i{display:block;flex:0 0 1em;text-align:center;font-style:normal;}
 .hl-stars span+span{position:absolute;top:0;left:0;color:#ffcb35;}
-.hl-pagebar{display:flex;justify-content:center;align-items:center;gap:20px;margin:14px 0 6px;font-family:"Press Start 2P",monospace;font-size:.65rem;}
+.hl-pagebar{display:flex;justify-content:center;align-items:center;gap:20px;margin:8px 0 6px;font-family:"Press Start 2P",monospace;font-size:.65rem;}
 @media(min-width:700px){.hl-row,.hl-list-head{font-size:1rem;}}
 
 /* Mobile */
@@ -2219,8 +2219,12 @@ html body button{transition:none!important;}
 #hlImportStatus{flex-basis:100%;margin:0;text-align:center;}
 #hlImportStatus:empty{display:none;}
 #hlReviewNav{flex-wrap:wrap;}
-#hlResultStatus,#hlRecyclePlayers{flex-basis:100%;}
-#hlResultStatus{font-size:.8rem;text-align:center;}
+#hlResultStatus{flex-basis:100%;font-size:.8rem;text-align:center;}
+#hlClassNotes{margin:0 6px 8px;font-size:.75rem;}
+#hlClassNotes summary{cursor:pointer;text-align:center;}
+#hlClassNotes p{margin:6px 0;}
+html body #hlReviewNav button{flex:1;min-width:0;min-height:44px;margin:2px;padding:8px 4px;font-size:.75rem;line-height:1.2;}
+html body #hlReviewNav #hlDownload{flex:1.6;}
 #hlRecyclePlayers[hidden]{display:none;}
 .hl-page[data-page="5"]{padding-bottom:100px;}
 main{padding-bottom:calc(100px + env(safe-area-inset-bottom));}
@@ -2530,7 +2534,8 @@ html{background-color:#06143a!important;}
   </div>
   <div class="hl-page" data-page="5">
     <div class="hl-page-title" id="hlResultTitle"></div>
-    <p class="hl-hint">Select a player to edit appearances or attributes.<span id="hlRecycleHint" hidden> Use ♻ to select players for recycling.</span></p>
+    <p class="hl-hint">Tap a player to edit.<span id="hlRecycleHint" hidden> Tap ♻ to select for recycling.</span></p>
+    <details id="hlClassNotes" hidden><summary>Generation notes</summary><p id="hlClassNotesText"></p></details>
     <div class="hl-list-head" aria-hidden="true"><span>POS</span><span>PLAYER</span><span>#</span><span>ARCHETYPE</span><span>STARS</span></div>
     <div id="hlPager" class="hl-pager">
       <div class="hl-list" id="hlList"></div>
@@ -2540,7 +2545,7 @@ html{background-color:#06143a!important;}
       <span id="hlPageNum">1/1</span>
       <button type="button" class="secondary hl-arrow" id="hlNextPg">▶</button>
     </div>
-    <div id="hlReviewNav" class="hl-nav"><div id="hlResultStatus" aria-live="polite"></div><button type="button" class="secondary" id="hlRecyclePlayers" hidden>RECYCLE PLAYERS</button><button type="button" class="secondary" id="hlReviewBack">◀ BACK</button><button type="button" class="primary" id="hlDownload">DOWNLOAD CLASS</button></div>
+    <div id="hlReviewNav" class="hl-nav"><div id="hlResultStatus" aria-live="polite"></div><button type="button" class="secondary" id="hlReviewBack">◀ BACK</button><button type="button" class="secondary" id="hlRecyclePlayers" hidden>RECYCLE</button><button type="button" class="primary" id="hlDownload">DOWNLOAD CLASS</button></div>
   </div>
 </div>
 
@@ -12658,11 +12663,11 @@ classSizePlus.addEventListener(
   const perPage=()=>{
     const land=matchMedia("(orientation:landscape) and (max-height:500px)").matches;
     const pager=$("hlPager");
-    const below=$("hlPageNum").parentNode.offsetHeight+pager.parentNode.querySelector(".hl-nav").offsetHeight+84;
+    const below=$("hlPageNum").parentNode.offsetHeight+$("hlReviewNav").offsetHeight+24;
     const fit=innerHeight-pager.getBoundingClientRect().top-below;
-    pager.style.height=Math.max(150,fit)+"px";
+    pager.style.height=Math.max(44,Math.min(520,fit))+"px";
     const h=pager.clientHeight||300;
-    const rows=Math.max(3,Math.floor(h/(land?34:42)));
+    const rows=Math.max(1,Math.floor((h+6)/50));
     return land?rows*2:rows;
   };
   function drawList(){
@@ -12674,7 +12679,7 @@ classSizePlus.addEventListener(
     $("hlRecycleHint").hidden=!recycling;
     $("hlRecyclePlayers").hidden=!recycling;
     $("hlRecyclePlayers").disabled=!recycling || recycleState.selected.size===0;
-    $("hlRecyclePlayers").textContent="RECYCLE PLAYERS"+(recycling && recycleState.selected.size ? ` (${recycleState.selected.size})` : "");
+    $("hlRecyclePlayers").textContent="RECYCLE"+(recycling && recycleState.selected.size ? ` (${recycleState.selected.size})` : "");
     document.querySelector(".hl-list-head").classList.toggle("recycling",recycling);
     list.innerHTML="";
     generated.slice(page*size,page*size+size).forEach((player,i)=>{
@@ -12722,6 +12727,7 @@ classSizePlus.addEventListener(
   window.hlRefreshPreviewList=drawList;
   $("hlPrev").addEventListener("click",()=>{page--;drawList();});
   $("hlNextPg").addEventListener("click",()=>{page++;drawList();});
+  $("hlClassNotes").addEventListener("toggle",()=>{if(generated.length)drawList();});
   window.addEventListener("resize",()=>{if(generated.length)drawList();});
 
   function createLoadingMessages(){
@@ -12791,8 +12797,10 @@ classSizePlus.addEventListener(
       const resultTitle=$("hlResultTitle");
       resultTitle.textContent=($("className").value||"").toUpperCase();
       resultTitle.style.display=resultTitle.textContent?"":"none";
-      $("hlResultStatus").textContent=$("status").textContent;
-      $("hlResultStatus").className=$("status").className;
+      $("hlClassNotesText").textContent=$("status").textContent;
+      $("hlClassNotes").hidden=!$("status").textContent;
+      $("hlClassNotes").open=false;
+      $("hlResultStatus").textContent="";
       window.hlShowPage(5,false);
       drawList();
     }
@@ -12800,9 +12808,8 @@ classSizePlus.addEventListener(
   $("hlRecyclePlayers").addEventListener("click",async()=>{
     const button=$("hlRecyclePlayers"), result=$("hlResultStatus");
     try {
-      const count=await withLoading(button,progress=>recycleClassPlayers([...recycleState.selected],progress));
-      result.textContent=[$("status").textContent,`${count} player${count===1?"":"s"} recycled.`].filter(Boolean).join(" ");
-      result.className="ok";
+      await withLoading(button,progress=>recycleClassPlayers([...recycleState.selected],progress));
+      result.textContent="";
     } catch (error) {
       result.textContent=error.message || "Unable to recycle players.";
       result.className="error";
@@ -12837,8 +12844,8 @@ classSizePlus.addEventListener(
     button.disabled=true;
     try { await requestHoopLandDownload(); }
     finally { button.disabled=false; }
-    $("hlResultStatus").textContent=$("status").textContent;
-    $("hlResultStatus").className=$("status").className;
+    $("hlResultStatus").textContent=$("status").classList.contains("error") ? $("status").textContent : "";
+    $("hlResultStatus").className=$("status").classList.contains("error") ? "error" : "";
   });
 })();
 </script>
