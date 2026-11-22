@@ -280,12 +280,13 @@ test("draft hometown lookup receives the season and college from the stats profi
   const transformed = await (await worker.fetch(new Request("https://example.test/"),env)).text();
   const script=transformed.match(/<script>\nwindow\.__HOOPLAND_LOCATION_RECORDS[\s\S]*?<\/script>/)[0].slice(8,-9);
   const lookups=[];
+  const progress=[];
   const c=vm.createContext({
-    window:{},URL,URLSearchParams,console:{warn(){}},
+    window:{__HOOPLAND_PROGRESS:value=>progress.push(value)},URL,URLSearchParams,console:{warn(){}},
     REAL_PLAYER_APPEARANCE_PROFILES:{},REAL_PLAYER_DESCRIPTIONS:{},
     normalizeAppearancePlayerName:name=>name.toLowerCase().replace(/[^a-z0-9]/g,""),
     mergeLookDescriptions:merge,parseLookDescription:parse,
-    prepareProfessionalPotential:async()=>{},
+    prepareProfessionalPotential:async(players,gender,year,now,regressionOnly,report)=>{report(0.5);report(1);},
     document:{getElementById:id=>({value:id==="classType"?"draft":"2026"})},
     fetch:async url=>{
       if(String(url).startsWith("/api/stats"))return Response.json({ok:true,players:{
@@ -305,6 +306,8 @@ test("draft hometown lookup receives the season and college from the stats profi
   assert.deepEqual(lookups.map(p=>[p.get("name"),p.get("college"),p.get("draftYear")]),[
     ["Laura Ziegler","Louisville Cardinals","2026"],["Laila Phelia","Syracuse Orange","2026"]
   ]);
+  assert.ok(progress.every((value,index)=>value>=0.1&&value<=0.8&&(!index||value>=progress[index-1])));
+  assert.ok(Math.abs(progress[progress.length-1]-0.8)<1e-12);
 });
 
 test("community looks bypass photo inference and ambiguous same-name players do not share edits", async () => {

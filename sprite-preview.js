@@ -98,7 +98,30 @@ function createSpriteRenderer({manifest, facialManifest = {}, accessoryManifest 
     while (tintedLayers.size > maxEntries) tintedLayers.delete(tintedLayers.keys().next().value);
     return canvas;
   }
-  async function renderPlayer({skinColor, hairStyle, hairColor, facialHair = null, facialHairColor = null, accessories = []}) {
+  function drawJerseyNumber(ctx, number, width, height) {
+    if (width !== 256 || height !== 336) throw new Error("Jersey number requires the canonical player canvas");
+    const data = ctx.getImageData(0, 0, width, height);
+    for (let y=225; y<244; y++) {
+      for (let x=105; x<135; x++) {
+        const index=(y*width+x)*4, left=(y*width+103)*4, right=(y*width+138)*4;
+        const fraction=(x-103)/35;
+        for (let c=0; c<4; c++)
+          data.data[index+c]=Math.round(data.data[left+c]*(1-fraction)+data.data[right+c]*fraction);
+      }
+    }
+    ctx.putImageData(data,0,0);
+    const digits=["111101101101111","010110010010111","111001111100111","111001111001111",
+      "101101111001001","111100111001111","111100111101111","111001001001001",
+      "111101111101111","111101111001111"];
+    const x0=120-(number.length*9+(number.length-1)*3)/2;
+    ctx.fillStyle="#f5f5ef";
+    [...number].forEach((digit,index)=>{
+      [...digits[Number(digit)]].forEach((pixel,position)=>{
+        if(pixel==="1")ctx.fillRect(Math.round(x0)+index*12+(position%3)*3,227+Math.floor(position/3)*3,3,3);
+      });
+    });
+  }
+  async function renderPlayer({skinColor, hairStyle, hairColor, facialHair = null, facialHairColor = null, accessories = [], jerseyNumber = null}) {
     if (!supportsStyle(hairStyle)) throw new Error(`No reviewed sprite for hairstyle ${hairStyle}`);
     const skin = parseColor(skinColor), hair = parseColor(hairColor);
     if (!Array.isArray(accessories)) {
@@ -122,7 +145,9 @@ function createSpriteRenderer({manifest, facialManifest = {}, accessoryManifest 
     const entry = manifest[String(hairStyle)];
     if (!entry || entry.file !== `hair_${String(hairStyle).padStart(3, "0")}.png`)
       throw new Error("Invalid hair manifest entry");
-    const key = JSON.stringify([skin, hairStyle, hair, facial, accessoryLayers]);
+    const jersey = jerseyNumber === null ? null : String(jerseyNumber);
+    if (jersey !== null && !/^\d{1,2}$/.test(jersey)) throw new Error("Invalid jersey number");
+    const key = JSON.stringify([skin, hairStyle, hair, facial, accessoryLayers, jersey]);
     if (compositions.has(key)) {
       const existing = compositions.get(key);
       compositions.delete(key);
@@ -146,6 +171,7 @@ function createSpriteRenderer({manifest, facialManifest = {}, accessoryManifest 
       const skinCanvas = tinted(JSON.stringify([paths[0], skin]), width, height,
         layerCtx => layerCtx.drawImage(base, 0, 0), skin, true);
       ctx.drawImage(skinCanvas, 0, 0);
+      if (jersey !== null) drawJerseyNumber(ctx,jersey,width,height);
       [{color: hair, intensity: 32}, ...overlays.map(overlay => ({...overlay, intensity: 128}))]
         .forEach((overlay, index) => {
           const item = layers[index];

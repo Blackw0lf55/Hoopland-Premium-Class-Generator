@@ -152,6 +152,27 @@ test("physical ratings respect positional speed limits and rare elite exceptions
   }
 });
 
+test("generated stamina averages 8 across positions and dimensions", () => {
+  const profileCode=html.slice(html.indexOf("const POS_PROFILE ="),html.indexOf("const NBA_COUNTRY_COUNTS ="));
+  const normal=html.slice(html.indexOf("function normalRandom()"),html.indexOf("function weightedChoice("));
+  const physical=html.slice(html.indexOf("function generatePhysicalRatings("),html.indexOf("function colorLum("));
+  const api=vm.runInNewContext(`${profileCode}
+    let seed=1234567;
+    const rng=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296};
+    function clamp(v,min,max){return Math.max(min,Math.min(max,v))}
+    ${normal}
+    ${physical}
+    ({generate:generatePhysicalRatings,profiles:POS_PROFILE})`);
+  for(let position=0;position<9;position++){
+    const p=api.profiles[position];
+    for(const weight of [p[2],(p[2]+p[3])/2,p[3]]){
+      let total=0;
+      for(let i=0;i<20000;i++) total+=api.generate(position,(p[0]+p[1])/2,weight,p).STA/2;
+      assert.ok(Math.abs(total/20000-8)<0.03,`position ${position}, weight ${weight}: ${total/20000}`);
+    }
+  }
+});
+
 test("historical appearance colors are grayscale and era rules follow league adoption", () => {
   const code=html.slice(html.indexOf("function grayscalePlayerAppearance("),html.indexOf("function makePlayer("));
   const api=vm.runInNewContext(`

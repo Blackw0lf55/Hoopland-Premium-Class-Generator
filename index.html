@@ -2147,11 +2147,12 @@ html body .hl-physical-row input{width:100%;min-width:0;padding:6px 2px;text-ali
 
 html body #secAttr,html body #secPhys,html body #secAppear,html body #secGen,html body #secPreview{display:none!important;}
 .hl-sub{margin:14px 6px 8px;}
-.hl-countries{display:grid;grid-template-columns:repeat(auto-fill,minmax(38px,1fr));gap:6px;margin:0 6px 16px;}
-.hl-country{background:var(--px-fill-dark);color:#fff;border:0;min-height:0;padding:3px 1px;text-align:center;cursor:pointer;font-family:"Press Start 2P",monospace;font-size:.42rem;line-height:1.35;box-shadow:0 -2px 0 var(--px),0 2px 0 var(--px),-2px 0 0 var(--px),2px 0 0 var(--px);opacity:.45;}
-.hl-country .fl{display:block;font-size:.9rem;font-family:"Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif;}
-.hl-country .pct{display:block;font-size:.31rem;white-space:nowrap;}
-.hl-country.on{opacity:1;background:#1c60b7;box-shadow:0 -2px 0 var(--px-hi),0 2px 0 var(--px-hi),-2px 0 0 var(--px-hi),2px 0 0 var(--px-hi);}
+.hl-countries{display:grid;grid-template-columns:repeat(auto-fill,minmax(62px,1fr));gap:10px;margin:0 6px 16px;}
+.hl-country{text-align:center;min-width:0;}
+html body .hl-country input{width:100%;min-width:0;padding:5px 1px;text-align:center;font-size:.75rem;}
+html body .hl-country button{display:block;width:100%;padding:4px 1px;min-height:0;font-size:1.1rem;line-height:1;opacity:.5;}
+.hl-country.on button{opacity:1;}
+.hl-country .code{display:block;font-size:.55rem;}
 .hl-pager{height:min(52vh,430px);overflow:hidden;margin:0 6px;}
 .hl-list{display:flex;flex-direction:column;gap:6px;height:100%;}
 .hl-row{flex:1;min-height:0;display:grid;grid-template-columns:2.1em minmax(0,1.3fr) 2.1em minmax(0,1fr) 5.3em;cursor:pointer;align-items:center;gap:5px;background:var(--px-fill-dark);padding:0 8px;font-size:.85rem;font-weight:700;animation:hlPageIn .3s steps(4) both;}
@@ -2204,6 +2205,9 @@ html body button{transition:none!important;}
 .hl-hint{text-align:center;font-size:.8rem;margin:-8px 6px 10px;opacity:.85;}
 #hlResultStatus:empty{display:none;}
 .hl-page.on > .hl-nav{position:fixed;z-index:20;bottom:0;left:50%;transform:translateX(-50%);width:min(100%,1144px);margin:0;padding:8px 14px calc(14px + env(safe-area-inset-bottom));background:var(--px-fill-dark);box-shadow:0 -4px 0 var(--px);}
+#hlImportNav{flex-wrap:wrap;}
+#hlImportStatus{flex-basis:100%;margin:0;text-align:center;}
+#hlImportStatus:empty{display:none;}
 main{padding-bottom:calc(100px + env(safe-area-inset-bottom));}
 .hl-modal{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;padding:8px;}
 .hl-modal.hidden{display:none;}
@@ -2211,6 +2215,8 @@ main{padding-bottom:calc(100px + env(safe-area-inset-bottom));}
 .hl-loading.hidden{display:none;}
 .hl-loading-ball{font-size:3rem;animation:hlBounce .6s ease-in-out infinite alternate;}
 .hl-loading-text{font-size:1.1rem;min-height:1.5em;}
+.hl-loading-progress{width:min(320px,80vw);height:12px;background:#102a51;border:2px solid var(--px);}
+.hl-loading-progress-fill{height:100%;width:0;background:var(--px-hi);}
 @keyframes hlBounce{from{transform:translateY(0);}to{transform:translateY(-28px);}}
 .hl-modal-card{background:var(--px-fill-dark);color:#fff;width:min(520px,100%);max-height:calc(100dvh - 16px);display:flex;flex-direction:column;overflow:hidden;padding:12px;box-shadow:0 -3px 0 var(--px-hi),0 3px 0 var(--px-hi),-3px 0 0 var(--px-hi),3px 0 0 var(--px-hi);}
 .hl-pv-content{min-height:0;overflow:auto;overscroll-behavior:contain;}
@@ -2470,8 +2476,7 @@ html{background-color:#06143a!important;}
     <div class="hl-name"><label for="hlImportGender">Gender</label><select id="hlImportGender"><option value="men">Men's</option><option value="women">Women's</option></select></div>
     <div class="hl-name"><label for="hlImportLevel">Roster level</label><select id="hlImportLevel"><option value="pro">Pro</option><option value="college">College</option></select></div>
     <div class="hl-name"><label for="hlImportFile">Hoop Land file (.json or .txt)</label><input id="hlImportFile" type="file" accept=".json,.txt,application/json,text/plain"></div>
-    <p id="hlImportStatus" role="status" aria-live="polite"></p>
-    <div class="hl-nav"><button type="button" class="secondary" id="hlImportBack">◀ BACK</button><button type="button" class="primary" id="hlImportSubmit">IMPORT PLAYER DATA</button></div>
+    <div id="hlImportNav" class="hl-nav"><p id="hlImportStatus" role="status" aria-live="polite"></p><button type="button" class="secondary" id="hlImportBack">◀ BACK</button><button type="button" class="primary" id="hlImportSubmit">IMPORT PLAYER DATA</button></div>
   </div>
   <div class="hl-page" data-page="0">
     <div class="hl-name" id="hlNameSlot"></div>
@@ -2498,7 +2503,7 @@ html{background-color:#06143a!important;}
   <div class="hl-page" data-page="4">
     <div id="hlCountryOptions">
       <div class="hl-q-label hl-sub">Countries</div>
-      <p class="hl-hint">Select the countries to include.</p>
+      <p class="hl-hint">Edit percentages to total 100%. Tap a flag to include or exclude a country.</p>
       <div id="hlCountries" class="hl-countries"></div>
     </div>
     <div id="hlStatusSlot"></div>
@@ -2930,8 +2935,9 @@ const COUNTRIES = [
   "RU","SN","SI","ZA","CH","SY","TT","TR","UG","AE","UY","UZ"
 ].map(code => [code, NBA_COUNTRY_COUNTS[code] || 0.1]);
 
-function selectedCountryWeights(enabled) {
-  return COUNTRIES.filter(([code]) => !enabled || enabled.has(code));
+function selectedCountryWeights(enabled, percentages) {
+  return COUNTRIES.filter(([code]) => !enabled || enabled.has(code))
+    .map(([code,weight]) => [code,percentages ? percentages.get(code) : weight]);
 }
 
 function countryChances(enabled) {
@@ -7469,7 +7475,7 @@ function historicalRegressionFromSeasons(matches, gender, completed, partial, ta
   return candidates.sort((a,b)=>b.peak-a.peak || b.age-a.age)[0];
 }
 
-async function prepareProfessionalPotential(players, gender, draftYear, now = new Date(), regressionOnly = false) {
+async function prepareProfessionalPotential(players, gender, draftYear, now = new Date(), regressionOnly = false, onProgress = () => {}) {
   const completed = lastCompletedProSeason(gender, now);
   const last = Math.min(completed, draftYear + 32);
   const firstPossible = gender === "1" ? draftYear : draftYear + 1;
@@ -7482,6 +7488,8 @@ async function prepareProfessionalPotential(players, gender, draftYear, now = ne
     return;
   }
   const queue = Array.from({length: last - first + 1}, (_, index) => first + index);
+  const totalSeasons=queue.length;
+  let processedSeasons=0;
   const seasons = [];
   let failures = 0;
   const league = gender === "1" ? "women" : "men";
@@ -7498,6 +7506,8 @@ async function prepareProfessionalPotential(players, gender, draftYear, now = ne
       } catch (error) {
         failures++;
         console.warn("Professional potential lookup failed", year, error);
+      } finally {
+        onProgress(++processedSeasons/totalSeasons);
       }
     }
   };
@@ -7623,7 +7633,7 @@ function ratingStatsProfile(bart) {
   return { score: 0.5 + (score - 0.5) * confidence, confidence, codes };
 }
 
-const DRAFT_CURRENT_MIN = Math.ceil(144 * 0.50);
+const DRAFT_CURRENT_MIN = Math.ceil(144 * 0.47);
 const DRAFT_CURRENT_MAX = Math.floor(144 * 0.85);
 const DRAFT_STANDARD_MAX = Math.floor(144 * 0.82);
 const GENERATIONAL_DRAFTS = {"michael jordan":1984,"kobe bryant":1996,"lebron james":2003};
@@ -7636,7 +7646,7 @@ function draftOverallCap(sourcePlayer, gender, year, arc) {
 
 function draftCurrentBudget(quality, profile, calibration) {
   const ranges = {
-    2.5:[72,73], 3:[80,95], 3.5:[84,104], 4:[88,111], 4.5:[94,116], 5:[99,122]
+    2.5:[DRAFT_CURRENT_MIN,73], 3:[80,95], 3.5:[84,104], 4:[88,111], 4.5:[94,116], 5:[99,122]
   };
   const [minimum, maximum] = ranges[quality.potentialStars];
   const tierEstimate = minimum + rng() * (maximum - minimum);
@@ -7924,14 +7934,7 @@ function generatePhysicalRatings(
   let stamina =
     Math.round(
 
-      14
-
-      -
-
-      (
-        weight -
-        weightMiddle
-      ) / 55
+      16
 
       +
 
@@ -8455,6 +8458,7 @@ async function importAppearanceFile(file, gender, type, year, onProgress) {
     ...candidates.map(item=>({...item,endpoint:"appearance-baseline",body:item.appearance})),
     ...roster.map(item=>({...item,endpoint:"imported-roster",body:item.data}))
   ];
+  onProgress(0,items.length);
   const counts = {saved:0,skipped:0,invalid,ambiguous,discarded,failed:0,errors:[]};
   let index = 0, processed = 0;
   const run = async () => {
@@ -8487,11 +8491,12 @@ document.getElementById("hlImportSubmit").addEventListener("click", async () => 
   const status = document.getElementById("hlImportStatus");
   button.disabled = back.disabled = true;
   status.textContent = "Reading file...";
+  await new Promise(resolve=>setTimeout(resolve,0));
   try {
     const result = await importAppearanceFile(document.getElementById("hlImportFile").files[0],
       document.getElementById("hlImportGender").value,document.getElementById("hlImportLevel").value,
       Number(document.getElementById("hlImportYear").value),
-      () => { status.textContent = "Importing player data..."; });
+      (done,total) => { status.textContent = `Importing player data: ${done} of ${total} records processed.`; });
     status.textContent = `Imported ${result.saved} player data records.` +
       (result.skipped ? ` ${result.skipped} already saved.` : "") +
       (result.invalid || result.ambiguous ? ` ${result.invalid + result.ambiguous} could not be imported.` : "") +
@@ -8921,7 +8926,8 @@ const position =
       )
     : weightedChoice(
         selectedCountryWeights(
-          document.getElementById("mode").value === "fictional" ? window.ENABLED_COUNTRIES : null
+          document.getElementById("mode").value === "fictional" ? window.ENABLED_COUNTRIES : null,
+          document.getElementById("mode").value === "fictional" ? window.COUNTRY_PERCENTAGES : null
         )
       );
 
@@ -9345,7 +9351,7 @@ function updatePlayerDimension(player, field, value) {
   return true;
 }
 
-async function generateClass() {
+async function generateClass(onProgress = () => {}) {
 
   try {
 
@@ -9397,6 +9403,7 @@ async function generateClass() {
 
 
     generated = [];
+    onProgress(0.02);
 
 
     let realPlayers = [];
@@ -9434,6 +9441,7 @@ async function generateClass() {
         await fetch(
           apiUrl
         );
+      onProgress(0.1);
 
 
       if (!response.ok) {
@@ -9465,6 +9473,7 @@ async function generateClass() {
 
 
     const surnameCounts = new Map();
+    onProgress(mode === "real" ? 0.8 : 0.1);
 
     for (
       let index = 1;
@@ -9485,10 +9494,14 @@ async function generateClass() {
           surnameCounts
         )
       );
+      onProgress((mode === "real" ? 0.8 : 0.1) +
+        (mode === "real" ? 0.19 : 0.89) * index / classSize);
+      if(index%10===0)await new Promise(resolve=>setTimeout(resolve,0));
     }
 
 
     renderClass();
+    onProgress(1);
 
 
     if (mode === "real") {
@@ -12488,6 +12501,7 @@ classSizePlus.addEventListener(
   };
   const countryNames=new Intl.DisplayNames(["en"],{type:"region"});
   window.ENABLED_COUNTRIES=new Set(COUNTRIES.map(c=>c[0]));
+  window.COUNTRY_PERCENTAGES=new Map();
   const box=$("hlCountries");
   function updateCountryVisibility(){
     const fictional=$("mode").value==="fictional";
@@ -12496,25 +12510,60 @@ classSizePlus.addEventListener(
   }
   $("mode").addEventListener("change",updateCountryVisibility);
   updateCountryVisibility();
-  const buttons=new Map();
-  function updateCountryChances(){
+  const controls=new Map();
+  function resetCountryChances(){
     const chances=countryChances(window.ENABLED_COUNTRIES);
-    for(const [code,button] of buttons){
+    const shares=COUNTRIES.map(([code])=>{
+      const exact=chances.get(code)*10000;
+      return {code,units:Math.floor(exact),fraction:exact-Math.floor(exact)};
+    });
+    let remaining=10000-shares.reduce((sum,item)=>sum+item.units,0);
+    for(const item of shares.slice().sort((a,b)=>b.fraction-a.fraction)){
+      if(remaining--<=0)break;
+      item.units++;
+    }
+    for(const {code,units} of shares) window.COUNTRY_PERCENTAGES.set(code,units/100);
+    updateCountryControls();
+  }
+  function updateCountryControls(){
+    for(const [code,{container,input,button}] of controls){
       const selected=window.ENABLED_COUNTRIES.has(code);
-      const percent=(chances.get(code)*100).toFixed(2)+"%";
-      button.querySelector(".pct").textContent=percent;
-      button.classList.toggle("on",selected);
+      input.disabled=!selected;
+      input.value=window.COUNTRY_PERCENTAGES.get(code).toFixed(2);
+      container.classList.toggle("on",selected);
       button.setAttribute("aria-pressed",String(selected));
-      button.setAttribute("aria-label",button.title+", "+percent+" chance"+(selected?"":" (not selected)"));
+      button.setAttribute("aria-label",button.title+(selected?", included":", excluded"));
     }
   }
+  function validCountryPercentages(){
+    let total=0;
+    for(const [code,{input}] of controls){
+      if(!window.ENABLED_COUNTRIES.has(code))continue;
+      const text=input.value.trim(), value=Number(text);
+      if(!/^\d+(?:\.\d{1,2})?$/.test(text) || value<0 || value>100)return false;
+      total+=Math.round(value*100);
+    }
+    return total===10000;
+  }
   COUNTRIES.forEach(([code])=>{
+    const container=document.createElement("div");
+    container.className="hl-country on";
+    const input=document.createElement("input");
+    input.type="number";input.min="0";input.max="100";input.step="0.01";
+    input.setAttribute("aria-label",countryNames.of(code==="UK"?"GB":code)+" percentage");
+    input.addEventListener("input",()=>{
+      const value=Number(input.value);
+      window.COUNTRY_PERCENTAGES.set(code,input.value.trim()===""?NaN:value);
+      setStatus("","");
+    });
     const b=document.createElement("button");
     b.type="button";
-    b.className="hl-country on";
-    b.innerHTML='<span class="fl">'+flag(code)+'</span>'+code+'<span class="pct"></span>';
+    b.className="secondary";
+    b.textContent=flag(code);
     b.title=countryNames.of(code==="UK"?"GB":code);
-    buttons.set(code,b);
+    const label=document.createElement("span");
+    label.className="code";label.textContent=code;
+    controls.set(code,{container,input,button:b});
     b.addEventListener("click",()=>{
       const set=window.ENABLED_COUNTRIES;
       if(set.has(code)){
@@ -12522,11 +12571,13 @@ classSizePlus.addEventListener(
         set.delete(code);
       }
       else set.add(code);
-      updateCountryChances();
+      resetCountryChances();
+      setStatus("","");
     });
-    box.appendChild(b);
+    container.append(input,b,label);
+    box.appendChild(container);
   });
-  updateCountryChances();
+  resetCountryChances();
 
   let page=0;
   const perPage=()=>{
@@ -12595,6 +12646,18 @@ classSizePlus.addEventListener(
       ["Checking the box scores..."],
       ["Calling a timeout..."],
       ["Counting championship rings..."],
+      ["Working on the fundamentals..."],
+      ["Scouting the next prospect..."],
+      ["Running a full-court press..."],
+      ["Practicing free throws..."],
+      ["Setting screens..."],
+      ["Breaking down the defense..."],
+      ["Taking extra reps..."],
+      ["Running the fast break..."],
+      ["Reviewing game tape..."],
+      ["Getting shots up after practice..."],
+      ["Finding the open teammate..."],
+      ["Checking the rotation..."],
       ["What team does Polan Stronk play for?", "Answer: LA Stars."]
     ];
     let index=Math.floor(Math.random()*messages.length), part=0;
@@ -12608,11 +12671,21 @@ classSizePlus.addEventListener(
   async function submitClass(btn){
     btn.disabled=true;
     const overlay=$("hlLoading"),msg=$("hlLoadingText");
+    const fill=$("hlLoadingProgressFill");
     const nextMessage=createLoadingMessages();
     msg.textContent=nextMessage();
+    fill.style.width="0%";
     overlay.classList.remove("hidden");
     const timer=setInterval(()=>{msg.textContent=nextMessage();},3000);
-    try{await generateClass();}finally{clearInterval(timer);overlay.classList.add("hidden");btn.disabled=false;}
+    const progress=value=>{fill.style.width=(Math.max(0,Math.min(1,value))*100)+"%";};
+    window.__HOOPLAND_PROGRESS=progress;
+    try{
+      await new Promise(resolve=>setTimeout(resolve,0));
+      await generateClass(progress);
+    }finally{
+      delete window.__HOOPLAND_PROGRESS;
+      clearInterval(timer);overlay.classList.add("hidden");btn.disabled=false;
+    }
     if(generated.length&&!$("status").classList.contains("error")){
       page=0;
       const resultTitle=$("hlResultTitle");
@@ -12624,7 +12697,13 @@ classSizePlus.addEventListener(
       drawList();
     }
   }
-  $("hlSubmit").addEventListener("click",()=>submitClass($("hlSubmit")));
+  $("hlSubmit").addEventListener("click",()=>{
+    if(!validCountryPercentages()){
+      setStatus("Country percentages must be between 0 and 100 and total exactly 100%.","error");
+      return;
+    }
+    return submitClass($("hlSubmit"));
+  });
   $("hlAttrContinue").addEventListener("click",()=>{
     if($("mode").value==="fictional")window.hlShowPage(3,false);
     else submitClass($("hlAttrContinue"));
@@ -12651,7 +12730,7 @@ classSizePlus.addEventListener(
   });
 })();
 </script>
-<div id="hlLoading" class="hl-loading hidden" role="status" aria-live="polite"><div class="hl-loading-ball">🏀</div><div class="hl-loading-text" id="hlLoadingText"></div></div>
+<div id="hlLoading" class="hl-loading hidden" role="status" aria-live="polite"><div class="hl-loading-ball">🏀</div><div class="hl-loading-text" id="hlLoadingText"></div><div class="hl-loading-progress" aria-hidden="true"><div id="hlLoadingProgressFill" class="hl-loading-progress-fill"></div></div></div>
 <div id="hlApproval" class="hl-modal hidden" role="dialog" aria-modal="true" aria-labelledby="hlApprovalTitle" aria-describedby="hlApprovalDetail">
   <div class="hl-modal-card">
     <h3 id="hlApprovalTitle"></h3>
@@ -12735,6 +12814,7 @@ classSizePlus.addEventListener(
       if(renderer.error)throw renderer.error;
       return renderer.renderPlayer({
         skinColor:appearance.skinC,
+        jerseyNumber:player.jersey,
         hairStyle:Number(appearance.hair),
         hairColor:appearance.hairC,
         facialHair:facialId,
@@ -12875,7 +12955,7 @@ classSizePlus.addEventListener(
               return;
             }
             if (player.draftOverallFloor && currentTotal < player.draftOverallFloor) {
-              $("hlPvRatingError").textContent="Draft overall cannot fall below 50. Increase another actual attribute first.";
+              $("hlPvRatingError").textContent="Draft overall cannot fall below 47. Increase another actual attribute first.";
               input.value=String(player.attributes[code][side]/2);
               return;
             }

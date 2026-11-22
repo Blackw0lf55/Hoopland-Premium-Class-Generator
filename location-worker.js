@@ -767,6 +767,11 @@ window.__HOOPLAND_REAL_HOMETOWN=function(sourcePlayer){
 window.__HOOPLAND_PREPARE_REAL_PLAYERS=async function(players,gender){
   const type=document.getElementById("classType").value;
   const year=Number(document.getElementById("draftYear").value);
+  let statsDone=0,proDone=0,playersDone=0;
+  const report=()=>{
+    if(typeof window.__HOOPLAND_PROGRESS==="function")
+      window.__HOOPLAND_PROGRESS(0.1+0.7*(statsDone+4*proDone+playersDone)/(players.length+5));
+  };
   const statsPromise=(async()=>{try{
     if(type==="draft"&&year>=2008){
       const names=players.map(p=>[p.fn,p.ln].filter(Boolean).join(" "));
@@ -776,12 +781,15 @@ window.__HOOPLAND_PREPARE_REAL_PLAYERS=async function(players,gender){
         players.forEach((p,i)=>{if(d.players[names[i]])p.bart=d.players[names[i]];});
       }else console.warn("College stats unavailable",d&&d.error);
     }
-  }catch(e){console.warn("College stats lookup failed",e);}})();
+  }catch(e){console.warn("College stats lookup failed",e);}
+  finally{statsDone=1;report();}})();
   const proPromise=(async()=>{try{
-    if(type==="draft"&&Number.isInteger(year))await prepareProfessionalPotential(players,gender,year);
+    if(type==="draft"&&Number.isInteger(year))
+      await prepareProfessionalPotential(players,gender,year,new Date(),false,value=>{proDone=value;report();});
     else if(type==="freshman"&&Number.isInteger(year)&&year<=lastCompletedProSeason(gender)-5)
-      await prepareProfessionalPotential(players,gender,year,new Date(),true);
-  }catch(e){console.warn("Professional potential lookup failed",e);}})();
+      await prepareProfessionalPotential(players,gender,year,new Date(),true,value=>{proDone=value;report();});
+  }catch(e){console.warn("Professional potential lookup failed",e);}
+  finally{proDone=1;report();}})();
   const queue=players.slice();
   const identityCounts=new Map();
   for(const p of players){
@@ -874,6 +882,7 @@ window.__HOOPLAND_PREPARE_REAL_PLAYERS=async function(players,gender){
       }
       if(p.sharedAppearanceError)p.appearanceWarnings.push(p.sharedAppearanceError);
       if(p.importedRosterError)p.appearanceWarnings.push(p.importedRosterError);
+      playersDone++;report();
     }
   };
   await Promise.all([proPromise,statsPromise,...Array.from({length:Math.min(6,queue.length)},worker)]);

@@ -136,12 +136,40 @@ test("atlas-based style changes load no individual sprite images", async () => {
   assert.deepEqual(loads, ["assets/player_base.png", "assets/sprite_atlas.png"]);
 });
 
+test("jersey numbers replace the base number and distinguish cached compositions", async () => {
+  const canvases=[];
+  const renderer=createSpriteRenderer({
+    manifest:{"0":{file:"hair_000.png"}},
+    loadImage:async()=>({width:256,height:336}),
+    createCanvas:()=>{
+      const canvas={width:0,height:0,rectangles:[]};
+      const context={
+        drawImage(){},
+        getImageData(){return {data:new Uint8ClampedArray(canvas.width*canvas.height*4)};},
+        putImageData(){},
+        fillRect(...rect){canvas.rectangles.push(rect);}
+      };
+      canvas.getContext=()=>context;
+      canvases.push(canvas);
+      return canvas;
+    }
+  });
+  const look={skinColor:"bf8c6b",hairStyle:0,hairColor:"000000"};
+  const number0=await renderer.renderPlayer({...look,jerseyNumber:"0"});
+  const number00=await renderer.renderPlayer({...look,jerseyNumber:"00"});
+  const number12=await renderer.renderPlayer({...look,jerseyNumber:"12"});
+  assert.notDeepEqual(number0.rectangles,number00.rectangles);
+  assert.notDeepEqual(number00.rectangles,number12.rectangles);
+  assert.equal(await renderer.renderPlayer({...look,jerseyNumber:"12"}),number12);
+  await assert.rejects(renderer.renderPlayer({...look,jerseyNumber:"123"}),/Invalid jersey number/);
+});
+
 test("appearance edits retain the preview until the latest render completes", async () => {
   const html = fs.readFileSync(path.join(__dirname, "../index.html"), "utf8");
   const code = html.slice(html.indexOf("  function showArt(player,clear=false)"), html.indexOf("  const lumOf="));
   const pending = [];
   const renderer = {
-    renderPlayer: () => new Promise((resolve, reject) => pending.push({resolve, reject}))
+    renderPlayer: options => new Promise((resolve, reject) => pending.push({resolve, reject,options}))
   };
   const old = {};
   const art = {
@@ -161,10 +189,11 @@ test("appearance edits retain the preview until the latest render completes", as
     console
   });
   vm.runInContext(code, context);
-  const player = {appearance: {skinC: "604020", hair: "1", hairC: "000000"}};
+  const player = {jersey:"23",appearance: {skinC: "604020", hair: "1", hairC: "000000"}};
   context.showArt(player);
   context.showArt(player);
   await new Promise(resolve => setImmediate(resolve));
+  assert.equal(pending[0].options.jerseyNumber,"23");
   assert.equal(art.children[0], old);
   pending[0].resolve({width: 1, height: 1});
   await new Promise(resolve => setImmediate(resolve));

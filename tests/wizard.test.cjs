@@ -10,7 +10,7 @@ const end = html.indexOf("  function showPage(", start);
 const renderCode = html.slice(start, end);
 
 test("class feedback keeps important limitations without routine generation details", () => {
-  const code = html.slice(html.indexOf("function classResultMessage("), html.indexOf("async function generateClass()"));
+  const code = html.slice(html.indexOf("function classResultMessage("), html.indexOf("async function generateClass("));
   const {classResultMessage, playerEditNotice, updatePlayerDimension} = vm.runInNewContext(code + "\n({classResultMessage, playerEditNotice, updatePlayerDimension})");
   assert.equal(classResultMessage(0, false, ""), "");
   const warning = "Prior draft results could not be verified; previously drafted players may appear.";
@@ -184,25 +184,36 @@ test("country buttons update chances on deselection and retain one selected coun
   const mode = {value:"fictional",addEventListener(type,fn){this.change=fn;}};
   const window = {};
   const document = {createElement:()=>({
-    attributes:{}, percentage:{}, classList:{toggle(){}},
-    querySelector(){return this.percentage;},
+    attributes:{}, children:[], classList:{toggle(){}},
+    append(...children){this.children.push(...children);},
     setAttribute(name,value){this.attributes[name]=value;},
-    addEventListener(type,fn){this.click=fn;}
+    addEventListener(type,fn){this[type]=fn;}
   })};
-  const api = vm.runInNewContext(`${countriesCode}\n${selectorCode}\n({countries:COUNTRIES,chances:countryChances})`,
-    {window,document,$:id=>({hlCountries:box,hlCountryOptions:options,hlAttrContinue:attrContinue,mode})[id]});
-  const button = code => box.children[api.countries.findIndex(([c])=>c===code)];
-  assert.equal(button("US").percentage.textContent,(api.chances(window.ENABLED_COUNTRIES).get("US")*100).toFixed(2)+"%");
+  const api = vm.runInNewContext(`${countriesCode}\n${selectorCode}\n({countries:COUNTRIES,chances:countryChances,valid:validCountryPercentages})`,
+    {window,document,setStatus(){},$:id=>({hlCountries:box,hlCountryOptions:options,hlAttrContinue:attrContinue,mode})[id]});
+  const container = code => box.children[api.countries.findIndex(([c])=>c===code)];
+  const button = code => container(code).children[1];
+  const input = code => container(code).children[0];
+  assert.equal(api.valid(),true);
   button("US").click();
-  assert.equal(button("US").percentage.textContent,"0.00%");
+  assert.equal(input("US").value,"0.00");
   assert.equal(button("US").attributes["aria-pressed"],"false");
-  assert.equal(button("CA").percentage.textContent,(api.chances(window.ENABLED_COUNTRIES).get("CA")*100).toFixed(2)+"%");
+  assert.equal(api.valid(),true);
   for(const [code] of api.countries) if(code!=="IN" && window.ENABLED_COUNTRIES.has(code)) button(code).click();
-  assert.equal(button("IN").percentage.textContent,"100.00%");
+  assert.equal(input("IN").value,"100.00");
   button("IN").click();
   assert.equal(button("IN").attributes["aria-pressed"],"true");
   button("US").click();
-  assert.equal(button("US").percentage.textContent,(394/394.1*100).toFixed(2)+"%");
+  input("US").value="70";input("US").input();
+  input("IN").value="30";input("IN").input();
+  assert.equal(api.valid(),true);
+  assert.equal(window.COUNTRY_PERCENTAGES.get("US"),70);
+  input("IN").value="";input("IN").input();
+  assert.equal(api.valid(),false);
+  input("IN").value="30.001";input("IN").input();
+  assert.equal(api.valid(),false);
+  input("IN").value="29";input("IN").input();
+  assert.equal(api.valid(),false);
   assert.equal(options.hidden,false);
   mode.value="real";
   mode.change();
@@ -253,20 +264,21 @@ test("spec validation, submission errors and review back follow the selected mod
   const start = html.indexOf("  function createLoadingMessages(){");
   const end = html.indexOf('  $("hlDownload").addEventListener',start);
   const elements = {};
-  for (const id of ["hlSubmit","hlAttrContinue","hlSpecContinue","hlReviewBack","hlLoading","hlLoadingText",
+  for (const id of ["hlSubmit","hlAttrContinue","hlSpecContinue","hlReviewBack","hlLoading","hlLoadingText","hlLoadingProgressFill",
     "status","className","hlResultTitle","hlResultStatus","mode"]) {
     elements[id]={style:{},classList:{add(){},remove(){},contains(name){return name==="error"&&elements.status.className.includes("error");}},
       addEventListener(type,fn){this[type]=fn;}};
   }
   elements.mode.value="fictional";
-  let page=2, invalid=false, failed=false, generationCount=0;
+  let page=2, invalid=false, failed=false, generationCount=0, validCountries=false;
   const window={hlShowPage(n){page=n;}};
   vm.runInNewContext(html.slice(start,end),{
     $:id=>elements[id],window,POS:[["0","PG"]],
     positionPhysicalLimits(){if(invalid)throw new Error("PG: invalid limits");},
     setStatus(text,cls){elements.status.textContent=text;elements.status.className=cls;},
-    async generateClass(){generationCount++;elements.status.textContent=failed?"Generation failed":"Ready";elements.status.className=failed?"error":"ok";},
-    generated:[{}],drawList(){},setInterval:()=>1,clearInterval(){},Math
+    async generateClass(progress){generationCount++;progress(0.5);elements.status.textContent=failed?"Generation failed":"Ready";elements.status.className=failed?"error":"ok";},
+    validCountryPercentages:()=>validCountries,
+    generated:[{}],drawList(){},setInterval:()=>1,clearInterval(){},setTimeout,Math
   });
   elements.hlAttrContinue.click();
   assert.equal(page,3);
@@ -278,6 +290,10 @@ test("spec validation, submission errors and review back follow the selected mod
   elements.hlSpecContinue.click();
   assert.equal(page,4);
   assert.equal(generationCount,0);
+  elements.hlSubmit.click();
+  assert.match(elements.status.textContent,/total exactly 100%/);
+  assert.equal(generationCount,0);
+  validCountries=true;
   failed=true;
   await elements.hlSubmit.click();
   assert.equal(page,4);
@@ -292,12 +308,12 @@ test("spec validation, submission errors and review back follow the selected mod
   invalid=true;
   failed=true;
   elements.hlAttrContinue.click();
-  await new Promise(resolve=>setImmediate(resolve));
+  await new Promise(resolve=>setTimeout(resolve,10));
   assert.equal(page,2);
   assert.equal(elements.status.textContent,"Generation failed");
   failed=false;
   elements.hlAttrContinue.click();
-  await new Promise(resolve=>setImmediate(resolve));
+  await new Promise(resolve=>setTimeout(resolve,10));
   assert.equal(page,5);
   elements.hlReviewBack.click();
   assert.equal(page,2);

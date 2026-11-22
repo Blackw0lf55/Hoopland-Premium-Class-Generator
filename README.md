@@ -87,8 +87,9 @@ minus 125 international players gives the US weight of 394; available
 international countries use the NBA's listed counts. Countries with no
 listed players receive a small fallback weight of 0.1 player. Counts for
 countries unavailable in the selector are excluded, then selected weights are
-normalized to 100%; deselecting a country redistributes its share
-proportionally. Displayed percentages are rounded. The selector has its own
+normalized to 100%; deselecting or reselecting a country resets the shares to
+their proportional defaults. Percentages can be edited to two decimal places
+and must total exactly 100% before generating. The selector has its own
 screen after Spec Limits; both screens are skipped for
 real classes: real players retain their sourced country, and any fictional fill
 players use all available country weights.
@@ -98,7 +99,8 @@ roster or class file (up to 256 MiB and 100,000 listed players). Parsing is
 local; supported appearance fields, attributes, tendencies, age, dimensions,
 position, years, number, country and hometown are sent for shared storage
 alongside the name and selected gender, roster level and year. The full file is
-not stored. Appearance baselines remain global by name and gender; duplicates
+not stored. The import screen reports records processed while uploading.
+Appearance baselines remain global by name and gender; duplicates
 in a file are skipped and existing built-in or imported baselines are never
 replaced. Other player data is scoped by gender, pro/college level, year and
 name. Duplicate records use the lower current and potential value separately
@@ -137,7 +139,8 @@ continues to require independently sourced draft or freshman records.
 The class preview lists position, name, jersey number, archetype and stars:
 white shows potential and gold overlays current ability. Real players use a
 matched college jersey number when available; otherwise a generated number is
-used and retained in the export. Opening a player shows the appearance editor
+used and retained in the export. The appearance preview shows that jersey number.
+Opening a player shows the appearance editor
 first; the bottom button switches between appearances and attributes.
 
 The appearance preview is migrating to aligned sprite layers. The supplied
@@ -169,7 +172,8 @@ After changing any reviewed layer or manifest, rebuild the deployed atlas with
 `python3 scripts/build-sprite-atlas.py`.
 
 Speed, strength and stamina are generated separately from the core attribute
-budget and exported in half-point steps. Speed uses position-specific limits,
+budget and exported in half-point steps. Generated stamina averages about 8
+across positions; explicit imported or edited values are preserved. Speed uses position-specific limits,
 with rare outliers; a 10 is reserved for PG/G. A 10 strength is rare and
 reserved for centers. Classes through 1965 use grayscale player appearances,
 including accessories and shoes; their grayscale appearance edits are not
@@ -238,11 +242,11 @@ primarily in the 55–82 overall range using the player's potential tier,
 available college statistics and roster calibration. The 85 cap is reserved
 for fictional GOAT prospects and a reviewed list of historical generational
 players (Michael Jordan, Kobe Bryant and LeBron James in their draft years). An 85 is rare, and
-the lowest tier starts around 50–51 overall. Draft current ratings range from
-72 to 118 distributable points (50% to 81.9%, displayed as 82%); eligible
+the lowest tier starts around 47 overall. Draft current ratings range from
+68 to 118 distributable points (47.2% to 81.9%, displayed as 82%); eligible
 generational players can reach 122 points (84.7%, displayed as 85%). A 2.5-star
-potential caps at 74 points, so those players have only one or two points of
-growth available, including for dribbling. Shared edits above the cap are
+potential caps at 74 points, limiting their growth, including for dribbling.
+Shared edits above the cap are
 reduced automatically; manual edits outside the draft range are rejected.
 Freshman class ratings are unaffected
 by these draft-only limits.

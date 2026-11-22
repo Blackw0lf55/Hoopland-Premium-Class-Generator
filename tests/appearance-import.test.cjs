@@ -42,6 +42,7 @@ test("large roster files upload selected player data, report failures and skip s
   assert.equal(result.skipped,2);
   assert.equal(result.failed,2);
   assert.match(result.errors[0],/Storage unavailable/);
+  assert.deepEqual(progress[0],[0,6]);
   assert.deepEqual(progress[progress.length-1],[6,6]);
   assert.equal(requests.length,6);
   assert.deepEqual(requests[0].body,{skinC:"123456",hairC:"123456",hair:"0001",fHair:"0016"});

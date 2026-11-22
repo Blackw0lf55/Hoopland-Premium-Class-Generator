@@ -131,15 +131,15 @@ test("attribute editor updates star tiers and enforces the non-GOAT cap", () => 
   change(6,0,8.5);
   assert.equal(player.currentPoints,122);
   assert.match(elements.hlPvRatingError.textContent,/cannot exceed 85/);
-  player.draftOverallFloor=72;
+  player.draftOverallFloor=68;
   for (const [index,code] of codes.entries()) {
-    player.attributes[code]=index<4?[20,20]:[2,2];
+    player.attributes[code]=index<3?[20,20]:index===3?[16,20]:[2,2];
   }
   api.refreshPlayerRatingTotals(player);
   show(player);
   change(0,0,9.5);
-  assert.equal(player.currentPoints,72);
-  assert.match(elements.hlPvRatingError.textContent,/cannot fall below 50/);
+  assert.equal(player.currentPoints,68);
+  assert.match(elements.hlPvRatingError.textContent,/cannot fall below 47/);
 });
 
 test("rookie references influence ratings without violating caps or losing position differences", () => {
@@ -397,7 +397,7 @@ test("draft rookies favor 55–85 overall without exceeding their potential", ()
       for (let i=0;i<8;i++) {
         const result=api.makeAttributeRatings(position,gender,source,quality(stars,5),weights,"",null,{},"draft");
         assert.ok(result.currentBudget<=122);
-        assert.ok(result.currentBudget>=72);
+        assert.ok(result.currentBudget>=68);
         assert.ok(result.currentBudget<result.potentialBudget);
         if (stars===2.5) assert.ok(result.currentBudget<=73);
         else assert.ok(result.currentBudget<=result.potentialBudget-8);
@@ -415,7 +415,7 @@ test("draft rookies favor 55–85 overall without exceeding their potential", ()
   assert.ok(maxed<50,`85 overall must be rare: ${maxed}/1000`);
   const lowRef={current:79,dribbleGrowth:3,attrs:codes.map(()=>12)};
   api.setRng(()=>0.00001);
-  assert.equal(api.makeAttributeRatings(6,"1",null,quality(2.5),weights,"",lowRef,{},"draft").currentBudget,72);
+  assert.equal(api.makeAttributeRatings(6,"1",null,quality(2.5),weights,"",lowRef,{},"draft").currentBudget,68);
   api.setRng(()=>0.99999);
   assert.equal(api.makeAttributeRatings(6,"1",null,quality(2.5),weights,"",lowRef,{},"draft").currentBudget,73);
   for (const gender of ["0","1"]) {
