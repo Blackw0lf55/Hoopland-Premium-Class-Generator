@@ -139,16 +139,11 @@ The class preview lists position, name, jersey number, archetype and stars:
 white shows potential and gold overlays current ability. Real players use a
 matched college jersey number when available; otherwise a generated number is
 used and retained in the export. Opening a player shows the appearance editor
-first; the bottom button switches between appearances and attributes. The
-fallback portrait uses approximate, catalog-based hairstyle, facial-hair and
-head-accessory drawings on a 256×256 square-pixel canvas. Hair is kept clear
-of the eyebrows, faded styles have shaded temples, and eyewear lenses are
-translucent. The unnumbered V-neck jersey is preview-only; the export retains
-the player's jersey number. The portrait is not an exact in-game rendering.
+first; the bottom button switches between appearances and attributes.
 
 The appearance preview is migrating to aligned sprite layers. The supplied
-bald full-body base, 145 hairstyles (including bald), all 31 facial-hair
-styles, and 15 head accessories are available in `assets/`. Their 256×336
+bald full-body base, all 171 hairstyles (including bald), all 31 facial-hair
+styles, and all 25 head accessories are available in `assets/`. Their 256×336
 canvases share the base's origin and include uniform transparent top padding.
 The source screenshots show different players, colors, and animation poses;
 these layers are approximations, not pixel-exact game sprites.
@@ -156,11 +151,9 @@ these layers are approximations, not pixel-exact game sprites.
 `sprite-preview.js` composes the base, hair, facial hair, then accessories. It
 recolors each layer while retaining shading and alpha and caches a bounded
 number of compositions by appearance. The three asset manifests list available
-styles. `index.html` uses the existing procedural portrait whenever any selected
-layer is unavailable, including hairstyles with ambiguous shoulder overlap and
-eyewear whose transparency could not be separated reliably. Changing a style
-may therefore switch preview formats. This does not change exported values.
-`portrait-preview.js` and `hair-preview.js` remain in use for fallback.
+styles. When a selected layer is unavailable, the editor reports that the
+preview is unavailable instead of displaying the old procedural portrait.
+This does not change exported values.
 
 To prepare additional candidates, install Pillow and run
 `python3 scripts/extract-hair.py --reference bald.png --sources registered/ --masks masks/ --output candidates/`.
@@ -170,16 +163,8 @@ etc. The utility compares each image to the bald reference, intersects changes
 with its mask, and writes full-canvas PNGs and a candidate manifest. It does
 not register screenshots or resolve their differing skin tones, poses, or
 JPEG artifacts. Review and correct candidates before moving them into
-`assets/`; do not deploy the generated manifest as-is. Complete the migration
-by correcting the remaining 26 hairstyles and 10 accessories before removing
-the fallback. Future layers must use the same dimensions and origin as the base.
-
-Three 24×24 hairstyle grids are provided in
-`data/hairstyle-grids.json`. Values 0–3 mean transparent, base, 15% darker,
-and 15% lighter, respectively. The preview uses them as approximations for
-long rear braids/locs (26), a close-fitting textured high-top fade (50), and a
-braided top knot (70, with added hanging locs). Other styles use catalog-based
-pixel drawings.
+`assets/`; do not deploy the generated manifest as-is. Future layers must use
+the same dimensions and origin as the base.
 
 Speed, strength and stamina are generated separately from the core attribute
 budget and exported in half-point steps. Speed uses position-specific limits,
@@ -237,6 +222,8 @@ in the resolved country, not necessarily the exact city. If no reliable
 coordinates or exact catalog city are found, a catalog point is assigned as an
 approximation rather than `0,0`; it is not a verified hometown location. Where
 the country is unavailable in the catalog, the fallback may be elsewhere.
+If the catalog or location assignment cannot be loaded, the app stops rather
+than exporting unlisted coordinates.
 
 Ratings are estimates, not measured pro-level ability. Each of the 12 core
 attributes starts at 1 (export value 2), and added points use the export's

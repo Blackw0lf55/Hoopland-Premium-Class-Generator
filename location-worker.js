@@ -47,7 +47,7 @@ function readValidLocations(csv) {
     .slice(1)
     .filter(line => line.trim())
     .map(parseCsvRow)
-    .filter(row => row.length >= 5)
+    .filter(row => row.length >= 5 && row[row.length - 2] !== "" && row[row.length - 1] !== "")
     .map(row => ({
       country: row[0] || "United States",
       state: row[1] || "",
@@ -832,19 +832,10 @@ function transformGenerator(html) {
   );
   if (!generateCode) return null;
 
-  let exportCode = html.slice(exportStart);
-  const exportHeader = /(function makeHoopLandPlayer\(\s*player\s*,\s*index\s*\)\s*\{\s*const exportedAppearance = [^\n]+;\s*)return\s*\{/;
-  exportCode = replaceOnce(
-    exportCode,
-    exportHeader,
-    "$1const assignedLocation = window.__HOOPLAND_RESOLVE_LOCATION(player);\n  return {"
-  );
-  if (!exportCode) return null;
-
-  exportCode = replaceOnce(exportCode, /home:\s*player\.home\s*,/, "home: assignedLocation.home,");
-  if (!exportCode) return null;
-  exportCode = replaceOnce(exportCode, /loc:\s*\{\s*x:\s*0\s*,\s*y:\s*0\s*\}\s*,/, "loc: assignedLocation.loc,");
-  if (!exportCode) return null;
+  const exportCode = html.slice(exportStart);
+  if (!exportCode.includes("window.__HOOPLAND_RESOLVE_LOCATION(player)") ||
+      !/loc:\s*assignedLocation\.loc/.test(exportCode) ||
+      !/home:\s*assignedLocation\.home/.test(exportCode)) return null;
 
   return html.slice(0, makePlayerStart) + makePlayerCode + generateCode + exportCode;
 }
@@ -1085,13 +1076,13 @@ window.__HOOPLAND_PREPARE_REAL_PLAYERS=async function(players,gender){
 };
 window.__HOOPLAND_RESOLVE_LOCATION=function(player){
   const records=window.__HOOPLAND_LOCATION_RECORDS||[];
+  if(!records.length)throw new Error("Location catalog is unavailable. Reload the app and try again.");
   const normalize=window.__HOOPLAND_NORMALIZE_LOCATION_NAME;
   const regionName=code=>{
     const overrides={BA:"Bosnia and Herzegovina",HK:"Hong Kong",PS:"Palestine",TT:"Trinidad and Tobago",TR:"Turkey"};
     return overrides[code]||(/^[A-Z]{2}$/.test(code)?new Intl.DisplayNames(["en"],{type:"region"}).of(code==="UK"?"GB":code):"");
   };
   if(!player||!player.isReal){
-    if(!records.length)return {home:"",loc:{x:0,y:0}};
     const code=String(player&&player.ctry||"").toUpperCase();
     const fictionalCountry=regionName(code);
     const sameCountry=fictionalCountry?records.filter(record=>normalize(record.country)===normalize(fictionalCountry)):[];
@@ -1141,7 +1132,7 @@ window.__HOOPLAND_RESOLVE_LOCATION=function(player){
     const fallback=candidates[Math.floor(Math.random()*candidates.length)];
     return {home,loc:{x:fallback.x,y:fallback.y}};
   }
-  return {home,loc:{x:0,y:0}};
+  throw new Error("Location catalog is unavailable. Reload the app and try again.");
 };
 </script>`;
 }
@@ -1152,14 +1143,14 @@ async function addLocationAssignment(request, env) {
 
   const catalogURL = new URL("/data/location-catalog.csv", request.url);
   const catalogResponse = await env.ASSETS.fetch(new Request(catalogURL));
-  if (!catalogResponse.ok) return pageResponse;
+  if (!catalogResponse.ok) return new Response("Location catalog could not be loaded.", {status:503});
 
   const locations = readValidLocations(await catalogResponse.text());
-  if (!locations.length) return pageResponse;
+  if (!locations.length) return new Response("Location catalog contains no valid coordinates.", {status:503});
 
   const originalHtml = await pageResponse.text();
   const transformedHtml = transformGenerator(originalHtml);
-  if (!transformedHtml) return pageResponse;
+  if (!transformedHtml) return new Response("Location assignment could not be initialized.", {status:503});
 
   const script = buildLocationScript(locations);
   const bodyClose = transformedHtml.toLowerCase().lastIndexOf("</body>");

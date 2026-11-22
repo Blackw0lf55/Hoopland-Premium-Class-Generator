@@ -113,6 +113,55 @@ test("worker transforms retain location and player export fields", async () => {
     window:{__HOOPLAND_RESOLVE_LOCATION:()=>({home:"",loc:{x:1,y:2}})},
     randomInteger:()=>1,document:{getElementById:()=>({value:"0"})},makeEmptyStatLine:()=>({})
   });
+
+  await test("location assignment fails closed when the catalog or transform is unavailable", async () => {
+    const {default:worker}=await import("../location-worker.js");
+    const html=fs.readFileSync(path.join(__dirname,"..","index.html"),"utf8");
+    for (const [page,catalog] of [
+      [html,new Response("missing",{status:404})],
+      [html,new Response("Country,State,City,X,Y\nUS,,Bad,,\n")],
+      [html.replace("function makePlayer(","function missingPlayer("),new Response("Country,State,City,X,Y\nUS,,Good,123,456\n")]
+    ]) {
+      const env={ASSETS:{fetch:async r=>new URL(r.url).pathname.endsWith(".csv")?catalog:new Response(page)}};
+      const response=await worker.fetch(new Request("https://example.test/"),env);
+      assert.equal(response.status,503);
+    }
+    const exportCode=html.slice(html.indexOf("function makeHoopLandPlayer("),html.indexOf("function downloadHoopLand()"));
+    const exportPlayer=vm.runInNewContext(exportCode+"\nmakeHoopLandPlayer",{window:{}});
+    assert.throws(()=>exportPlayer({appearance:{}},0),/Location catalog is unavailable/);
+  });
+
+  await test("real and fictional exported coordinates always come from the supplied catalog", async () => {
+    const {default:worker}=await import("../location-worker.js");
+    const root=path.join(__dirname,"..");
+    const html=fs.readFileSync(path.join(root,"index.html"),"utf8");
+    const csv=fs.readFileSync(path.join(root,"data/location-catalog.csv"),"utf8");
+    const env={ASSETS:{fetch:async r=>new URL(r.url).pathname.endsWith(".csv")?new Response(csv):new Response(html)}};
+    const page=await (await worker.fetch(new Request("https://example.test/"),env)).text();
+    const script=page.match(/<script>\nwindow\.__HOOPLAND_LOCATION_RECORDS[\s\S]*?<\/script>/)[0].slice(8,-9);
+    const context=vm.createContext({window:{},console:{warn(){}},randomInteger:()=>1,
+      document:{getElementById:()=>({value:"0"})},makeEmptyStatLine:()=>({})});
+    vm.runInContext(script,context);
+    const exportCode=page.slice(page.indexOf("function makeHoopLandPlayer("),page.indexOf("function downloadHoopLand()"));
+    const exportPlayer=vm.runInContext(exportCode+"\nmakeHoopLandPlayer",context);
+    const player={fn:"Test",ln:"Player",ctry:"US",age:20,ht:78,wt:200,year:1,pos:4,arc:"GOAT",pot:10,regressionAge:32,
+      appearance:{skinC:"AD795C",eyeC:"090502",browC:"202020",hair:"0001",hairC:"202020",fHair:"0000",fHairC:"202020",accessories:[]},
+      attributes:{},physical:{STR:10,SPD:10,STA:10},tendencies:{}};
+    const allowed=new Set(context.window.__HOOPLAND_LOCATION_RECORDS.map(p=>`${p.x},${p.y}`));
+    for (const location of [
+      {isReal:false,ctry:"US"}, {isReal:false,ctry:"BE"},
+      {isReal:true,home:"Boston, MA",homeX:4236,homeY:-7106},
+      {isReal:true,home:"Unknown",homeX:1,homeY:2},
+      {isReal:true,home:"Unknown",ctry:"BE"}
+    ]) {
+      for(let i=0;i<20;i++) {
+        const {x,y}=exportPlayer({...player,...location},i).loc;
+        assert.ok(allowed.has(`${x},${y}`),`${x},${y}`);
+      }
+    }
+    context.window.__HOOPLAND_LOCATION_RECORDS=[];
+    assert.throws(()=>exportPlayer(player,0),/Location catalog is unavailable/);
+  });
   const player={
     fn:"Test",ln:"Player",ctry:"US",age:20,ht:78,wt:200,year:1,pos:4,arc:"GOAT",pot:10,regressionAge:32,
     appearance:{skinC:"AD795C",eyeC:"090502",browC:"202020",hair:"0001",hairC:"202020",fHair:"0000",fHairC:"202020",accessories:[]},

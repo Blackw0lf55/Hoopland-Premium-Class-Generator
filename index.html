@@ -3009,7 +3009,47 @@ const NAMES = {
       "Matthews","McCoy","Miles","Monroe","Murphy","Murray","Owens",
       "Palmer","Payne","Porter","Powell","Price","Ramirez","Reynolds",
       "Rivera","Russell","Sanders","Simmons","Spencer","Stephens",
-      "Sullivan","Watson","West","Wheeler","Wright"
+      "Sullivan","Watson","West","Wheeler","Wright",
+      "Abbott","Acosta","Aguilar","Aguirre","Alford","Alvarado","Alvarez",
+      "Anthony","Archer","Atkins","Atkinson","Atwood","Avery","Ayala",
+      "Ball","Banks","Barber","Barker","Barlow","Barrett","Barron","Bass",
+      "Bates","Beck","Becker","Bentley","Berry","Black","Blackwell","Blair",
+      "Boone","Bowen","Bowman","Boyd","Boyle","Brady","Brewer","Brock",
+      "Browning","Bruce","Buckley","Bullock","Burgess","Burnett","Burton",
+      "Bush","Caldwell","Cameron","Cannon","Carlson","Carpenter","Carr",
+      "Carrillo","Carson","Castillo","Castro","Cervantes","Christensen",
+      "Cisneros","Clay","Clements","Cleveland","Cobb","Cochran","Combs",
+      "Conner","Conway","Cortez","Cotton","Craig","Cruz","Curtis",
+      "Dalton","Davidson","Delgado","Dennis","Diaz","Dixon","Duncan",
+      "Dunn","Durham","Eaton","Ellison","Erickson","Estrada","Ferguson",
+      "Fernandez","Finley","Fitzgerald","Floyd","Flowers","Flynn","Francis",
+      "Frazier","Fuller","Gaines","Gallagher","Garner","Garrett","Gates",
+      "George","Gilbert","Glover","Gonzalez","Graham","Graves","Greene",
+      "Gregory","Gross","Guerra","Guerrero","Guzman","Hale","Hampton",
+      "Hansen","Harding","Hardy","Harmon","Hart","Hartman","Harvey",
+      "Hatfield","Henson","Hernandez","Hicks","Higgins","Hines","Hobbs",
+      "Holland","Holloway","Hopkins","Horton","Houston","Howell","Hubbard",
+      "Hughes","Humphrey","Hunt","Jacobs","Jennings","Jimenez","Johnston",
+      "Jordan","Joseph","Kaufman","Keller","Kemp","Kerr","Kidd","Kim",
+      "Knight","Lamb","Lambert","Lancaster","Landry","Lang","Larson",
+      "Leonard","Lindsey","Little","Long","Lopez","Love","Luna","Lynch",
+      "Lynn","Mack","Maldonado","Manning","Marquez","Marsh","Mendez",
+      "Meyer","Mills","Miranda","Montgomery","Morales","Moreno","Morrison",
+      "Morton","Moss","Mullen","Navarro","Newman","Nichols","Norris","Oliver",
+      "Olsen","Ortiz","Page","Parks","Parrish","Patrick","Pearson","Pena",
+      "Perkins","Perry","Peters","Peterson","Pierce","Pittman","Poole",
+      "Pope","Potter","Quinn","Ramos","Randall","Reese","Reeves","Rhodes",
+      "Richards","Riley","Rios","Rivers","Roberson","Robertson","Rocha",
+      "Rodgers","Rogers","Roman","Romero","Rose","Rowe","Ruiz","Salazar",
+      "Salinas","Sampson","Sanchez","Santiago","Santos","Saunders","Schmidt",
+      "Schneider","Schultz","Schwartz","Sharp","Shelton","Shepherd","Sherman",
+      "Short","Silva","Simon","Simpson","Singleton","Sloan","Snyder","Soto",
+      "Sparks","Stafford","Stanley","Steele","Stokes","Stone","Strickland",
+      "Sutton","Swanson","Tate","Thornton","Todd","Torres","Tran","Tucker",
+      "Valdez","Valencia","Vargas","Vaughn","Vega","Velasquez","Velez",
+      "Villarreal","Wade","Wagner","Wallace","Walsh","Ward","Warner","Warren",
+      "Weaver","Webb","Webster","Wells","Wiggins","Wilkins","Willis","Wise",
+      "Woods","Wyatt","Yates","York","Zamora","Zimmerman"
     ],
 
     hometowns: [
@@ -4934,14 +4974,14 @@ addPrimaryAccessoryReference(
 
 addPrimaryAccessoryReference(
   5,
-  "Thin wraparound eye protection.",
-  ["eyewear", "wraparound", "thin"]
+  "Bulky wraparound goggles with opaque gray lenses.",
+  ["goggles", "wraparound", "thick-frame"]
 );
 
 addPrimaryAccessoryReference(
   6,
-  "Rectangular sports goggles with dark lens area.",
-  ["goggles", "rectangular", "eyewear"]
+  "Rectangular glasses with dark rims and clear lenses.",
+  ["glasses", "rectangular", "clear-lens"]
 );
 
 addPrimaryAccessoryReference(
@@ -4952,8 +4992,8 @@ addPrimaryAccessoryReference(
 
 addPrimaryAccessoryReference(
   8,
-  "Large protective face covering focused around the nose and upper face.",
-  ["face-mask", "nose", "protective"]
+  "Gray protective face mask with openings for the eyes.",
+  ["face-mask", "protective", "eye-openings"]
 );
 
 addPrimaryAccessoryReference(
@@ -4964,8 +5004,8 @@ addPrimaryAccessoryReference(
 
 addPrimaryAccessoryReference(
   10,
-  "Small single-side face or eye covering.",
-  ["eye-cover", "single-side", "small"]
+  "Single round translucent monocle over one eye.",
+  ["monocle", "round", "translucent"]
 );
 
 addPrimaryAccessoryReference(
@@ -5000,8 +5040,8 @@ addPrimaryAccessoryReference(
 
 addPrimaryAccessoryReference(
   16,
-  "No visible upper accessory with lower-face covering or neck-area element.",
-  ["lower-face", "covering"]
+  "Small red earring on the visible ear.",
+  ["earring", "small"]
 );
 
 addPrimaryAccessoryReference(
@@ -10025,6 +10065,10 @@ function makeHoopLandPlayer(
 ) {
 
   const exportedAppearance = player.grayscale ? grayscalePlayerAppearance(player.appearance) : player.appearance;
+  if (typeof window.__HOOPLAND_RESOLVE_LOCATION !== "function") {
+    throw new Error("Location catalog is unavailable. Reload the app and try again.");
+  }
+  const assignedLocation = window.__HOOPLAND_RESOLVE_LOCATION(player);
   return {
 
     id:
@@ -10046,15 +10090,12 @@ function makeHoopLandPlayer(
       "",
 
     home:
-      player.home,
+      assignedLocation.home,
 
     ctry:
       player.ctry,
 
-    loc: {
-      x: 0,
-      y: 0
-    },
+    loc: assignedLocation.loc,
 
     age:
       player.age,
@@ -10564,18 +10605,14 @@ function downloadHoopLand() {
   const safeClassName=String(className||"Custom Class").replace(/[\/\\:*?"<>|]/g,"-").replace(/\s+/g," ").trim()||"Custom Class";
 
 
-  const hoopLandPlayers =
-    generated.map(
-      (
-        player,
-        index
-      ) =>
-
-        makeHoopLandPlayer(
-          player,
-          index
-        )
-    );
+  let hoopLandPlayers;
+  try {
+    hoopLandPlayers = generated.map((player, index) => makeHoopLandPlayer(player, index));
+  } catch (error) {
+    console.error("Class export failed", error);
+    setStatus(`Class export failed: ${error.message}`, "error");
+    return;
+  }
 
 
   const exportFile = {
@@ -12464,13 +12501,11 @@ classSizePlus.addEventListener(
     <div class="hl-pv-nav"><button type="button" class="secondary" id="hlPvPrev" aria-label="Previous player">◀</button><button type="button" class="primary" id="hlPvToggle">Edit Attributes</button><button type="button" class="secondary" id="hlPvNext" aria-label="Next player">▶</button></div>
   </div>
 </div>
-<script src="hair-preview.js"></script>
-<script src="portrait-preview.js"></script>
 <script src="sprite-preview.js"></script>
 <script>
 (function(){
   const $=id=>document.getElementById(id);
-  let idx=0,photoIndex=0,hairstyleGrids=null,artVersion=0;
+  let idx=0,photoIndex=0,artVersion=0;
   const spriteRenderer = Promise.all(["hair","facial_hair","accessory"].map(name=>
     fetch(`assets/${name}_manifest.json`).then(response=>{
       if(!response.ok)throw new Error(`HTTP ${response.status} loading ${name} manifest`);
@@ -12487,39 +12522,20 @@ classSizePlus.addEventListener(
     createCanvas:()=>document.createElement("canvas")
   })).catch(error=>{
     console.error("Could not load sprite preview:",error);
-    $("hlPvHairGridError").textContent="Sprite preview could not be loaded; showing the existing approximate portrait.";
-    $("hlPvHairGridError").hidden=false;
-    return null;
-  });
-
-  fetch("data/hairstyle-grids.json").then(response=>{
-    if(!response.ok)throw new Error(`HTTP ${response.status}`);
-    return response.json();
-  }).then(grids=>{
-    if(!validHairGrids(grids))throw new Error("Invalid hairstyle grid data");
-    hairstyleGrids=grids;
-    if(!$("hlPreview").classList.contains("hidden") && generated[idx])
-      showArt(generated[idx]);
-  }).catch(error=>{
-    console.error("Could not load hairstyle grids:",error);
-    $("hlPvHairGridError").textContent="Hairstyle templates could not be loaded; showing approximate pixel styles.";
-    $("hlPvHairGridError").hidden=false;
+    return {error};
   });
 
   function showArt(player){
     const version=++artVersion;
     const appearance=player.appearance;
-    const hair=getHairReference(Number(appearance.hair));
-    const parts=hairPixelParts(hair,hairstyleGrids);
     const set=(appearance.accessories || [])[0] || {};
     const accId=set.headAcc && set.headAcc!=="none" ? Number(set.headAcc) : 0;
     const facialId=Number(appearance.fHair) || 0;
-    $("hlPvArt").replaceChildren(portraitCanvas(player,parts,getFacialHairReference(Number(appearance.fHair)),getPrimaryAccessoryReference(accId),hair));
-    // Keep a complete procedural portrait whenever any selected layer is unavailable.
+    $("hlPvArt").replaceChildren();
+    $("hlPvHairGridError").textContent="Loading appearance preview...";
+    $("hlPvHairGridError").hidden=false;
     spriteRenderer.then(renderer=>{
-      if(!renderer || !renderer.supportsStyle(Number(appearance.hair)) ||
-         (facialId && !renderer.supportsFacialHair(facialId)) ||
-         (accId && !renderer.supportsAccessory(accId)))return null;
+      if(renderer.error)throw renderer.error;
       return renderer.renderPlayer({
         skinColor:appearance.skinC,
         hairStyle:Number(appearance.hair),
@@ -12529,7 +12545,7 @@ classSizePlus.addEventListener(
         accessories:accId ? [{style:accId,color:/^[0-9a-f]{6}$/i.test(set.headAccC || "")?set.headAccC:"ffffff"}] : []
       });
     }).then(sprite=>{
-      if(!sprite || version!==artVersion)return;
+      if(version!==artVersion)return;
       const canvas=document.createElement("canvas");
       canvas.width=sprite.width;canvas.height=sprite.height;
       canvas.setAttribute("role","img");
@@ -12539,10 +12555,11 @@ classSizePlus.addEventListener(
       context.imageSmoothingEnabled=false;
       context.drawImage(sprite,0,0);
       $("hlPvArt").replaceChildren(canvas);
+      $("hlPvHairGridError").hidden=true;
     }).catch(error=>{
       console.error("Could not render sprite preview:",error);
       if(version===artVersion){
-        $("hlPvHairGridError").textContent="Sprite preview failed; showing the existing approximate portrait.";
+        $("hlPvHairGridError").textContent=`Appearance preview unavailable: ${error.message}`;
         $("hlPvHairGridError").hidden=false;
       }
     });

@@ -39,3 +39,10 @@ test("exhausted pools reuse least-used names, including previously used real sur
   assert.ok(Math.max(...counts.values()) - Math.min(...counts.values()) <= 1);
   assert.throws(() => choose([], counts), /Missing surnames/);
 });
+
+test("large US classes avoid repeats, including surnames already used by real players", () => {
+  const counts = new Map([["smith", 1], ["jones", 1], ["williams", 1]]);
+  const selected = Array.from({length: 250}, () => draw(names.US.last, counts));
+  assert.equal(new Set(selected.map(key)).size, 250);
+  assert.ok(selected.every(name => !["smith", "jones", "williams"].includes(key(name))));
+});

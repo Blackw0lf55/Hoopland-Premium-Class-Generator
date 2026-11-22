@@ -14,6 +14,41 @@
     "name": "Accessory 3",
     "referenceColor": "6b7380"
   },
+  "4": {
+    "file": "accessory_004.png",
+    "name": "Accessory 4",
+    "referenceColor": "6b7380"
+  },
+  "5": {
+    "file": "accessory_005.png",
+    "name": "Accessory 5",
+    "referenceColor": "6b7380"
+  },
+  "6": {
+    "file": "accessory_006.png",
+    "name": "Accessory 6",
+    "referenceColor": "6b7380"
+  },
+  "7": {
+    "file": "accessory_007.png",
+    "name": "Accessory 7",
+    "referenceColor": "6b7380"
+  },
+  "8": {
+    "file": "accessory_008.png",
+    "name": "Accessory 8",
+    "referenceColor": "6b7380"
+  },
+  "9": {
+    "file": "accessory_009.png",
+    "name": "Accessory 9",
+    "referenceColor": "6b7380"
+  },
+  "10": {
+    "file": "accessory_010.png",
+    "name": "Accessory 10",
+    "referenceColor": "6b7380"
+  },
   "11": {
     "file": "accessory_011.png",
     "name": "Accessory 11",
@@ -32,6 +67,11 @@
   "14": {
     "file": "accessory_014.png",
     "name": "Accessory 14",
+    "referenceColor": "6b7380"
+  },
+  "15": {
+    "file": "accessory_015.png",
+    "name": "Accessory 15",
     "referenceColor": "6b7380"
   },
   "16": {
@@ -72,6 +112,16 @@
   "23": {
     "file": "accessory_023.png",
     "name": "Accessory 23",
+    "referenceColor": "c42d36"
+  },
+  "24": {
+    "file": "accessory_024.png",
+    "name": "Accessory 24",
+    "referenceColor": "c42d36"
+  },
+  "25": {
+    "file": "accessory_025.png",
+    "name": "Accessory 25",
     "referenceColor": "c42d36"
   }
 }

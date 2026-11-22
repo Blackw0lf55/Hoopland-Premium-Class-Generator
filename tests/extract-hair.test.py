@@ -15,6 +15,38 @@ spec.loader.exec_module(module)
 
 
 class ExtractionTests(unittest.TestCase):
+    def test_earring_layer_has_no_stray_face_pixels(self):
+        image_path = path.parents[1] / "assets" / "accessories" / "accessory_016.png"
+        with Image.open(image_path) as image:
+            self.assertEqual(image.convert("RGBA").getchannel("A").getbbox(), (158, 157, 165, 164))
+
+    def test_refined_goggles_mask_and_monocle_stay_aligned(self):
+        assets = path.parents[1] / "assets" / "accessories"
+        with Image.open(assets / "accessory_005.png") as image:
+            self.assertEqual(image.getchannel("A").getbbox(), (66, 147, 162, 174))
+        with Image.open(assets / "accessory_008.png") as image:
+            alpha = image.getchannel("A")
+            self.assertEqual(alpha.getbbox(), (84, 119, 151, 174))
+            self.assertFalse(any(alpha.getpixel((x, y)) for y in range(174, image.height)
+                                 for x in range(image.width)))
+            for x in (94, 135):
+                self.assertTrue(all(alpha.getpixel((x, y)) == 0 for y in range(151, 171)))
+        with Image.open(assets / "accessory_010.png") as image:
+            alpha = image.getchannel("A")
+            self.assertEqual(alpha.getbbox(), (123, 149, 151, 177))
+            self.assertIn(128, alpha.get_flattened_data())
+            self.assertIn(255, alpha.get_flattened_data())
+            self.assertEqual(alpha.getpixel((123, 149)), 0)
+            self.assertEqual(alpha.getpixel((136, 149)), 255)
+
+    def test_hair_110_has_no_detached_eye_pixels(self):
+        image_path = path.parents[1] / "assets" / "hair" / "hair_110.png"
+        with Image.open(image_path) as image:
+            alpha = image.getchannel("A")
+            self.assertEqual(alpha.getbbox(), (76, 90, 173, 192))
+            self.assertEqual(alpha.getpixel((98, 151)), 0)
+            self.assertEqual(alpha.getpixel((130, 151)), 0)
+
     def test_facial_hair_position_on_base_canvas(self):
         assets = path.parents[1] / "assets" / "facial_hair"
         for filename, bounds in [
@@ -35,6 +67,10 @@ class ExtractionTests(unittest.TestCase):
         ]
         for manifest_name, directory, prefix in categories:
             manifest = json.loads((assets / f"{manifest_name}_manifest.json").read_text())
+            if manifest_name == "hair":
+                self.assertEqual(set(map(int, manifest)), set(range(171)))
+            elif manifest_name == "accessory":
+                self.assertEqual(set(map(int, manifest)), set(range(1, 26)))
             for ident, entry in manifest.items():
                 with self.subTest(category=manifest_name, ident=ident):
                     self.assertEqual(entry["file"], f"{prefix}_{int(ident):03}.png")
