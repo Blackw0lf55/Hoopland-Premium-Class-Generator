@@ -2461,17 +2461,17 @@ html{background-color:#06143a!important;}
   <div class="hl-page on" data-page="-1">
     <div class="hl-start">
       <button type="button" class="primary" id="hlCreateClass">CREATE NEW CLASS</button>
-      <button type="button" class="secondary" id="hlImportPage">IMPORT FILE FOR APPEARANCES</button>
+      <button type="button" class="secondary" id="hlImportPage">IMPORT PLAYER DATA</button>
     </div>
   </div>
   <div class="hl-page" data-page="-2">
-    <p class="hl-hint">Import appearance fields only. Baselines are shared with everyone, matched by name and gender, and never replace an existing baseline. Review matches before downloading.</p>
+    <p class="hl-hint">Import appearances, attributes, biographical fields and tendencies. Data is shared with everyone; roster data is matched by name, gender, level and year. Review matches before downloading.</p>
     <div class="hl-name"><label for="hlImportYear">Roster year</label><input id="hlImportYear" type="number" min="1900" max="2100" required></div>
     <div class="hl-name"><label for="hlImportGender">Gender</label><select id="hlImportGender"><option value="men">Men's</option><option value="women">Women's</option></select></div>
     <div class="hl-name"><label for="hlImportLevel">Roster level</label><select id="hlImportLevel"><option value="pro">Pro</option><option value="college">College</option></select></div>
     <div class="hl-name"><label for="hlImportFile">Hoop Land file (.json or .txt)</label><input id="hlImportFile" type="file" accept=".json,.txt,application/json,text/plain"></div>
     <p id="hlImportStatus" role="status" aria-live="polite"></p>
-    <div class="hl-nav"><button type="button" class="secondary" id="hlImportBack">◀ BACK</button><button type="button" class="primary" id="hlImportSubmit">IMPORT APPEARANCES</button></div>
+    <div class="hl-nav"><button type="button" class="secondary" id="hlImportBack">◀ BACK</button><button type="button" class="primary" id="hlImportSubmit">IMPORT PLAYER DATA</button></div>
   </div>
   <div class="hl-page" data-page="0">
     <div class="hl-name" id="hlNameSlot"></div>
@@ -2842,7 +2842,7 @@ html{background-color:#06143a!important;}
   const baseShowPage=showPage;
   window.hlShowPage=function(n,back){
     const title=$("hlScreenTitle");
-    if(title)title.textContent=n===-1?"HOOPLAND CLASS GENERATOR":n===-2?"IMPORT APPEARANCES":["CREATE NEW CLASS","CLASS SETUP","ATTRIBUTE CONTROL","SPEC LIMITS","COUNTRY SELECTION","CLASS PREVIEW"][n];
+    if(title)title.textContent=n===-1?"HOOPLAND CLASS GENERATOR":n===-2?"IMPORT PLAYER DATA":["CREATE NEW CLASS","CLASS SETUP","ATTRIBUTE CONTROL","SPEC LIMITS","COUNTRY SELECTION","CLASS PREVIEW"][n];
     return baseShowPage(n,back);
   };
 
@@ -5535,8 +5535,7 @@ function canonicalizeRealPlayer(player) {
 
 /*
   Description-based appearance. A short text such as
-  "very light skin, afro, goggles" (hand-written or produced by the
-  vision endpoint) is parsed into skin tone, hair color, hairstyle,
+  "very light skin, afro, goggles" is parsed into skin tone, hair color, hairstyle,
   facial hair and head accessory, then matched to the catalogs above.
   Traits not identified by a description remain placeholders.
 */
@@ -7396,6 +7395,36 @@ function lastCompletedProSeason(gender, now = new Date()) {
   return gender === "1" ? year - (month < 10 ? 1 : 0) : year - (month < 7 ? 1 : 0);
 }
 
+function historicalRegressionFromSeasons(matches, gender, completed, partial) {
+  if (partial) return null;
+  const minimumMinutes = gender === "1" ? 200 : 400;
+  const rows = matches.filter(row => Number.isInteger(row.age) && row.age >= 18 && row.age <= 50 &&
+    Number.isFinite(row.impact) && row.minutes >= minimumMinutes &&
+    ["PIE", "box-score"].includes(row.metric)).sort((a,b) => a.year-b.year);
+  if (rows.length < 4 || rows[rows.length-1].year >= completed-1) return null;
+  const birthYears = rows.map(row => row.year-row.age);
+  if (Math.max(...birthYears)-Math.min(...birthYears)>1) return null;
+  const candidates = [];
+  for (let i=0; i<rows.length-3; i++) {
+    const first=rows[i], second=rows[i+1];
+    if (second.year!==first.year+1 || first.metric!==second.metric) continue;
+    const peak=(first.impact+second.impact)/2;
+    if (peak<=0) continue;
+    const later=rows.slice(i+2);
+    if (later.some(row=>row.metric!==first.metric)) continue;
+    const threshold=peak*0.9;
+    const decline=later.findIndex((row,index)=>index+1<later.length &&
+      later[index+1].year===row.year+1 && row.impact<threshold &&
+      later[index+1].impact<threshold &&
+      later.slice(index+2).every(season=>season.impact<threshold));
+    if (decline<0) continue;
+    const peakRows=rows.slice(i+1,i+2+decline).filter(row=>row.impact>=threshold);
+    candidates.push({peak, age:peakRows[peakRows.length-1].age, metric:first.metric});
+  }
+  if (!candidates.length) return null;
+  return candidates.sort((a,b)=>b.peak-a.peak || b.age-a.age)[0];
+}
+
 async function prepareProfessionalPotential(players, gender, draftYear, now = new Date()) {
   const completed = lastCompletedProSeason(gender, now);
   const last = Math.min(completed, draftYear + 23);
@@ -7454,6 +7483,9 @@ async function prepareProfessionalPotential(players, gender, draftYear, now = ne
       limited: best.some(row => Number(row.minutes) > 0 && Number(row.minutes) < (gender === "1" ? 200 : 400)),
       partial: failures > 0 || first > firstPossible
     };
+    player.historicalRegression = historicalRegressionFromSeasons(
+      matches, gender, completed, failures > 0 || first > firstPossible
+    );
   }
 }
 
@@ -7545,6 +7577,14 @@ function ratingStatsProfile(bart) {
 
 const DRAFT_CURRENT_MIN = Math.ceil(144 * 0.50);
 const DRAFT_CURRENT_MAX = Math.floor(144 * 0.85);
+const DRAFT_STANDARD_MAX = Math.floor(144 * 0.82);
+const GENERATIONAL_DRAFTS = {"michael jordan":1984,"kobe bryant":1996,"lebron james":2003};
+
+function draftOverallCap(sourcePlayer, gender, year, arc) {
+  const known = sourcePlayer && gender === "0" &&
+    GENERATIONAL_DRAFTS[proNameKey([sourcePlayer.fn,sourcePlayer.ln].filter(Boolean).join(" "))] === year;
+  return known || (!sourcePlayer && arc === "GOAT") ? DRAFT_CURRENT_MAX : DRAFT_STANDARD_MAX;
+}
 
 function draftCurrentBudget(quality, profile, calibration) {
   const ranges = {
@@ -7588,7 +7628,7 @@ function isReportedWomanDunker(sourcePlayer) {
   return Boolean(WOMEN_DUNKERS[name] && WOMEN_DUNKERS[name].some(team => school.includes(team)));
 }
 
-function makeAttributeRatings(position, gender, sourcePlayer, quality, weights, arc = "", calibration = null, era = {}, classType = "freshman") {
+function makeAttributeRatings(position, gender, sourcePlayer, quality, weights, arc = "", calibration = null, era = {}, classType = "freshman", draftCap = DRAFT_CURRENT_MAX) {
   const isGoat = arc === "GOAT";
   if (isGoat && quality.potentialStars !== 5) throw new Error("GOAT archetypes require 5-star potential.");
   const profile = ratingStatsProfile(sourcePlayer && sourcePlayer.bart);
@@ -7643,7 +7683,7 @@ function makeAttributeRatings(position, gender, sourcePlayer, quality, weights, 
     : profile ? Math.round(40 + profile.score * 80) : currentBudgetForStars(quality.currentStars);
   const minimumGrowth = classType === "draft" && quality.potentialStars === 2.5 ? 1 : 8;
   const currentBudget = Math.min(potentialBudget - minimumGrowth, classType === "draft"
-    ? Math.max(isGoat ? 108 : 0, draftCurrentBudget(quality,profile,isGoat ? null : calibration))
+    ? Math.min(draftCap, Math.max(isGoat ? 108 : 0, draftCurrentBudget(quality,profile,isGoat ? null : calibration)))
     : calibration && !isGoat ? Math.round((estimatedBudget + calibration.current) / 2) : estimatedBudget);
   const desiredGrowth = calibration && !isGoat ? Math.round(calibration.dribbleGrowth) : 8;
   const growth = Math.max(0, Math.min(desiredGrowth, potentialBudget - currentBudget,
@@ -8301,6 +8341,48 @@ function collectAppearanceImports(data, gender) {
   return {candidates,invalid,ambiguous};
 }
 
+function collectRosterImports(data) {
+  const collections = [];
+  if (Array.isArray(data.teams)) collections.push(...data.teams.map(team=>team.roster));
+  for (const key of ["draftClass","players","freeAgents"]) if (Array.isArray(data[key])) collections.push(data[key]);
+  const skills=["LAY","DNK","INS","MID","TPT","FTS","DRB","PAS","ORE","DRE","STL","BLK"];
+  const physical=["SPD","STR","STM"];
+  const tendencyKeys=["dunk","floater","hook","post","twoPoint","threePoint","pumpFake","fades","pass","lob",
+    "cross","spin","step","offReb","runPlay","defReb","takeCharge","stealOnBall","stealOffBall","block"];
+  const fields={age:["age",15,60],height:["ht",48,100],weight:["wt",70,500],position:["pos",0,8],
+    years:["yrs",0,30],jersey:["num",0,99]};
+  const items = [];
+  for (const player of collections.flat()) {
+    if (!player || typeof player.fn!=="string" || typeof player.ln!=="string" ||
+        !player.fn.trim() || !player.ln.trim()) continue;
+    const identity=canonicalizeRealPlayer({fn:player.fn.trim(),ln:player.ln.trim()});
+    const name=identity.fn+" "+identity.ln;
+    if (name.length>100) continue;
+    const attributes={}, bio={}, tendencies={};
+    for (const code of [...skills,...physical]) {
+      const pair=player.attributes?.[code];
+      if (Array.isArray(pair) && pair.length===2 &&
+          pair.every(value=>Number.isInteger(value) && value>=(physical.includes(code)?8:2) && value<=20) &&
+          pair[0]<=pair[1] && (!physical.includes(code) || pair[0]===pair[1])) attributes[code]=pair;
+    }
+    for (const [key,[source,min,max]] of Object.entries(fields)) {
+      const value=player[source];
+      if (Number.isInteger(value) && value>=min && value<=max) bio[key]=value;
+    }
+    for (const [key,source] of [["home","home"],["country","ctry"]]) {
+      const value=player[source];
+      if (typeof value==="string" && value.trim() && value.length<=100) bio[key]=value.trim();
+    }
+    for (const key of tendencyKeys) {
+      const value=player.tendencies?.[key];
+      if (Number.isInteger(value) && value>= -5 && value<=5) tendencies[key]=value;
+    }
+    if (Object.keys(attributes).length || Object.keys(bio).length || Object.keys(tendencies).length)
+      items.push({name,data:{attributes,bio,tendencies}});
+  }
+  return items;
+}
+
 async function importAppearanceFile(file, gender, type, year, onProgress) {
   if (!file) throw new Error("Choose a Hoop Land .json or .txt file.");
   if (!/\.(json|txt)$/i.test(file.name)) throw new Error("Choose a .json or .txt file.");
@@ -8310,17 +8392,22 @@ async function importAppearanceFile(file, gender, type, year, onProgress) {
   let data;
   try { data = JSON.parse(await file.text()); } catch { throw new Error("The file is not valid JSON."); }
   const {candidates,invalid,ambiguous} = collectAppearanceImports(data,gender);
+  const roster = collectRosterImports(data);
   data = null;
-  if (!candidates.length) throw new Error(`No usable unique appearances found (${invalid} invalid, ${ambiguous} ambiguous).`);
+  if (!candidates.length && !roster.length) throw new Error(`No usable player data found (${invalid} invalid, ${ambiguous} ambiguous).`);
+  const items = [
+    ...candidates.map(item=>({...item,endpoint:"appearance-baseline",body:item.appearance})),
+    ...roster.map(item=>({...item,endpoint:"imported-roster",body:item.data}))
+  ];
   const counts = {saved:0,skipped:0,invalid,ambiguous,failed:0,errors:[]};
   let index = 0, processed = 0;
   const run = async () => {
-    while (index < candidates.length) {
-      const item = candidates[index++];
+    while (index < items.length) {
+      const item = items[index++];
       try {
         const identity = {name:item.name,gender,type,year:String(year)};
-        const response = await fetch("/api/appearance-baseline?" + new URLSearchParams(identity), {
-          method:"PUT",headers:{"content-type":"application/json"},body:JSON.stringify(item.appearance)
+        const response = await fetch("/api/" + item.endpoint + "?" + new URLSearchParams(identity), {
+          method:"PUT",headers:{"content-type":"application/json"},body:JSON.stringify(item.body)
         });
         const result = await response.json();
         if (!response.ok || !result.ok) throw new Error(result.error || ("HTTP " + response.status));
@@ -8329,10 +8416,10 @@ async function importAppearanceFile(file, gender, type, year, onProgress) {
         counts.failed++;
         if (counts.errors.length < 3) counts.errors.push(item.name + ": " + String(error.message || error));
       }
-      onProgress(++processed,candidates.length);
+      onProgress(++processed,items.length);
     }
   };
-  await Promise.all(Array.from({length:Math.min(6,candidates.length)},run));
+  await Promise.all(Array.from({length:Math.min(6,items.length)},run));
   return counts;
 }
 
@@ -8348,8 +8435,8 @@ document.getElementById("hlImportSubmit").addEventListener("click", async () => 
     const result = await importAppearanceFile(document.getElementById("hlImportFile").files[0],
       document.getElementById("hlImportGender").value,document.getElementById("hlImportLevel").value,
       Number(document.getElementById("hlImportYear").value),
-      () => { status.textContent = "Importing appearances..."; });
-    status.textContent = `Imported ${result.saved} appearances.` +
+      () => { status.textContent = "Importing player data..."; });
+    status.textContent = `Imported ${result.saved} player data records.` +
       (result.skipped ? ` ${result.skipped} already saved.` : "") +
       (result.invalid || result.ambiguous ? ` ${result.invalid + result.ambiguous} could not be imported.` : "") +
       (result.failed ? ` ${result.failed} failed; please retry. ${result.errors.join("; ")}` : "");
@@ -8593,7 +8680,7 @@ function refreshPlayerRatingTotals(player) {
   player.pot = Math.round(player.potentialStars*2);
 }
 
-function applySharedRatings(player,history) {
+function applySharedRatings(player,history,imported = {}) {
   const codes = [...ATTRS.map(([name])=>name),"SPD","STR","STM"];
   const updatedAttributes = {...player.attributes};
   let rejected = history.some(item=>!item || typeof item!=="object" || Array.isArray(item) ||
@@ -8604,19 +8691,61 @@ function applySharedRatings(player,history) {
       (code==="DNK" && player.eraRestrictions?.noDunk);
     const pairs = values.filter(pair=>!blocked && validSharedRating(code,pair,player.pos));
     if (pairs.length!==values.length) rejected = true;
-    if (!pairs.length) continue;
     const median = side => pairs.map(pair=>pair[side]).sort((a,b)=>a-b)[Math.floor(pairs.length/2)];
-    const pair = [median(0),median(1)];
+    const uploaded = Object.hasOwn(imported,code) ? imported[code] : null;
+    if (uploaded && !validSharedRating(code,uploaded,player.pos)) rejected = true;
+    const validUpload = uploaded && !blocked && validSharedRating(code,uploaded,player.pos) ? uploaded : null;
+    if (!pairs.length && !validUpload) continue;
+    let pair = validUpload
+      ? pairs.length ? [0,1].map(side=>Math.round((3*validUpload[side]+2*median(side))/5)) : validUpload.slice()
+      : [median(0),median(1)];
+    if (validUpload && !["SPD","STR","STM"].includes(code)) {
+      const [currentMin,currentMax]=attributeBounds(code,"c"), [potentialMin,potentialMax]=attributeBounds(code,"p");
+      if (currentMin>currentMax || potentialMin>potentialMax || currentMin>potentialMax) {
+        rejected = true;
+        continue;
+      }
+      const current=Math.max(currentMin,Math.min(currentMax,potentialMax,pair[0]));
+      pair=[current,Math.max(current,potentialMin,Math.min(potentialMax,pair[1]))];
+    }
     if (["SPD","STR","STM"].includes(code)) player.physical[code==="STM"?"STA":code] = pair[0];
     else updatedAttributes[code] = pair;
   }
-  const updatedCurrent = ATTRS.reduce((sum,[code])=>sum+updatedAttributes[code][0]-2,0);
+  let updatedCurrent = ATTRS.reduce((sum,[code])=>sum+updatedAttributes[code][0]-2,0);
+  while (player.draftOverallCap && updatedCurrent > player.draftOverallCap) {
+    const candidates = ATTRS.map(([code])=>code)
+      .filter(code=>updatedAttributes[code][0] > attributeBounds(code,"c")[0])
+      .sort((a,b)=>updatedAttributes[b][0]-updatedAttributes[a][0]);
+    if (!candidates.length) break;
+    const code = candidates[0];
+    updatedAttributes[code] = [updatedAttributes[code][0]-1,updatedAttributes[code][1]];
+    updatedCurrent--;
+  }
+  while (Object.keys(imported).length && player.draftOverallCap && updatedCurrent < player.draftOverallFloor) {
+    const candidates = ATTRS.map(([code])=>code).filter(code=>
+      !(code==="TPT" && player.eraRestrictions?.noThree) &&
+      !(code==="DNK" && player.eraRestrictions?.noDunk) &&
+      updatedAttributes[code][0] < Math.min(attributeBounds(code,"c")[1],attributeBounds(code,"p")[1]));
+    if (!candidates.length) break;
+    const code = candidates.sort((a,b)=>updatedAttributes[b][1]-updatedAttributes[a][1])[0];
+    const current=updatedAttributes[code][0]+1;
+    updatedAttributes[code] = [current,Math.max(current,updatedAttributes[code][1])];
+    updatedCurrent++;
+  }
   if (player.draftOverallCap && (updatedCurrent > player.draftOverallCap ||
       updatedCurrent < player.draftOverallFloor)) {
     rejected = true;
     for (const [code] of ATTRS) updatedAttributes[code] = player.attributes[code];
   }
-  const updatedPoints = ATTRS.reduce((sum,[code])=>sum+updatedAttributes[code][1]-2,0);
+  let updatedPoints = ATTRS.reduce((sum,[code])=>sum+updatedAttributes[code][1]-2,0);
+  while (Object.keys(imported).length && player.arc!=="GOAT" && updatedPoints>144) {
+    const candidates = ATTRS.map(([code])=>code).filter(code=>
+      updatedAttributes[code][1] > Math.max(updatedAttributes[code][0],attributeBounds(code,"p")[0]));
+    if (!candidates.length) break;
+    const code = candidates.sort((a,b)=>updatedAttributes[b][1]-updatedAttributes[a][1])[0];
+    updatedAttributes[code] = [updatedAttributes[code][0],updatedAttributes[code][1]-1];
+    updatedPoints--;
+  }
   const updatedStars = minimumPotentialStars(updatedPoints);
   const styleValues=history.filter(item=>item && Object.hasOwn(item,"arc")).map(item=>item.arc);
   const styles=styleValues.filter(value=>
@@ -8648,7 +8777,7 @@ function applySharedRatings(player,history) {
     const style=ARCHETYPES.find(item=>item.name===name);
     player.arc=style.name;player.pri=style.pri;player.sec=style.sec;
   } else if (name !== player.arc) rejected = true;
-  if (rejected) player.appearanceWarnings.push("Some shared attribute edits were incompatible with this player or era and were not applied.");
+  if (rejected) player.appearanceWarnings.push("Some imported or shared attribute edits were incompatible with this player or era and were not applied.");
 }
 
 function eraRestrictions(classType,gender,year) {
@@ -8827,8 +8956,11 @@ const hometown =
       position, sourcePlayer, quality, gender, era.noThree, era.noDunk
     );
 
+  const draftCap = classType === "draft"
+    ? draftOverallCap(sourcePlayer,gender,Number(document.getElementById("draftYear").value),archetype.arc)
+    : 0;
   const { attributes, currentBudget, potentialBudget, reportedDunk } =
-    makeAttributeRatings(position, gender, sourcePlayer, quality, archetype.weights, archetype.arc, calibration, era, classType);
+    makeAttributeRatings(position, gender, sourcePlayer, quality, archetype.weights, archetype.arc, calibration, era, classType, draftCap);
   const currentStars = starsForBudget(currentBudget);
 
 
@@ -8939,7 +9071,7 @@ else {
       id,
 
     draftOverallCap:
-      classType === "draft" ? DRAFT_CURRENT_MAX : 0,
+      draftCap,
 
     draftOverallFloor:
       classType === "draft" ? DRAFT_CURRENT_MIN : 0,
@@ -8963,7 +9095,7 @@ else {
       country,
 
     age:
-      age,
+      sourcePlayer?.importedAge ?? age,
 
     ht:
       height,
@@ -9019,11 +9151,15 @@ else {
 
     ratingSource:
       sourcePlayer
-        ? (ratingStatsProfile(sourcePlayer.bart) ? "College stats estimate" : "Tier estimate (no college stats)") +
+        ? (Object.keys(sourcePlayer.importedRatings || {}).length ? "Uploaded roster attributes"
+            : ratingStatsProfile(sourcePlayer.bart) ? "College stats estimate" : "Tier estimate (no college stats)") +
           (sourcePlayer.proPotential
             ? " • Pro peak " + sourcePlayer.proPotential.metric + " " + sourcePlayer.proPotential.seasons.join("/") +
               (sourcePlayer.proPotential.partial ? " (incomplete history)" : "") +
-              (sourcePlayer.proPotential.limited ? " (limited minutes)" : "")
+              (sourcePlayer.proPotential.limited ? " (limited minutes)" : "") +
+              (sourcePlayer.historicalRegression
+                ? " • Regression age from sustained " + sourcePlayer.historicalRegression.metric + " peak"
+                : " • Regression age is a generated estimate")
             : sourcePlayer.proPotentialStatus ? " • " + sourcePlayer.proPotentialStatus : "")
         : "Fictional tier",
 
@@ -9040,7 +9176,7 @@ else {
       physical,
 
     regressionAge:
-      generateRegressionAge(),
+      sourcePlayer?.historicalRegression?.age ?? generateRegressionAge(),
 
     tendencies:
       Object.assign(
@@ -9065,9 +9201,6 @@ else {
 
     appearanceWarnings:
       (sourcePlayer && sourcePlayer.appearanceWarnings) || [],
-
-    referencePhotos:
-      (sourcePlayer && sourcePlayer.referencePhotos) || [],
 
     sharedAppearanceIdentity:
       sourcePlayer && sourcePlayer.sharedAppearanceIdentity,
@@ -9107,7 +9240,10 @@ else {
     player.appearance = applySharedAppearance(player.appearance, sourcePlayer.sharedAppearance, gender);
   }
   player.eraRestrictions = era;
-  if (sourcePlayer?.sharedRatings?.length) applySharedRatings(player,sourcePlayer.sharedRatings);
+  if (sourcePlayer?.sharedRatings?.length || Object.keys(sourcePlayer?.importedRatings || {}).length)
+    applySharedRatings(player,sourcePlayer.sharedRatings || [],sourcePlayer.importedRatings || {});
+  if (sourcePlayer?.importedTendencies) Object.assign(player.tendencies,sourcePlayer.importedTendencies);
+  if (player.attributes.DNK[0]<8) player.skills=player.skills.filter(skill=>skill.id!=="HIG");
   if (sourcePlayer?.sharedRatingsError) player.appearanceWarnings.push(sourcePlayer.sharedRatingsError);
   if (player.grayscale) player.appearance = grayscalePlayerAppearance(player.appearance);
 
@@ -9257,7 +9393,7 @@ async function generateClass() {
         realPlayers = data.players.slice(0,classSize);
         if (typeof window.__HOOPLAND_PREPARE_REAL_PLAYERS !== "function") {
           realPlayers.forEach(player => {
-            player.appearanceWarnings = ["Photo matching is unavailable: the application worker is not running. Unsaved features are placeholders."];
+            player.appearanceWarnings = ["Shared appearances are unavailable: the application worker is not running. Unsaved features are placeholders."];
           });
         }
         attachRosterAppearances(realPlayers, gender, classType, Number(draftYear));
@@ -12469,10 +12605,6 @@ classSizePlus.addEventListener(
     <div id="hlPvAppearance">
     <div class="hl-pv-compare">
     <div class="hl-pv-art" id="hlPvArt"></div>
-    <div class="hl-pv-reference" id="hlPvReference" hidden>
-      <img id="hlPvPhoto" alt="Player reference photo">
-      <div><button type="button" class="secondary hl-arrow" id="hlPvPhotoPrev" aria-label="Previous reference photo">◀</button><span id="hlPvPhotoCount"></span><button type="button" class="secondary hl-arrow" id="hlPvPhotoNext" aria-label="Next reference photo">▶</button></div>
-    </div>
     </div>
     <p class="hl-hint" id="hlPvHairGridError" role="status" hidden></p>
     <div class="hl-pv-grid">
@@ -12505,7 +12637,7 @@ classSizePlus.addEventListener(
 <script>
 (function(){
   const $=id=>document.getElementById(id);
-  let idx=0,photoIndex=0,artVersion=0;
+  let idx=0,artVersion=0;
   const spriteRenderer = Promise.all(["hair","facial_hair","accessory"].map(name=>
     fetch(`assets/${name}_manifest.json`).then(response=>{
       if(!response.ok)throw new Error(`HTTP ${response.status} loading ${name} manifest`);
@@ -12629,17 +12761,6 @@ classSizePlus.addEventListener(
     setChoice("accessory","hlPvAcc",accs,acc||"none");
   }
 
-  function showPhoto(player){
-    const photos=Array.isArray(player.referencePhotos)?player.referencePhotos:[];
-    $("hlPvReference").hidden=!photos.length;
-    if(!photos.length){$("hlPvPhoto").removeAttribute("src");return;}
-    photoIndex=(photoIndex+photos.length)%photos.length;
-    $("hlPvPhoto").src="/api/headshot?src="+encodeURIComponent(photos[photoIndex]);
-    $("hlPvPhotoCount").textContent=(photoIndex+1)+"/"+photos.length;
-    $("hlPvPhotoPrev").disabled=photos.length<2;
-    $("hlPvPhotoNext").disabled=photos.length<2;
-  }
-
   function showRatings(player){
     const box=$("hlPvRatings");
     box.replaceChildren();
@@ -12683,7 +12804,7 @@ classSizePlus.addEventListener(
           if (!physical) {
             const currentTotal=player.currentPoints-player.attributes[code][0]+next[0];
             if (player.draftOverallCap && currentTotal > player.draftOverallCap) {
-              $("hlPvRatingError").textContent="Draft overall cannot exceed 85. Reduce another actual attribute first.";
+              $("hlPvRatingError").textContent="Draft overall cannot exceed "+Math.round(player.draftOverallCap/144*100)+". Reduce another actual attribute first.";
               input.value=String(player.attributes[code][side]/2);
               return;
             }
@@ -12779,8 +12900,6 @@ classSizePlus.addEventListener(
     $("hlPvDesc").value="";
     buildChoices(p);
     showRatings(p);
-    photoIndex=0;
-    showPhoto(p);
   }
 
   function relinkSkin(a,oldSkin,newSkin){
@@ -12851,8 +12970,6 @@ classSizePlus.addEventListener(
     $("hlPvToggle").textContent=attributes?"Edit Appearances":"Edit Attributes";
   }
   $("hlPvToggle").addEventListener("click",()=>setEditor($("hlPvAttributes").hidden));
-  $("hlPvPhotoPrev").addEventListener("click",()=>{photoIndex--;showPhoto(generated[idx]);});
-  $("hlPvPhotoNext").addEventListener("click",()=>{photoIndex++;showPhoto(generated[idx]);});
   const close=()=>$("hlPreview").classList.add("hidden");
   $("hlPvClose").addEventListener("click",close);
   $("hlPreview").addEventListener("click",e=>{if(e.target===$("hlPreview"))close();});

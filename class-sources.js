@@ -268,9 +268,6 @@ async function loadNbaComDraft(gender, year) {
         team: [row[column("TEAM_CITY")], row[column("TEAM_NAME")]].filter(Boolean).join(" "),
         school: row[column("ORGANIZATION")] || "",
         proId: /^\d+$/.test(String(personId || "")) ? String(personId) : undefined,
-        headshot: personId
-          ? `https://cdn.nba.com/headshots/${gender === "women" ? "wnba" : "nba"}/latest/1040x760/${personId}.png`
-          : undefined,
         country: "United States"
       });
     }
@@ -598,26 +595,17 @@ async function loadCurrentNbaPlayers() {
   }
 }
 
-function espnDraftPhotos(data, year) {
+function espnDraftPlayers(data, year) {
   const statedYear = Number(String(data?.displayName || "").match(/\b(?:19|20)\d{2}\b/)?.[0] || data?.season?.year);
   if (statedYear !== year || !Array.isArray(data?.picks)) return [];
   return data.picks.flatMap(pick => {
     const athlete = pick.athlete;
     const name = splitName(String(athlete?.displayName || ""));
-    const headshot = athlete?.headshot?.href;
     if (!name || pick.status !== "SELECTION_MADE") return [];
-    if (headshot) {
-      try {
-        const url = new URL(headshot);
-        if (url.protocol !== "https:" || url.hostname !== "a.espncdn.com") return [];
-      } catch (error) {
-        return [];
-      }
-    }
     const espnId = /^\d{1,10}$/.test(String(athlete.id || "")) ? String(athlete.id) : undefined;
     const dimensions = athleteDimensions(athlete);
-    if (!headshot && !espnId && !dimensions.height && !dimensions.weight) return [];
-    return [{ ...name, draftPick: Number(pick.overall) || 0, headshot, espnId, ...dimensions }];
+    if (!espnId && !dimensions.height && !dimensions.weight) return [];
+    return [{ ...name, draftPick: Number(pick.overall) || 0, espnId, ...dimensions }];
   });
 }
 
@@ -645,21 +633,21 @@ function espnDraftSelections(data, year) {
   return players.sort((a, b) => a.draftPick - b.draftPick);
 }
 
-async function loadEspnDraftPhotos(gender, year) {
+async function loadEspnDraftPlayers(gender, year) {
   const league = gender === "women" ? "wnba" : "nba";
   const url = `https://site.api.espn.com/apis/site/v2/sports/basketball/${league}/draft?season=${year}`;
   try {
     const response = await fetch(url, { headers: { "User-Agent": UA, Accept: "application/json" } });
     if (!response.ok) return { players: [], status: response.status };
     const data = await response.json();
-    return { players: espnDraftPhotos(data, year), selections: espnDraftSelections(data, year), status: response.status };
+    return { players: espnDraftPlayers(data, year), selections: espnDraftSelections(data, year), status: response.status };
   } catch (error) {
-    console.warn("ESPN draft photo lookup failed", gender, year, error);
+    console.warn("ESPN draft lookup failed", gender, year, error);
     return { players: [], status: 0 };
   }
 }
 
-function attachEspnDraftPhotos(players, photos) {
+function attachEspnDraftPlayers(players, photos) {
   const photoKey = player => {
     const key = nameKey(player);
     return key === "awa thiam" || key === "awa fam thiam" ? "awa fam" : key;
@@ -674,11 +662,8 @@ function attachEspnDraftPhotos(players, photos) {
     const matches = byName.get(photoKey(player)) || [];
     const match = matches.length === 1 ? matches[0] : null;
     if (!match || (player.draftPick && match.draftPick && Number(player.draftPick) !== match.draftPick)) return player;
-    const existing = Array.isArray(player.headshots) ? player.headshots : [];
-    const headshots = [...new Set([player.headshot, ...existing, match.headshot].filter(Boolean))];
     return {
       ...player,
-      ...(headshots.length ? { headshots } : {}),
       ...(match.espnId ? { espnId: match.espnId } : {}),
       ...(!(Number(player.height) >= 48 && Number(player.height) <= 100) && match.height ? {height:match.height} : {}),
       ...(!(Number(player.weight) >= 70 && Number(player.weight) <= 500) && match.weight ? {weight:match.weight} : {})
@@ -798,12 +783,12 @@ export async function handleClassData(request, options = {}) {
     const [wikipedia, nba, espn] = await Promise.all([
       loadWikipediaDraft(gender, year),
       loadNbaComDraft(gender, year),
-      loadEspnDraftPhotos(gender, year)
+      loadEspnDraftPlayers(gender, year)
     ]);
     loaded = wikipedia;
 
     loaded.diagnostics.nbaCom = { status: nba.status, parsed: nba.players.length };
-    loaded.diagnostics.espnPhotos = { status: espn.status, parsed: espn.players.length };
+    loaded.diagnostics.espnDraft = { status: espn.status, parsed: espn.players.length };
 
     if (nba.players.length) {
       loaded.players = mergeDraftSources(loaded.players, nba.players);
@@ -812,7 +797,7 @@ export async function handleClassData(request, options = {}) {
       loaded.players = espn.selections;
       loaded.diagnostics.fallback = "ESPN draft selections";
     }
-    loaded.players = attachEspnDraftPhotos(loaded.players, espn.players);
+    loaded.players = attachEspnDraftPlayers(loaded.players, espn.players);
 
     if (!loaded.players.length && year >= new Date().getFullYear()) {
       loaded = await loadProjectedDraft(gender, year, options);
@@ -855,4 +840,4 @@ export async function handleClassData(request, options = {}) {
   });
 }
 
-export { parseTables, parseEspnRecruits, espnDraftPhotos, attachEspnDraftPhotos, loadEspnDraftPhotos };
+export { parseTables, parseEspnRecruits, espnDraftPlayers, attachEspnDraftPlayers, loadEspnDraftPlayers };

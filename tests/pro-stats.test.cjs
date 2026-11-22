@@ -41,6 +41,32 @@ test("traded players use the total row or combine distinct stints before applyin
   assert.equal(rows.find(row=>row.id==="22").impact,.3);
 });
 
+test("professional season ages are retained only when valid and consistent", async () => {
+  const {professionalSeasonRows} = await import("../pro-stats.js");
+  const headers=["PLAYER_ID","PLAYER_NAME","MIN","PIE","TEAM_ID","AGE"];
+  const data=leagueRows().map(row=>[...row,1,25]);
+  data.push([21,"Traded Player",200,.1,1,29],[21,"Traded Player",300,.2,2,30]);
+  const rows=professionalSeasonRows({resultSets:[{name:"LeagueDashPlayerStats",headers,rowSet:data}]},"men");
+  assert.equal(rows[0].age,25);
+  assert.equal(rows.find(row=>row.id==="21").age,undefined);
+});
+
+test("historical regression requires sustained peak and decline with reliable season ages", () => {
+  const api=vm.runInNewContext(`${clientCode};historicalRegressionFromSeasons`);
+  const seasons=[.12,.18,.19,.175,.13,.12].map((impact,index)=>({
+    year:2001+index,age:23+index,impact,minutes:1200,metric:"PIE"
+  }));
+  const result=api(seasons,"0",2010,false);
+  assert.equal(result.age,26);
+  assert.equal(result.metric,"PIE");
+  assert.equal(api(seasons,"0",2007,false),null);
+  assert.equal(api(seasons,"0",2010,true),null);
+  assert.equal(api(seasons.map(row=>({...row,age:undefined})),"0",2010,false),null);
+  assert.equal(api(seasons.map((row,index)=>({...row,age:row.age+(index===4?4:0)})),"0",2010,false),null);
+  assert.equal(api(seasons.map((row,index)=>({...row,impact:index===5?.20:row.impact})),"0",2010,false),null);
+  assert.equal(api(seasons.map((row,index)=>({...row,metric:index<3?"box-score":"PIE"})),"0",2010,false),null);
+});
+
 test("professional season API requests correct league and season and retries failures", async () => {
   const {handleProSeason} = await import("../pro-stats.js");
   const original = global.fetch, oldWarn = console.warn;

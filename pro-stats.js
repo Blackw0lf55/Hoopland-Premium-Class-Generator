@@ -18,6 +18,7 @@ export function professionalSeasonRows(data, gender, year = 2020) {
   if (columns.some(index => index < 0)) throw new Error("Incomplete NBA advanced statistics");
   const teamColumn = set.headers.indexOf("TEAM_ID");
   const abbreviationColumn = set.headers.indexOf("TEAM_ABBREVIATION");
+  const ageColumn = set.headers.indexOf("AGE");
   const minimumMinutes = gender === "women" ? 200 : 400;
   const byId = new Map();
   for (const row of set.rowSet) {
@@ -44,8 +45,11 @@ export function professionalSeasonRows(data, gender, year = 2020) {
     const team = teamColumn >= 0 ? String(row[teamColumn] ?? "") : "";
     const abbreviation = abbreviationColumn >= 0 ? String(row[abbreviationColumn] || "").toUpperCase() : "";
     const total = team === "0" || /^(TOT|\d+TM)$/.test(abbreviation);
+    const rawAge = ageColumn >= 0 ? row[ageColumn] : null;
+    const age = rawAge !== null && rawAge !== "" && Number.isInteger(Number(rawAge)) &&
+      Number(rawAge) >= 18 && Number(rawAge) <= 50 ? Number(rawAge) : undefined;
     if (!byId.has(id)) byId.set(id, []);
-    byId.get(id).push({ id, name, minutes, impact, team, total });
+    byId.get(id).push({ id, name, minutes, impact, team, total, age });
   }
   const rows = [];
   for (const entries of byId.values()) {
@@ -58,6 +62,7 @@ export function professionalSeasonRows(data, gender, year = 2020) {
       new Set(entries.map(row => row.name)).size === 1) {
       const minutes = entries.reduce((sum, row) => sum + row.minutes, 0);
       player = { ...entries[0], minutes,
+        age:entries.every(row => row.age === entries[0].age) ? entries[0].age : undefined,
         impact:entries.reduce((sum, row) => sum + row.impact * row.minutes, 0) / minutes };
     }
     if (player) rows.push(player);
@@ -70,6 +75,7 @@ export function professionalSeasonRows(data, gender, year = 2020) {
     const raw = Math.max(0, Math.min(1, (lower + (equal - 1) / 2) / (reference.length - 1)));
     const confidence = Math.min(1, row.minutes / minimumMinutes);
     return { id:row.id, name:row.name, minutes:row.minutes, impact:row.impact,
+      ...(row.age !== undefined ? {age:row.age} : {}),
       percentile: raw * confidence + .1 * (1 - confidence) };
   });
 }

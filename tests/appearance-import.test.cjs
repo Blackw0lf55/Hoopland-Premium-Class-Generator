@@ -16,7 +16,7 @@ const context=vm.createContext({URLSearchParams,fetch:async(url,options)=>{
 }});
 const api=vm.runInContext(`${validator}\n${names}\n${code}\n({collect:collectAppearanceImports,importFile:importAppearanceFile})`,context);
 const look={skinC:"123456",hairC:"123456",hair:"0001",fHair:"0016",eyeC:"000000"};
-const player=(fn,ln,appearance=look)=>({fn,ln,appearance,attributes:{LAY:[20,20]},home:"Do not upload"});
+const player=(fn,ln,appearance=look)=>({fn,ln,appearance,attributes:{LAY:[20,20]},home:"Do not upload",regressionAge:18});
 
 test("import extracts only valid appearance fields and skips every ambiguous name", () => {
   const data={teams:[{roster:[player("Same","Name"),player("First","Player")]}],
@@ -31,21 +31,23 @@ test("import extracts only valid appearance fields and skips every ambiguous nam
   assert.throws(()=>api.collect({coaches:[]},"men"),/No roster/);
 });
 
-test("large roster files upload only appearance fields, report failures and skip saved baselines", async () => {
+test("large roster files upload selected player data, report failures and skip saved baselines", async () => {
   requests.length=0;
   const json=JSON.stringify({teams:[{roster:[player("New","Player"),player("Existing","Player"),player("Error","Player")]}],
     unused:"x".repeat(34*1024*1024)});
   const progress=[];
   const result=await api.importFile({name:"large.txt",size:Buffer.byteLength(json),text:async()=>json},
     "men","pro",2027,(done,total)=>progress.push([done,total]));
-  assert.equal(result.saved,1);
-  assert.equal(result.skipped,1);
-  assert.equal(result.failed,1);
+  assert.equal(result.saved,2);
+  assert.equal(result.skipped,2);
+  assert.equal(result.failed,2);
   assert.match(result.errors[0],/Storage unavailable/);
-  assert.deepEqual(progress[progress.length-1],[3,3]);
-  assert.equal(requests.length,3);
+  assert.deepEqual(progress[progress.length-1],[6,6]);
+  assert.equal(requests.length,6);
   assert.deepEqual(requests[0].body,{skinC:"123456",hairC:"123456",hair:"0001",fHair:"0016"});
-  assert.ok(requests.every(r=>!JSON.stringify(r.body).includes("attributes")));
+  const uploaded=requests.find(r=>r.url.startsWith("/api/imported-roster"));
+  assert.deepEqual(uploaded.body,{attributes:{LAY:[20,20]},bio:{home:"Do not upload"},tendencies:{}});
+  assert.ok(requests.every(item=>!("regressionAge" in item.body)));
 });
 
 test("invalid files and oversized files return clear errors before upload", async () => {

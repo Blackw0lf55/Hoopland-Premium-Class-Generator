@@ -24,7 +24,7 @@ const api = vm.runInContext(`
   ${section("function validSharedRating(", "function makePlayer(")}
   ({ budgetForStars, starsForBudget, overallFillPercent, currentBudgetForStars, minimumPotentialStars, refreshPlayerRatingTotals, qualityForTier, ratingStatsProfile,
      makeAttributeRatings, isReportedWomanDunker, archetypeWeights, ARCHETYPES,
-     validSharedRating, applySharedRatings, applyEraRules,
+     validSharedRating, applySharedRatings, applyEraRules, draftOverallCap,
      setRng(value) { rng = value; },
      setBounds(value) { bounds = value; },
      setDunkEdited(edited) { dunkInput.dataset.userModified = edited ? "true" : ""; } })
@@ -265,6 +265,26 @@ test("shared edits enforce normal potential caps while allowing GOAT exceptions"
   assert.equal(player.arc,"Sharpshooter");
 });
 
+test("imported ratings take priority over community edits and obey draft limits", () => {
+  const makePlayer=()=>({
+    gender:"0",pos:2,arc:"Floor General",pri:6,sec:5,
+    draftOverallCap:118,draftOverallFloor:72,
+    attributes:Object.fromEntries(codes.map(code=>[code,[10,12]])),
+    physical:{SPD:14,STR:12,STA:12},appearanceWarnings:[]
+  });
+  const blended=makePlayer();
+  api.applySharedRatings(blended,[{LAY:[10,14]}],{LAY:[15,19]});
+  assert.deepEqual(Array.from(blended.attributes.LAY),[13,17]);
+  const high=makePlayer();
+  api.applySharedRatings(high,[],Object.fromEntries(codes.map(code=>[code,[20,20]])));
+  assert.equal(high.currentPoints,118);
+  assert.equal(high.potentialPoints,144);
+  const low=makePlayer();
+  api.applySharedRatings(low,[],Object.fromEntries(codes.map(code=>[code,[2,2]])));
+  assert.equal(low.currentPoints,72);
+  assert.ok(codes.every(code=>low.attributes[code][0]<=low.attributes[code][1]));
+});
+
 test("playmaking bigs can develop more handles than the position cap", () => {
   let exceeds = false;
   for (let i=0;i<80;i++) {
@@ -406,7 +426,7 @@ test("draft rookies favor 55–85 overall without exceeding their potential", ()
   api.setRng(Math.random);
 });
 
-test("shared edits cannot take a draft rookie outside 50–85 overall", () => {
+test("shared edits are adjusted to the draft cap and cannot fall below the floor", () => {
   const player={
     gender:"0",pos:2,arc:"Floor General",pri:6,sec:5,potentialStars:5,draftOverallCap:122,draftOverallFloor:72,
     attributes:Object.fromEntries(codes.map((code,index)=>[code,
@@ -417,8 +437,8 @@ test("shared edits cannot take a draft rookie outside 50–85 overall", () => {
   assert.equal(player.currentPoints,122);
   api.applySharedRatings(player,[{DRB:[17,20]}]);
   assert.equal(player.currentPoints,122);
-  assert.equal(player.attributes.DRB[0],16);
-  assert.match(player.appearanceWarnings[0],/not applied/);
+  assert.equal(player.attributes.DRB[0],17);
+  assert.equal(player.attributes.LAY[0],19);
   for (const [index,code] of codes.entries()) player.attributes[code]=index<4?[20,20]:[2,2];
   api.refreshPlayerRatingTotals(player);
   player.appearanceWarnings=[];
@@ -426,6 +446,22 @@ test("shared edits cannot take a draft rookie outside 50–85 overall", () => {
   assert.equal(player.currentPoints,72);
   assert.equal(player.physical.SPD,16);
   assert.match(player.appearanceWarnings[0],/not applied/);
+});
+
+test("draft caps reserve 85 for reviewed generational players and adjust generated budgets", () => {
+  for (const [fn,ln,year] of [["Michael","Jordan",1984],["Kobe","Bryant",1996],["LeBron","James",2003]])
+    assert.equal(api.draftOverallCap({fn,ln},"0",year,""),122);
+  assert.equal(api.draftOverallCap({fn:"Michael",ln:"Jordan"},"0",1985,"GOAT"),118);
+  assert.equal(api.draftOverallCap({fn:"LeBron",ln:"James"},"1",2003,"GOAT"),118);
+  assert.equal(api.draftOverallCap({fn:"Other",ln:"Player"},"0",2003,"GOAT"),118);
+  assert.equal(api.draftOverallCap(null,"0",2003,"GOAT"),122);
+  assert.equal(api.draftOverallCap(null,"0",2003,"Sharpshooter"),118);
+  api.setRng(()=>0.99999);
+  const result=api.makeAttributeRatings(0,"0",null,quality(5,5),weights,"",null,{},"draft",118);
+  assert.equal(result.currentBudget,118);
+  assert.equal(sum(result.attributes,0),118);
+  assert.ok(codes.every(code=>result.attributes[code][0]<=result.attributes[code][1]));
+  api.setRng(Math.random);
 });
 
 test("draft position and professional peak determine potential, with a 2.5-star minimum", () => {

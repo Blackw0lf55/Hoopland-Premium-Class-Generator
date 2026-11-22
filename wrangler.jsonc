@@ -11,12 +11,7 @@
     ]
   },
 
-  "ai": {
-    "binding": "AI"
-  },
-
   "previews": {
-    "ai": { "binding": "AI" },
     "durable_objects": {
       "bindings": [{ "name": "APPEARANCES", "class_name": "SharedAppearance" }]
     }

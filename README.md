@@ -1,25 +1,11 @@
 # Hoopland-Premium-Class-Generator
 Create realistic accurate classes for hoopland that you can upload and use right away! Control every aspect of player generation for easy class creation!
 
-Real-player looks are estimates. Up to four distinct photos are compared using
-Workers AI; they come from the draft source, ESPN or an exact-name Wikidata
-basketball-player match and its Wikimedia Commons category. Commons category
-files must also contain the player's name. For each photo, the browser creates
-a reference sheet showing the actual editor skin and hair swatches next to the
-photo, and the vision model describes the visible hairstyle and selects swatch
-labels. It does not sample image pixels. Photo descriptions are combined, and
-unknown or conflicting features remain placeholders. A reference photo can be
-viewed beside the editable mock-up in Class Preview. Photos may be missing,
-lighting can distort colors, and neither the model's estimates nor the mock-up
-guarantee an exact in-game appearance. Photo-derived features take precedence
-over older unsourced profile defaults; the user-provided Awa Fam, Lauren Betts
-and Frieda Bühner color corrections still override estimates for those features.
-When no reliable feature is available, a neutral placeholder is used instead
-of a randomly generated skin, hairstyle, facial hair, tattoo or accessory.
-The placeholder is not a prediction of the player's appearance. Preview edits
-are included in the export.
-Awa Fam's source name variations are normalized before matching. Getty Images
-is not used as a photo source.
+Real-player looks use supplied roster references, imported appearances and
+community-approved edits. Features without a reference use neutral placeholders,
+not predictions. Review appearances before downloading; preview edits are
+included in the export. Awa Fam's source name variations are normalized before
+matching.
 
 Attribute actual and potential caps adjust in 0.5 increments. The left and right
 halves of each bar segment show the corresponding half-point limits.
@@ -96,16 +82,18 @@ screen after Spec Limits; both screens are skipped for
 real classes: real players retain their sourced country, and any fictional fill
 players use all available country weights.
 
-From the title screen, **Import File for Appearances** reads a Hoop Land JSON or
-TXT roster or class file (up to 256 MiB and 100,000 listed players). Parsing is
-local; only names, selected gender, roster level and year, and skin, hair color,
-hairstyle and (for men) facial hair are sent for shared storage. Other player
-data and the full file are not stored. Invalid entries and duplicate names in
-the file are skipped. Existing built-in and previously imported baselines are
-never replaced; the first imported baseline is retained. Imports are shared
-with everyone and are not moderated. Matching by name and gender can confuse
-different people with the same name, including across separate uploads;
-review appearances before downloading.
+From the title screen, **Import Player Data** reads a Hoop Land JSON or TXT
+roster or class file (up to 256 MiB and 100,000 listed players). Parsing is
+local; supported appearance fields, attributes, tendencies, age, dimensions,
+position, years, number, country and hometown are sent for shared storage
+alongside the name and selected gender, roster level and year. The full file is
+not stored. Appearance baselines remain global by name and gender; duplicates
+in a file are skipped and existing built-in or imported baselines are never
+replaced. Other player data is scoped by gender, pro/college level, year and
+name. Duplicate records use the lower current and potential value separately
+for each attribute; the first saved biography and tendency fields are retained.
+Imports are shared and unmoderated. Name matching can confuse different people,
+including across uploads; review players before downloading.
 
 Before downloading, approve the appearances to share manually changed skin,
 hair color, hairstyle and facial-hair (men only) selections. Only changed
@@ -114,7 +102,7 @@ files. Future generations match the same name and gender across class types
 and years and combine up to five recent approvals per player: the middle skin
 shade and most common other selections, with the most recent selection breaking
 ties. Shared fields override the imported or built-in baseline; remaining fields
-use that baseline or photo matching. Older class-scoped edits remain readable
+use that baseline or placeholders. Older class-scoped edits remain readable
 for their original class and seed the global history when edited there; old
 histories from other class years are not automatically merged.
 Anyone can contribute; these edits are not moderated or guaranteed accurate.
@@ -129,11 +117,11 @@ download, separate appearance and attribute questions offer Yes (share eligible
 edits), No (return to editing), and Skip (continue without sharing that
 category). Approved attribute and archetype edits for real players are shared
 separately from appearances and reused across years and class types by name
-and gender, combining up to five recent edits. Imports remain appearance-only.
-These unmoderated name-based matches can confuse namesakes. The vision model
-performs inference; it does not train itself from edits. Approved edits can
-improve later references for the same matched name, but autonomous learning
-would require a separate training and evaluation pipeline.
+and gender, combining up to five recent edits. When both an uploaded attribute
+and community ratings are available, the upload has 60% weight and the median
+community value 40%; values are rounded to the nearest half point. Draft
+overall limits and era restrictions still apply. Historical class eligibility
+continues to require independently sourced draft or freshman records.
 
 The class preview lists position, name, jersey number, archetype and stars:
 white shows potential and gold overlays current ability. Real players use a
@@ -183,27 +171,20 @@ league's three-point era, three-point ratings and tendencies are suppressed;
 freshman classes during the 1967–75 college dunk ban also suppress dunking.
 These are simplified era rules, not a reconstruction of every historical rule.
 
-Draft classes also check ESPN's draft endpoint for headshots and attach them
-only when the returned year, player name, and (where provided) draft pick
-match. This includes the separately sourced 2026 women's class. If ESPN returns
-another year or a source fails, no photo is substituted from that response.
 If the other draft sources return no players, an ESPN draft can also supply
 selections when the year matches and every listed pick has a unique valid
 selection; incomplete or ambiguous drafts are not used as a fallback.
 Draft players with a known college also check that college's ESPN roster for
-the draft-year season. The team, season, exact unique player name and athlete
-headshot must all match; unavailable or ambiguous rosters are not used.
+the draft-year season. The team, season and exact unique player name must match;
+unavailable or ambiguous rosters are not used.
 
 For men's and women's freshman classes, an ESPN recruiting commitment (or an
 explicit college column in the McDonald's roster) can identify a college team.
 The generator checks that team's ESPN roster for one exact player-name match,
-the correct team, a plausible season, and that player's ESPN headshot. An
+the correct team and a plausible season. An
 unambiguous college name can be matched against ESPN's team list when no team
 ID is supplied. The roster may be current rather than historical, and future
-recruits may not appear yet; no roster photo is used when these checks fail.
-Name-only ESPN search photos are not used for recruits. Other independently
-matched photos may still be available, but this does not guarantee three photos
-or an accurate appearance.
+recruits may not appear yet.
 
 For real players in men's and women's draft and freshman classes, a sourced
 hometown takes precedence over a birthplace; birthplace is a fallback and is
@@ -239,13 +220,17 @@ Growth is the assigned potential points minus current points. Tier names refer
 to potential, not guaranteed careers.
 
 For men's and women's draft classes, rookie current ratings are estimated
-primarily in the 55–85 overall range using the player's potential tier,
-available college statistics and roster calibration. An 85 is rare, and
+primarily in the 55–82 overall range using the player's potential tier,
+available college statistics and roster calibration. The 85 cap is reserved
+for fictional GOAT prospects and a reviewed list of historical generational
+players (Michael Jordan, Kobe Bryant and LeBron James in their draft years). An 85 is rare, and
 the lowest tier starts around 50–51 overall. Draft current ratings range from
-72 to 122 distributable points (50% to 84.7%, displayed as 85%). A 2.5-star
+72 to 118 distributable points (50% to 81.9%, displayed as 82%); eligible
+generational players can reach 122 points (84.7%, displayed as 85%). A 2.5-star
 potential caps at 74 points, so those players have only one or two points of
-growth available, including for dribbling. Shared or manual attribute edits
-outside the draft range are rejected. Freshman class ratings are unaffected
+growth available, including for dribbling. Shared edits above the cap are
+reduced automatically; manual edits outside the draft range are rejected.
+Freshman class ratings are unaffected
 by these draft-only limits.
 
 For past NBA and WNBA draft classes, the generator looks up professional
@@ -263,6 +248,14 @@ Game Score-style box-score impact per 36 minutes, omitting steals, blocks and
 offensive rebound splits before 1973–74 and turnovers before 1977–78. That is
 less complete than PIE and is labeled separately. The earliest NBA seasons may
 also lack minutes or other required data.
+
+For retired draft players with consistent reported season ages and complete
+history, regression age uses the last season near the best two-year sustained
+peak followed by two consecutive seasons below 90% of that peak. Only seasons
+meeting the minutes thresholds are used; PIE and the older box-score proxy are
+never mixed in one calculation. Without sufficient evidence, regression age
+remains a generated estimate.
+Uploaded regression ages are not stored or used.
 
 The mapping from percentile to potential is 97th: 5 stars, 90th: 4.5, 75th:
 4, 55th: 3.5, 30th: 3 and below: 2.5. These are estimates, not a validated

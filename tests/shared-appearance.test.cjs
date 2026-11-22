@@ -4,13 +4,43 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 
-test("preview deployments use local appearance storage and the AI binding", () => {
+test("preview deployments use local appearance storage", () => {
   const config = JSON.parse(fs.readFileSync(path.join(__dirname, "../wrangler.jsonc"), "utf8"));
   assert.deepEqual(config.previews.durable_objects.bindings, [
     {name: "APPEARANCES", class_name: "SharedAppearance"}
   ]);
-  assert.equal(config.previews.ai.binding, "AI");
+  assert.equal(config.previews.ai, undefined);
+  assert.equal(config.ai, undefined);
   assert.ok(config.migrations.some(migration => migration.new_sqlite_classes?.includes("SharedAppearance")));
+});
+
+test("imported player data is scoped by year and level and merges duplicate attributes conservatively", async () => {
+  const {default:worker,SharedAppearance}=await import("../location-worker.js");
+  const objects=new Map();
+  const env={APPEARANCES:{idFromName:name=>name,get:id=>{
+    if(!objects.has(id)){
+      const values=new Map();
+      let lock=Promise.resolve();
+      const storage={get:async k=>values.get(k),put:async(k,v)=>values.set(k,v),
+        transaction:fn=>{const task=lock.then(()=>fn(storage));lock=task.catch(()=>{});return task;}};
+      objects.set(id,new SharedAppearance({storage}));
+    }
+    return {fetch:(url,init)=>objects.get(id).fetch(new Request(url,init))};
+  }}};
+  const url="https://example.test/api/imported-roster?"+new URLSearchParams({name:"Test Player",gender:"men",type:"pro",year:"2020"});
+  const put=(body,origin="https://example.test")=>worker.fetch(new Request(url,{method:"PUT",
+    headers:{origin,"content-type":"application/json"},body:JSON.stringify(body)}),env);
+  const first={attributes:{LAY:[12,18],MID:[10,16]},bio:{age:20},tendencies:{pass:2}};
+  const second={attributes:{LAY:[10,19],MID:[12,14]},bio:{age:22},tendencies:{pass:4}};
+  assert.equal((await put(first,"https://other.example")).status,403);
+  assert.equal((await put({...first,attributes:{LAY:[20,2]}})).status,400);
+  assert.equal((await put({...first,bio:{unexpected:"secret"}})).status,400);
+  assert.equal((await put(first)).status,200);
+  assert.equal((await put(second)).status,200);
+  const loaded=await (await worker.fetch(new Request(url),env)).json();
+  assert.deepEqual(loaded.player,{attributes:{LAY:[10,18],MID:[10,14]},bio:{age:20},tendencies:{pass:2}});
+  for (const changed of [url.replace("2020","2021"),url.replace("type=pro","type=college"),url.replace("gender=men","gender=women")])
+    assert.equal((await (await worker.fetch(new Request(changed),env)).json()).player,null);
 });
 
 test("community looks persist per player and gender across class years, with five-edit limit", async () => {

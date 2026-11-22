@@ -184,84 +184,70 @@ test("real-player placeholders do not invent tattoos or accessories", () => {
   assert.notEqual(fictional[0].headAcc,"none");
 });
 
-test("real-player preparation compares up to four distinct photo descriptions", async () => {
+test("real-player preparation ignores image URLs and never requests image services", async () => {
   const {default:worker} = await import("../location-worker.js");
   const csv = fs.readFileSync(path.join(__dirname, "..", "data/location-catalog.csv"),"utf8");
   const env = {ASSETS:{fetch:async r=>new URL(r.url).pathname.endsWith(".csv")?new Response(csv):new Response(html)}};
   const transformed = await (await worker.fetch(new Request("https://example.test/"),env)).text();
   const script=transformed.match(/<script>\nwindow\.__HOOPLAND_LOCATION_RECORDS[\s\S]*?<\/script>/)[0].slice(8,-9);
-  const one="https://a.espncdn.com/one.png",two="https://a.espncdn.com/two.png";
-  const three="https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Frieda.jpg/600px-Frieda.jpg";
-  const duplicate="https://commons.wikimedia.org/wiki/Special:FilePath/Frieda.jpg?width=400";
-  const four="https://a.espncdn.com/four.png",five="https://a.espncdn.com/five.png";
-  const requested=[];
-  Object.assign(context,{
-    window:context,URL,URLSearchParams,REAL_PLAYER_APPEARANCE_PROFILES:{},
-    normalizeAppearancePlayerName:name=>name.toLowerCase().replace(/[^a-z0-9]/g,""),
-    console:{warn(){}},
-    document:{
-      getElementById:id=>({value:id==="classType"?"freshman":"2026"}),
-      createElement:()=>({getContext:()=>({drawImage(){},getImageData:()=>({})})})
-    },
-    createImageBitmap:async()=>({width:100,height:100}),
-    fetch:async url=>{
-      if(String(url).startsWith("/api/hometown"))return Response.json({headshot:one,headshots:[duplicate,four,five]});
-      if(String(url).startsWith("/api/describe")){
-        const src=new URL(String(url),"https://example.test").searchParams.get("src");
-        requested.push(src);
-        if(src===two)return Response.json({ok:false,error:"unavailable"});
-        return Response.json({ok:true,text:src===one||src===three
-          ?"skin: dark 4; hair color: black 2; hairstyle: high-bun"
-          :"skin: light 1; hair color: black 2; hairstyle: high-bun"});
-      }
-      throw new Error("Unexpected request "+url);
-    }
-  });
-  vm.runInContext(script,context);
-  context.__HOOPLAND_VISION_SHEET=async()=>new Blob(["sheet"],{type:"image/jpeg"});
-  const player={fn:"Awa",ln:"Fam",headshot:one,headshots:[one+"?width=200",two,three]};
-  await context.__HOOPLAND_PREPARE_REAL_PLAYERS([player],"1");
-  assert.deepEqual(requested,[one,two,three,four,five]);
-  assert.equal(player.headshotSample,undefined);
-  assert.ok(player.appearanceWarnings.some(w=>w.includes("4 of 5 attempted photos")));
-  assert.doesNotMatch(player.lookText,/skin:/);
-  assert.match(player.lookText,/hairstyle: high-bun/);
-  assert.ok(player.appearanceWarnings.some(w=>w.includes("Photos disagree on skin")));
-});
-
-test("a partial appearance profile still fetches and applies photo descriptions", async () => {
-  const {default:worker} = await import("../location-worker.js");
-  const csv = fs.readFileSync(path.join(__dirname, "..", "data/location-catalog.csv"),"utf8");
-  const env = {ASSETS:{fetch:async r=>new URL(r.url).pathname.endsWith(".csv")?new Response(csv):new Response(html)}};
-  const transformed = await (await worker.fetch(new Request("https://example.test/"),env)).text();
-  const script=transformed.match(/<script>\nwindow\.__HOOPLAND_LOCATION_RECORDS[\s\S]*?<\/script>/)[0].slice(8,-9);
+  const requests=[];
   const c=vm.createContext({
     window:{},URL,URLSearchParams,console:{warn(){}},
-    REAL_PLAYER_APPEARANCE_PROFILES:{azzifudd:{hairId:125}},
-    REAL_PLAYER_DESCRIPTIONS:{},
-    normalizeAppearancePlayerName:name=>name.toLowerCase().replace(/[^a-z0-9]/g,""),
-    mergeLookDescriptions:merge,parseLookDescription:parse,
-    document:{
-      getElementById:()=>({value:"freshman"}),
-      createElement:()=>({getContext:()=>({drawImage(){},getImageData:()=>({})})})
-    },
-    createImageBitmap:async()=>({width:100,height:100}),
+    document:{getElementById:id=>({value:id==="classType"?"freshman":"2026"})},
     fetch:async url=>{
-      if(String(url).startsWith("/api/hometown"))return Response.json({headshot:"https://a.espncdn.com/azzi.png"});
-      if(String(url).startsWith("/api/describe"))return Response.json({ok:true,text:"skin: dark 4; hairstyle: bald"});
+      requests.push(String(url));
+      if(String(url).startsWith("/api/imported-roster"))return Response.json({ok:true,player:null});
+      if(String(url).startsWith("/api/shared-attributes"))return Response.json({ok:true,ratings:[]});
+      if(String(url).startsWith("/api/shared-appearance"))return Response.json({ok:true,appearances:[]});
+      if(String(url).startsWith("/api/hometown"))return Response.json({headshot:"https://example.test/image.png"});
       throw new Error("Unexpected request "+url);
     }
   });
   vm.runInContext(script,c);
-  c.window.__HOOPLAND_VISION_SHEET=async()=>new Blob(["sheet"],{type:"image/jpeg"});
-  const player={fn:"Azzi",ln:"Fudd"};
-  await c.window.__HOOPLAND_PREPARE_REAL_PLAYERS([player],"1");
-  assert.match(player.lookText,/skin: dark 4/);
-  assert.ok(player.appearanceWarnings.some(w=>w.includes("1 of 1 attempted photos")));
-  assert.ok(player.appearanceWarnings.some(w=>w.includes("fewer than three")));
+  const player={fn:"Example",ln:"Player",headshot:"https://example.test/image.png"};
+  await c.window.__HOOPLAND_PREPARE_REAL_PLAYERS([player],"0");
+  assert.ok(requests.some(url=>url.startsWith("/api/hometown")));
+  assert.ok(requests.every(url=>!url.includes("/api/headshot")&&!url.includes("/api/describe")));
+  assert.equal(player.lookText,undefined);
+  assert.match(player.appearanceWarnings[0],/placeholders/);
 });
 
-test("draft photo lookup receives the season and college from the stats profile", async () => {
+test("real-player preparation loads only the matching roster year and level", async () => {
+  const {default:worker}=await import("../location-worker.js");
+  const csv=fs.readFileSync(path.join(__dirname,"..","data/location-catalog.csv"),"utf8");
+  const env={ASSETS:{fetch:async r=>new URL(r.url).pathname.endsWith(".csv")?new Response(csv):new Response(html)}};
+  const page=await (await worker.fetch(new Request("https://example.test/"),env)).text();
+  const script=page.match(/<script>\nwindow\.__HOOPLAND_LOCATION_RECORDS[\s\S]*?<\/script>/)[0].slice(8,-9);
+  const lookups=[];
+  const c=vm.createContext({
+    window:{},URL,URLSearchParams,console:{warn(){}},
+    document:{getElementById:id=>({value:id==="classType"?"freshman":"1995"})},
+    fetch:async url=>{
+      if(String(url).startsWith("/api/imported-roster")){
+        lookups.push(new URL(String(url),"https://example.test").searchParams);
+        return Response.json({ok:true,player:{attributes:{LAY:[12,16]},
+          bio:{height:75,weight:190,position:2,age:18,jersey:5,country:"US"},
+          tendencies:{pass:2}}});
+      }
+      if(String(url).startsWith("/api/shared-attributes"))return Response.json({ok:true,ratings:[]});
+      if(String(url).startsWith("/api/shared-appearance"))return Response.json({ok:true,appearances:[]});
+      if(String(url).startsWith("/api/hometown"))return Response.json({});
+      throw new Error("Unexpected request "+url);
+    }
+  });
+  vm.runInContext(script,c);
+  const p={fn:"Example",ln:"Player"};
+  await c.window.__HOOPLAND_PREPARE_REAL_PLAYERS([p],"0");
+  assert.equal(lookups[0].get("type"),"college");
+  assert.equal(lookups[0].get("year"),"1995");
+  assert.equal(p.bioPosition,"SG");
+  assert.equal(p.height,75);
+  assert.equal(p.importedAge,18);
+  assert.deepEqual(p.importedRatings,{LAY:[12,16]});
+  assert.equal(p.importedTendencies.pass,2);
+});
+
+test("draft hometown lookup receives the season and college from the stats profile", async () => {
   const {default:worker} = await import("../location-worker.js");
   const csv = fs.readFileSync(path.join(__dirname, "..", "data/location-catalog.csv"),"utf8");
   const env = {ASSETS:{fetch:async r=>new URL(r.url).pathname.endsWith(".csv")?new Response(csv):new Response(html)}};
@@ -355,116 +341,4 @@ test("imported baselines are loaded for future classes alongside approved edits"
   assert.equal(p.sharedAppearance.hair,"0008");
   assert.match(p.appearanceWarnings[0],/imported appearance baseline/);
   assert.match(p.appearanceWarnings[1],/edits override/);
-});
-
-test("photo service failures are reported instead of looking like successful matches", async () => {
-  const {default:worker} = await import("../location-worker.js");
-  const csv = fs.readFileSync(path.join(__dirname, "..", "data/location-catalog.csv"),"utf8");
-  const env = {ASSETS:{fetch:async r=>new URL(r.url).pathname.endsWith(".csv")?new Response(csv):new Response(html)}};
-  const transformed = await (await worker.fetch(new Request("https://example.test/"),env)).text();
-  const script=transformed.match(/<script>\nwindow\.__HOOPLAND_LOCATION_RECORDS[\s\S]*?<\/script>/)[0].slice(8,-9);
-  const c=vm.createContext({
-    window:{},URL,URLSearchParams,console:{warn(){}},
-    REAL_PLAYER_APPEARANCE_PROFILES:{},REAL_PLAYER_DESCRIPTIONS:{},
-    normalizeAppearancePlayerName:name=>name.toLowerCase().replace(/[^a-z0-9]/g,""),
-    mergeLookDescriptions:merge,parseLookDescription:parse,
-    document:{getElementById:()=>({value:"freshman"})},
-    fetch:async url=>String(url).startsWith("/api/hometown")
-      ? Response.json({headshot:"https://a.espncdn.com/player.png"})
-      : Response.json({ok:false,error:"AI binding missing"})
-  });
-  vm.runInContext(script,c);
-  c.window.__HOOPLAND_VISION_SHEET=async()=>new Blob(["sheet"],{type:"image/jpeg"});
-  const player={fn:"Example",ln:"Player"};
-  await c.window.__HOOPLAND_PREPARE_REAL_PLAYERS([player],"1");
-  assert.equal(player.lookText,"");
-  assert.ok(player.appearanceWarnings.some(w=>w.includes("AI binding missing") && w.includes("placeholders")));
-});
-
-test("freshman preparation uses verified roster photos and warns when only a name-search photo exists", async () => {
-  const {default:worker} = await import("../location-worker.js");
-  const csv = fs.readFileSync(path.join(__dirname, "..", "data/location-catalog.csv"),"utf8");
-  const env = {ASSETS:{fetch:async r=>new URL(r.url).pathname.endsWith(".csv")?new Response(csv):new Response(html)}};
-  const transformed = await (await worker.fetch(new Request("https://example.test/"),env)).text();
-  const script=transformed.match(/<script>\nwindow\.__HOOPLAND_LOCATION_RECORDS[\s\S]*?<\/script>/)[0].slice(8,-9);
-  const original = global.fetch;
-  const verified = "https://a.espncdn.com/i/headshots/womens-college-basketball/players/full/71.png";
-  const wrong = "https://a.espncdn.com/wrong-player.png";
-  const described = [];
-  try {
-    global.fetch = async url => {
-      const request = new URL(url);
-      if (request.pathname.endsWith("/901/roster")) return Response.json({
-        team:{id:"901"},season:{year:2026},
-        athletes:[{id:"71",displayName:"Verified Recruit",headshot:{href:verified}}]
-      });
-      if (request.hostname === "www.wikidata.org") return Response.json({search:[]});
-      if (request.pathname.includes("/search")) {
-        const name = request.searchParams.get("query");
-        return Response.json({results:[{id:"72",displayName:name,sport:"basketball"}]});
-      }
-      if (request.pathname.includes("/athletes/72")) return Response.json({
-        athlete:{displayName:"Missing Recruit",headshot:{href:wrong}}
-      });
-      if (request.pathname.includes("/athletes/71")) return new Response("",{status:404});
-      throw new Error("Unexpected request "+url);
-    };
-    const c=vm.createContext({
-      window:{},URL,URLSearchParams,console:{warn(){}},
-      REAL_PLAYER_APPEARANCE_PROFILES:{},REAL_PLAYER_DESCRIPTIONS:{},
-      normalizeAppearancePlayerName:name=>name.toLowerCase().replace(/[^a-z0-9]/g,""),
-      mergeLookDescriptions:merge,parseLookDescription:parse,
-      document:{getElementById:()=>({value:"freshman"})},
-      fetch:async url=>{
-        const request = new URL(String(url),"https://example.test");
-        if(request.pathname==="/api/hometown") return worker.fetch(new Request(request),env);
-        if(request.pathname==="/api/describe"){
-          described.push(request.searchParams.get("src"));
-          return Response.json({ok:true,text:"skin: dark 4; hairstyle: high-bun"});
-        }
-        throw new Error("Unexpected request "+url);
-      }
-    });
-    vm.runInContext(script,c);
-    c.window.__HOOPLAND_VISION_SHEET=async()=>new Blob(["sheet"],{type:"image/jpeg"});
-    const players=[
-      {fn:"Verified",ln:"Recruit",collegeTeamId:"901",recruitYear:2025},
-      {fn:"Missing",ln:"Recruit",collegeTeamId:"901",recruitYear:2025}
-    ];
-    await c.window.__HOOPLAND_PREPARE_REAL_PLAYERS(players,"1");
-    assert.deepEqual(described,[verified]);
-    assert.match(players[0].lookText,/skin: dark 4/);
-    assert.ok(players[0].appearanceWarnings.some(w=>w.includes("fewer than three")));
-    assert.ok(players[1].appearanceWarnings.some(w=>w.includes("No photo was found")));
-  } finally { global.fetch = original; }
-});
-
-test("vision reference sheet draws the photo and actual selector swatches", async () => {
-  const {default:worker}=await import("../location-worker.js");
-  const csv=fs.readFileSync(path.join(__dirname,"..","data/location-catalog.csv"),"utf8");
-  const env={ASSETS:{fetch:async r=>new URL(r.url).pathname.endsWith(".csv")?new Response(csv):new Response(html)}};
-  const transformed=await (await worker.fetch(new Request("https://example.test/"),env)).text();
-  const script=transformed.match(/<script>\nwindow\.__HOOPLAND_LOCATION_RECORDS[\s\S]*?<\/script>/)[0].slice(8,-9);
-  const colors=[],labels=[],photos=[];
-  const canvasContext={
-    set fillStyle(value){this.color=value;},
-    fillRect(){colors.push(this.color);},
-    fillText(value){labels.push(value);},
-    drawImage(...args){photos.push(args);}
-  };
-  const c=vm.createContext({
-    window:{},URL,URLSearchParams,APPEARANCE_PALETTES:palette,
-    colorLum:hex=>[.299,.587,.114].reduce((sum,w,i)=>sum+w*parseInt(hex.slice(i*2,i*2+2),16),0),
-    appearanceHairPalette:group=>[...new Set(palette.flatMap(p=>p.hair[group]||[]))].sort((a,b)=>
-      [0,2,4].reduce((n,i)=>n+parseInt(b.slice(i,i+2),16)-parseInt(a.slice(i,i+2),16),0)),
-    fetch:async()=>new Response(new Uint8Array([1,2,3]),{headers:{"content-type":"image/png"}}),
-    createImageBitmap:async()=>({width:200,height:300,close(){}}),
-    document:{createElement:()=>({getContext:()=>canvasContext,toBlob:callback=>callback(new Blob(["jpeg"],{type:"image/jpeg"}))})}
-  });
-  vm.runInContext(script,c);
-  const image=await c.window.__HOOPLAND_VISION_SHEET("https://a.espncdn.com/example.png");
-  assert.equal(image.type,"image/jpeg");
-  assert.equal(photos.length,1);
-  for(const group of palette) for(const color of group.skins) assert.ok(colors.includes("#"+color),color);
-  assert.ok(labels.includes("L1")&&labels.includes("D6")&&labels.includes("K1"));
 });
