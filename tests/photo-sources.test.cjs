@@ -135,6 +135,29 @@ test("the curated 2026 WNBA route also attaches ESPN draft identities", async ()
   }
 });
 
+test("curated WNBA board failure falls back to complete ESPN selections while verifying seniors", async () => {
+  const {default:worker}=await import("../location-worker.js");
+  const {default:existingWorker}=await import("../worker.js");
+  const oldFetch=global.fetch, oldWorkerFetch=existingWorker.fetch;
+  try {
+    existingWorker.fetch=async()=>Response.json({error:"unavailable"},{status:502});
+    global.fetch=async()=>Response.json({displayName:"2026 WNBA Draft",picks:[
+      {overall:1,status:"SELECTION_MADE",athlete:{id:"99",displayName:"Verified Senior"}},
+      {overall:2,status:"SELECTION_MADE",athlete:{id:"100",displayName:"Not Senior"}}
+    ]});
+    const env={ASSETS:{fetch:async()=>Response.json({"2026":[
+      ["Verified Senior","School","Senior","12","G","US","",72],
+      ["Not Senior","School","Sophomore","5","G","US","",70]
+    ]})}};
+    const result=await worker.fetch(new Request("https://example.test/api/class-data?type=draft&gender=women&year=2026"),env);
+    const body=await result.json();
+    assert.equal(result.status,200);
+    assert.deepEqual(body.players.map(player=>player.ln),["Senior"]);
+    assert.match(body.warning,/ESPN draft selections were used/);
+    assert.equal(body.source.seniorVerification.notSenior,1);
+  } finally {global.fetch=oldFetch;existingWorker.fetch=oldWorkerFetch;}
+});
+
 test("2027 school-verified prospects remain available when draft history is unavailable", async () => {
   const {default:worker}=await import("../location-worker.js");
   const original=global.fetch;

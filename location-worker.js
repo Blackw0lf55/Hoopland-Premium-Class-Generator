@@ -1,5 +1,5 @@
 import existingWorker from "./worker.js";
-import { handleClassData, loadEspnDraftPlayers, attachEspnDraftPlayers, filterWomenDraftSeniors } from "./class-sources.js";
+import { handleClassData, loadEspnDraftPlayers, attachEspnDraftPlayers, filterWomenDraftSeniors, fetchClassSource, unavailableClassSource } from "./class-sources.js";
 import { wikidataProfile } from "./enrich.js";
 import { handleStats } from "./college-stats.js";
 import { handleProSeason } from "./pro-stats.js";
@@ -92,20 +92,24 @@ function normalizePersonName(value) {
     .replace(/[’']/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 }
 
-async function cachedCollegeData(cache, key, url) {
+async function cachedCollegeData(cache, key, url, pending) {
   const entry = cache.get(key);
   if (entry && entry.expires > Date.now()) return entry.data;
-  const response = await fetch(url, { headers: { accept: "application/json" } });
-  if (!response.ok) throw new Error(`ESPN college data HTTP ${response.status}`);
-  const data = await response.json();
-  cache.set(key, { data, expires: Date.now() + 60 * 60 * 1000 });
-  return data;
+  if (pending?.has(url)) return pending.get(url);
+  const task=(async()=>{
+    const {response,data} = await fetchClassSource(url, {accept:"application/json"}, "json");
+    if (!response.ok) throw new Error(`ESPN college data HTTP ${response.status}`);
+    cache.set(key, {data,expires:Date.now()+60*60*1000});
+    return data;
+  })();
+  if (pending) pending.set(url,task);
+  return task;
 }
 
-async function findCollegeTeamId(league, school) {
+async function findCollegeTeamId(league, school, pending) {
   if (!normalizePersonName(school)) return "";
   const data = await cachedCollegeData(collegeTeamsCache, league,
-    `https://site.api.espn.com/apis/site/v2/sports/basketball/${league}/teams?limit=500`);
+    `https://site.api.espn.com/apis/site/v2/sports/basketball/${league}/teams?limit=500`,pending);
   const teams = data?.sports?.flatMap(sport => sport.leagues || [])
     .flatMap(item => item.teams || []).map(item => item.team).filter(Boolean) || [];
   const wanted = normalizePersonName(school);
@@ -114,16 +118,16 @@ async function findCollegeTeamId(league, school) {
   return matches.length === 1 && /^\d{1,8}$/.test(String(matches[0].id)) ? String(matches[0].id) : "";
 }
 
-export async function collegeRosterPlayer(name, gender, teamId, recruitYear, school = "", draftYear = 0) {
+export async function collegeRosterPlayer(name, gender, teamId, recruitYear, school = "", draftYear = 0, pending = null) {
   const isDraft = Number.isInteger(draftYear) && draftYear >= 1900 && draftYear <= 2100;
   if (!isDraft && (!Number.isInteger(recruitYear) || recruitYear < 1900 || recruitYear > 2100)) return null;
   const league = gender === "women" ? "womens-college-basketball" : "mens-college-basketball";
-  if (!teamId) teamId = await findCollegeTeamId(league, school);
+  if (!teamId) teamId = await findCollegeTeamId(league, school, pending);
   if (!/^\d{1,8}$/.test(String(teamId))) return null;
   const key = `${league}:${teamId}:${isDraft ? draftYear : "current"}`;
   const roster = await cachedCollegeData(collegeRosterCache, key,
     `https://site.api.espn.com/apis/site/v2/sports/basketball/${league}/teams/${teamId}/roster` +
-      (isDraft ? `?season=${draftYear}` : ""));
+      (isDraft ? `?season=${draftYear}` : ""),pending);
   const season = Number(roster?.season?.year);
   if (String(roster?.team?.id) !== String(teamId) || !Number.isInteger(season) ||
       (isDraft ? season !== draftYear : season < recruitYear || season > recruitYear + 6) ||
@@ -134,7 +138,7 @@ export async function collegeRosterPlayer(name, gender, teamId, recruitYear, sch
   return matches[0];
 }
 
-export async function verifyWomenDraftSenior(player, year, env) {
+export async function verifyWomenDraftSenior(player, year, env, pending = null) {
   if (env?.ASSETS) {
     try {
       const roster = await womenRosterLookup(env, year, player);
@@ -152,7 +156,7 @@ export async function verifyWomenDraftSenior(player, year, env) {
   const athlete = await collegeRosterPlayer(
     [player.fn,player.ln].filter(Boolean).join(" "), "women",
     player.collegeTeamId, player.recruitYear,
-    player.committedCollege || player.school || player.team || "", year
+    player.committedCollege || player.school || player.team || "", year, pending
   );
   if (!athlete) return null;
   if (/^\d{1,2}$/.test(String(athlete.jersey || ""))) player.jersey = String(athlete.jersey);
@@ -983,10 +987,8 @@ async function addLocationAssignment(request, env) {
   });
 }
 
-export default {
-  async fetch(request, env, context) {
-    const { pathname } = new URL(request.url);
-    if (pathname === "/api/class-data") {
+async function loadWorkerClassData(request, env, context) {
+      const pendingCollegeRequests = new Map();
       const params = new URL(request.url).searchParams;
       const curated =
         params.get("gender") === "women" &&
@@ -995,23 +997,31 @@ export default {
 
       if (!curated) {
         return handleClassData(request, {
-          verifySenior:(player,year)=>verifyWomenDraftSenior(player,year,env),
+          verifySenior:(player,year)=>verifyWomenDraftSenior(player,year,env,pendingCollegeRequests),
           rosterCandidates:year=>womenRosterCandidates(env,year)
         });
       }
-      const [response, espn] = await Promise.all([
+      let [response, espn] = await Promise.all([
         existingWorker.fetch(request, env, context),
         loadEspnDraftPlayers("women", 2026)
       ]);
+      if (!response.ok && espn.selections?.length) {
+        response=Response.json({players:espn.selections,source:{name:"ESPN draft selections"},
+          warning:"The WNBA draft board was unavailable; ESPN draft selections were used."});
+      }
       if (!response.ok) return response;
       const body = await response.json();
       if (!Array.isArray(body.players)) return Response.json(body);
       body.players = attachEspnDraftPlayers(body.players, espn.players);
-      const filtered = await filterWomenDraftSeniors(body.players, 2026, (player,year)=>verifyWomenDraftSenior(player,year,env));
+      const filtered = await filterWomenDraftSeniors(body.players, 2026, (player,year)=>verifyWomenDraftSenior(player,year,env,pendingCollegeRequests));
       body.players = filtered.players;
       body.source = { ...body.source, espnDraft: { status: espn.status, parsed: espn.players.length },
         seniorVerification:{unverified:filtered.unverified,notSenior:filtered.notSenior,foreign:filtered.foreign} };
-      if (filtered.unverified) body.warning = `${filtered.unverified} prospect(s) were excluded because their senior status could not be verified.`;
+      body.warning = [body.warning,
+        filtered.unverified ? `${filtered.unverified} prospect(s) were excluded because their senior status could not be verified.` : "",
+        unavailableClassSource(espn.status) ? "ESPN draft details were unavailable." : "",
+        unavailableClassSource(body.source.biographyStatus) ? "Some biographical details were unavailable." : ""
+      ].filter(Boolean).join(" ");
       if (!body.players.length) return Response.json({
         ok:false,error:"No verified senior prospects were available for the 2026 women's draft class.",diagnostics:body.source
       },{status:502});
@@ -1019,6 +1029,67 @@ export default {
       headers.delete("content-length");
       headers.delete("content-encoding");
       return Response.json(body, { status: response.status, headers });
+}
+
+function cacheableClass(body, type) {
+  if (!Array.isArray(body.players) || !body.players.length || body.warning || !body.source) return false;
+  const source=body.source;
+  if (source.seniorVerification?.unverified) return false;
+  if (source.projected) {
+    const classes=source.classes?.filter(item=>item.classYear);
+    return classes?.length > 0 && classes.every(item=>item.parsed>0 &&
+      item.attempts?.every(attempt=>!unavailableClassSource(attempt.status)));
+  }
+  if (type === "freshman") return source.attempts?.some(item=>item.parsed>0) &&
+    source.attempts.every(item=>!unavailableClassSource(item.status));
+  if (source.name === "WNBA 2026 Draft Board") return source.status === 200 &&
+    source.biographyStatus === 200 && source.espnDraft?.status === 200;
+  if (source.espnDraft?.complete) return true;
+  return source.status === 200 && source.parsed > 0 && source.nbaCom?.status === 200 &&
+    source.espnDraft?.status === 200;
+}
+
+async function cachedClassData(request, context, load) {
+  const params=new URL(request.url).searchParams;
+  const gender=params.get("gender") === "women" ? "women" : "men";
+  const type=params.get("type") === "freshman" ? "freshman" : "draft";
+  const year=Number(params.get("year"));
+  const cache=globalThis.caches?.default;
+  if (!cache || request.method !== "GET" || !Number.isInteger(year) || year<1900 || year>2100 ||
+      params.get("year") !== String(year) || params.get("gender") !== gender || params.get("type") !== type) return load();
+  const key=new URL("/__class-cache/v1",request.url);
+  key.search=new URLSearchParams({gender,type,year:String(year)}).toString();
+  try {
+    const hit=await cache.match(key.toString());
+    if (hit) {
+      const headers=new Headers(hit.headers);
+      headers.set("cache-control","no-store");
+      return new Response(hit.body,{status:hit.status,headers});
+    }
+  } catch (error) {
+    console.warn("Class cache lookup failed",error);
+  }
+  const response=await load();
+  if (response.ok) {
+    const body=await response.clone().json();
+    if (cacheableClass(body,type)) {
+      const ttl=year < new Date().getUTCFullYear() ? 7*24*60*60 : 60*60;
+      const headers=new Headers(response.headers);
+      headers.set("cache-control",`public, max-age=${ttl}`);
+      const stored=new Response(JSON.stringify(body),{status:response.status,headers});
+      const write=cache.put(key.toString(),stored).catch(error=>console.warn("Class cache write failed",error));
+      if (context?.waitUntil) context.waitUntil(write);
+      else await write;
+    }
+  }
+  return response;
+}
+
+export default {
+  async fetch(request, env, context) {
+    const { pathname } = new URL(request.url);
+    if (pathname === "/api/class-data") {
+      return cachedClassData(request,context,()=>loadWorkerClassData(request,env,context));
     }
     if (pathname === "/api/stats") return handleStats(request, env);
     if (pathname === "/api/pro-season") return handleProSeason(request);

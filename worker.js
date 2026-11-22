@@ -1,3 +1,5 @@
+import { fetchClassSource } from "./class-sources.js";
+
 function parseWnbaDraftBoard(
   html
 ) {
@@ -1295,36 +1297,17 @@ const biographyURL =
   "https://www.usbasket.com/WNBA/news/986346/WNBA-Draft-2026";
 
 
-    const sourceResponse =
-      await fetch(
-        sourceURL,
-        {
-          headers: {
-            "User-Agent":
-              "Hoopland-Class-Generator/1.0"
-          }
-        }
-      );
-    const prospectResponse =
-  await fetch(
-    prospectURL,
-    {
-      headers: {
-        "User-Agent":
-          "Hoopland-Class-Generator/1.0"
+    const readSource = async url => {
+      try {
+        return await fetchClassSource(url, {"User-Agent":"Hoopland-Class-Generator/1.0"}, "text");
+      } catch (error) {
+        console.warn("WNBA class source request failed", url, error);
+        return {response:new Response(null,{status:503}),data:null};
       }
-    }
-  );
-const biographyResponse =
-  await fetch(
-    biographyURL,
-    {
-      headers: {
-        "User-Agent":
-          "Hoopland-Class-Generator/1.0"
-      }
-    }
-  );
+    };
+    const [board, prospects, biography] = await Promise.all(
+      [sourceURL,prospectURL,biographyURL].map(readSource));
+    const sourceResponse=board.response, prospectResponse=prospects.response, biographyResponse=biography.response;
 
 
     if (
@@ -1352,16 +1335,9 @@ const biographyResponse =
     }
 
 
-    const sourceText =
-      await sourceResponse.text();
-
-    const prospectText =
-  await prospectResponse.text();
-
-    const biographyText =
-  biographyResponse.ok
-    ? await biographyResponse.text()
-    : "";
+    const sourceText = board.data;
+    const prospectText = prospects.data;
+    const biographyText = biography.data || "";
 
     const physicalIndex =
   biographyText.indexOf(

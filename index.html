@@ -2027,6 +2027,7 @@ html body textarea:focus{
 /* Buttons: pixel border with dark slab edge */
 html body button.primary,
 html body button.secondary,
+html body a.hl-discord,
 html body .wizard-button{
   position:relative;
   border:0!important;
@@ -2055,11 +2056,13 @@ html body button.primary{
 }
 html body button.primary:hover,
 html body button.secondary:hover,
+html body a.hl-discord:hover,
 html body .wizard-button:hover{
   filter:brightness(1.15);
 }
 html body button.primary:active,
 html body button.secondary:active,
+html body a.hl-discord:active,
 html body .wizard-button:active{
   transform:translateY(6px);
   box-shadow:
@@ -2069,7 +2072,7 @@ html body .wizard-button:active{
     4px 0 0 0 var(--px),
     0 4px 0 0 var(--px-slab)!important;
 }
-html body button:focus-visible{
+html body button:focus-visible,html body a.hl-discord:focus-visible{
   outline:3px dashed var(--px-hi);
   outline-offset:6px;
 }
@@ -2138,6 +2141,7 @@ html body .hl-arrow{padding:2px 12px!important;font-size:.8rem!important;margin:
 .hl-name{margin:0 6px 24px;}
 .hl-name label{display:block;margin-bottom:8px;font-weight:900;text-transform:uppercase;}
 .hl-start{display:flex;flex-direction:column;align-items:stretch;gap:18px;margin:26px auto;max-width:480px;}
+html body a.hl-discord{display:block;margin-top:clamp(40px,12vh,120px);text-align:center;text-decoration:none;}
 #wizardProgress[hidden]{display:none;}
 .hl-physical-limits{display:grid;gap:8px;margin:0 6px 16px;}
 .hl-physical-row{display:grid;grid-template-columns:2.4em repeat(4,minmax(0,1fr));gap:6px;align-items:end;}
@@ -2155,12 +2159,17 @@ html body .hl-country button{display:block;width:100%;padding:4px 1px;min-height
 .hl-country .code{display:block;font-size:.55rem;}
 .hl-pager{height:min(52vh,430px);overflow:hidden;margin:0 6px;}
 .hl-list{display:flex;flex-direction:column;gap:6px;height:100%;}
+.hl-entry{display:flex;flex:1;min-height:0;gap:4px;}
 .hl-row{flex:1;min-height:0;display:grid;grid-template-columns:2.1em minmax(0,1.3fr) 2.1em minmax(0,1fr) 5.3em;cursor:pointer;align-items:center;gap:5px;background:var(--px-fill-dark);padding:0 8px;font-size:.85rem;font-weight:700;animation:hlPageIn .3s steps(4) both;}
+html body .hl-recycle-toggle{flex:0 0 34px;min-width:0;padding:2px;font-size:1.05rem;}
+html body .hl-recycle-toggle[aria-pressed="true"]{background:#167747!important;color:#fff;outline:2px solid #6aff9a;}
+html body .hl-recycle-toggle:disabled,html body #hlRecyclePlayers:disabled{opacity:.5;cursor:not-allowed;}
 .hl-row .n{font-family:"Press Start 2P",monospace;font-size:.5rem;}
 .hl-row .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .hl-row .archetype{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.7rem;}
 .hl-list-head{display:grid;grid-template-columns:2.1em minmax(0,1.3fr) 2.1em minmax(0,1fr) 5.3em;gap:5px;padding:2px 8px;font-size:.85rem;font-weight:bold;}
 .hl-list-head span{font-size:.65rem;overflow:hidden;text-overflow:clip;}
+.hl-list-head.recycling{padding-right:46px;}
 .hl-stars{position:relative;display:inline-block;width:5em;white-space:nowrap;line-height:1;font-family:Arial,sans-serif;font-size:.9em;}
 .hl-stars span{display:flex;overflow:hidden;white-space:nowrap;color:#fff;}
 .hl-stars i{display:block;flex:0 0 1em;text-align:center;font-style:normal;}
@@ -2208,6 +2217,11 @@ html body button{transition:none!important;}
 #hlImportNav{flex-wrap:wrap;}
 #hlImportStatus{flex-basis:100%;margin:0;text-align:center;}
 #hlImportStatus:empty{display:none;}
+#hlReviewNav{flex-wrap:wrap;}
+#hlResultStatus,#hlRecyclePlayers{flex-basis:100%;}
+#hlResultStatus{font-size:.8rem;text-align:center;}
+#hlRecyclePlayers[hidden]{display:none;}
+.hl-page[data-page="5"]{padding-bottom:100px;}
 main{padding-bottom:calc(100px + env(safe-area-inset-bottom));}
 .hl-modal{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;padding:8px;}
 .hl-modal.hidden{display:none;}
@@ -2468,6 +2482,7 @@ html{background-color:#06143a!important;}
     <div class="hl-start">
       <button type="button" class="primary" id="hlCreateClass">CREATE NEW CLASS</button>
       <button type="button" class="secondary" id="hlImportPage">IMPORT PLAYER DATA</button>
+      <a class="hl-discord" href="https://discord.com/channels/931029068147752990/1572677074869817474" target="_blank" rel="noopener noreferrer">DISCORD</a>
     </div>
   </div>
   <div class="hl-page" data-page="-2">
@@ -2511,7 +2526,7 @@ html{background-color:#06143a!important;}
   </div>
   <div class="hl-page" data-page="5">
     <div class="hl-page-title" id="hlResultTitle"></div>
-    <p class="hl-hint">Select a player to edit appearances or attributes.</p>
+    <p class="hl-hint">Select a player to edit appearances or attributes.<span id="hlRecycleHint" hidden> Use ♻ to select players for recycling.</span></p>
     <div class="hl-list-head" aria-hidden="true"><span>POS</span><span>PLAYER</span><span>#</span><span>ARCHETYPE</span><span>STARS</span></div>
     <div id="hlPager" class="hl-pager">
       <div class="hl-list" id="hlList"></div>
@@ -2521,8 +2536,7 @@ html{background-color:#06143a!important;}
       <span id="hlPageNum">1/1</span>
       <button type="button" class="secondary hl-arrow" id="hlNextPg">▶</button>
     </div>
-    <div id="hlResultStatus" aria-live="polite"></div>
-    <div class="hl-nav"><button type="button" class="secondary" id="hlReviewBack">◀ BACK</button><button type="button" class="primary" id="hlDownload">DOWNLOAD CLASS</button></div>
+    <div id="hlReviewNav" class="hl-nav"><div id="hlResultStatus" aria-live="polite"></div><button type="button" class="secondary" id="hlRecyclePlayers" hidden>RECYCLE PLAYERS</button><button type="button" class="secondary" id="hlReviewBack">◀ BACK</button><button type="button" class="primary" id="hlDownload">DOWNLOAD CLASS</button></div>
   </div>
 </div>
 
@@ -6433,6 +6447,7 @@ const base = {
 
 let rng = Math.random;
 let generated = [];
+let recycleState = null;
 
 
 function hashSeed(text) {
@@ -9351,6 +9366,57 @@ function updatePlayerDimension(player, field, value) {
   return true;
 }
 
+function recycleNameKey(player) {
+  const name=[player.fn,player.ln].filter(Boolean).join(" ")
+    .replace(/\s+(?:jr\.?|sr\.?|ii|iii|iv|v)$/i,"");
+  return normalizeAppearancePlayerName(name);
+}
+
+async function recycleClassPlayers(indexes, onProgress = () => {}) {
+  const state=recycleState;
+  if (!state || document.getElementById("mode").value !== "real" ||
+      document.getElementById("gender").value !== state.gender ||
+      document.getElementById("classType").value !== state.type ||
+      Number(document.getElementById("draftYear").value) !== state.year)
+    throw new Error("Class settings changed. Generate the class again before recycling.");
+  const selected=[...new Set(indexes)].sort((a,b)=>a-b);
+  if (!selected.length || selected.some(index=>!Number.isInteger(index) || !generated[index]?.isReal))
+    throw new Error("Select real players to recycle.");
+  const excluded=new Set(state.excluded);
+  for (const player of generated) excluded.add(recycleNameKey(player));
+  const chosen=[], consumed=new Set();
+  for (const [index,player] of state.candidates.entries()) {
+    const key=recycleNameKey(player);
+    if (!key || excluded.has(key)) continue;
+    excluded.add(key);
+    chosen.push({...player});
+    consumed.add(index);
+    if (chosen.length===selected.length) break;
+  }
+  if (chosen.length<selected.length)
+    throw new Error(`Not enough eligible replacement players remain for this class (${chosen.length} available). No players were changed.`);
+  if (typeof window.__HOOPLAND_PREPARE_REAL_PLAYERS !== "function")
+    throw new Error("Player data preparation is unavailable. Refresh and try again.");
+  onProgress(0.1);
+  await window.__HOOPLAND_PREPARE_REAL_PLAYERS(chosen,state.gender);
+  attachRosterAppearances(chosen,state.gender,state.type,state.year);
+  const counts=new Map();
+  generated.forEach((player,index)=>{
+    if (selected.includes(index)) return;
+    const key=surnameKey(player.ln);
+    counts.set(key,(counts.get(key)||0)+1);
+  });
+  const replacements=selected.map((index,i)=>
+    makePlayer(generated[index].id,state.tierPlan[index],chosen[i],counts));
+  selected.forEach(index=>state.excluded.add(recycleNameKey(generated[index])));
+  selected.forEach((index,i)=>{generated[index]=replacements[i];});
+  state.candidates=state.candidates.filter((_,index)=>!consumed.has(index));
+  state.selected.clear();
+  renderClass();
+  onProgress(1);
+  return selected.length;
+}
+
 async function generateClass(onProgress = () => {}) {
 
   try {
@@ -9403,10 +9469,12 @@ async function generateClass(onProgress = () => {}) {
 
 
     generated = [];
+    recycleState = null;
     onProgress(0.02);
 
 
     let realPlayers = [];
+    let remainingPlayers = [];
     let classDataWarning = "";
 
 
@@ -9461,6 +9529,7 @@ async function generateClass(onProgress = () => {}) {
         }
         classDataWarning = typeof data.warning === "string" ? data.warning : "";
         data.players.forEach(canonicalizeRealPlayer);
+        remainingPlayers = data.players.slice(classSize);
         realPlayers = data.players.slice(0,classSize);
         if (typeof window.__HOOPLAND_PREPARE_REAL_PLAYERS !== "function") {
           realPlayers.forEach(player => {
@@ -9501,6 +9570,8 @@ async function generateClass(onProgress = () => {}) {
 
 
     renderClass();
+    if (mode === "real") recycleState={candidates:remainingPlayers,excluded:new Set(),selected:new Set(),
+      tierPlan,gender,type:classType,year:Number(document.getElementById("draftYear").value)};
     onProgress(1);
 
 
@@ -12595,9 +12666,17 @@ classSizePlus.addEventListener(
     const pages=Math.max(1,Math.ceil(generated.length/size));
     page=Math.min(Math.max(page,0),pages-1);
     const list=$("hlList");
+    const recycling=Boolean(recycleState);
+    $("hlRecycleHint").hidden=!recycling;
+    $("hlRecyclePlayers").hidden=!recycling;
+    $("hlRecyclePlayers").disabled=!recycling || recycleState.selected.size===0;
+    $("hlRecyclePlayers").textContent="RECYCLE PLAYERS"+(recycling && recycleState.selected.size ? ` (${recycleState.selected.size})` : "");
+    document.querySelector(".hl-list-head").classList.toggle("recycling",recycling);
     list.innerHTML="";
     generated.slice(page*size,page*size+size).forEach((player,i)=>{
       const pos=(POS.find(x=>Number(x[0])===player.pos)||[0,"?"])[1];
+      const entry=document.createElement("div");
+      entry.className="hl-entry";
       const row=document.createElement("div");
       row.className="hl-row";
       const stars="<i>★</i>".repeat(5);
@@ -12616,7 +12695,21 @@ classSizePlus.addEventListener(
       const open=()=>window.hlOpenPreview(playerIndex);
       row.addEventListener("click",open);
       row.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();open();}});
-      list.appendChild(row);
+      entry.appendChild(row);
+      if(recycling){
+        const toggle=document.createElement("button");
+        toggle.type="button";toggle.className="secondary hl-recycle-toggle";toggle.textContent="♻";
+        toggle.disabled=!player.isReal;
+        toggle.setAttribute("aria-label",`Select ${player.fn} ${player.ln} for recycling`);
+        toggle.setAttribute("aria-pressed",String(recycleState.selected.has(playerIndex)));
+        toggle.addEventListener("click",()=>{
+          if(recycleState.selected.has(playerIndex))recycleState.selected.delete(playerIndex);
+          else recycleState.selected.add(playerIndex);
+          drawList();
+        });
+        entry.appendChild(toggle);
+      }
+      list.appendChild(entry);
     });
     $("hlPageNum").textContent=(page+1)+"/"+pages;
     $("hlPrev").disabled=page===0;
@@ -12668,7 +12761,7 @@ classSizePlus.addEventListener(
     };
   }
 
-  async function submitClass(btn){
+  async function withLoading(btn,work){
     btn.disabled=true;
     const overlay=$("hlLoading"),msg=$("hlLoadingText");
     const fill=$("hlLoadingProgressFill");
@@ -12681,11 +12774,14 @@ classSizePlus.addEventListener(
     window.__HOOPLAND_PROGRESS=progress;
     try{
       await new Promise(resolve=>setTimeout(resolve,0));
-      await generateClass(progress);
+      return await work(progress);
     }finally{
       delete window.__HOOPLAND_PROGRESS;
       clearInterval(timer);overlay.classList.add("hidden");btn.disabled=false;
     }
+  }
+  async function submitClass(btn){
+    await withLoading(btn,generateClass);
     if(generated.length&&!$("status").classList.contains("error")){
       page=0;
       const resultTitle=$("hlResultTitle");
@@ -12697,6 +12793,18 @@ classSizePlus.addEventListener(
       drawList();
     }
   }
+  $("hlRecyclePlayers").addEventListener("click",async()=>{
+    const button=$("hlRecyclePlayers"), result=$("hlResultStatus");
+    try {
+      const count=await withLoading(button,progress=>recycleClassPlayers([...recycleState.selected],progress));
+      result.textContent=[$("status").textContent,`${count} player${count===1?"":"s"} recycled.`].filter(Boolean).join(" ");
+      result.className="ok";
+    } catch (error) {
+      result.textContent=error.message || "Unable to recycle players.";
+      result.className="error";
+    }
+    drawList();
+  });
   $("hlSubmit").addEventListener("click",()=>{
     if(!validCountryPercentages()){
       setStatus("Country percentages must be between 0 and 100 and total exactly 100%.","error");

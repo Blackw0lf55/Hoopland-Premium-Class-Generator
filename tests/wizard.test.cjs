@@ -98,7 +98,7 @@ test("export validation identifies null, non-finite, missing and sparse values",
 
 test("loading trivia always shows its answer immediately after the question", () => {
   const start = html.indexOf("  function createLoadingMessages(){");
-  const end = html.indexOf('  $("hlSubmit").addEventListener', start);
+  const end = html.indexOf("  async function withLoading(", start);
   const create = vm.runInNewContext(html.slice(start, end) + "\ncreateLoadingMessages");
   const next = create();
   const messages = Array.from({ length: 40 }, () => next());
@@ -264,7 +264,7 @@ test("spec validation, submission errors and review back follow the selected mod
   const start = html.indexOf("  function createLoadingMessages(){");
   const end = html.indexOf('  $("hlDownload").addEventListener',start);
   const elements = {};
-  for (const id of ["hlSubmit","hlAttrContinue","hlSpecContinue","hlReviewBack","hlLoading","hlLoadingText","hlLoadingProgressFill",
+  for (const id of ["hlSubmit","hlAttrContinue","hlSpecContinue","hlReviewBack","hlLoading","hlLoadingText","hlLoadingProgressFill","hlRecyclePlayers",
     "status","className","hlResultTitle","hlResultStatus","mode"]) {
     elements[id]={style:{},classList:{add(){},remove(){},contains(name){return name==="error"&&elements.status.className.includes("error");}},
       addEventListener(type,fn){this[type]=fn;}};

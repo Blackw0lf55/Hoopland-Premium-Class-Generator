@@ -2,6 +2,27 @@ import { athleteDimensions } from "./measurements.js";
 
 const UA = "Mozilla/5.0 (compatible; Hoopland-Class-Generator/1.0; +https://github.com/Blackw0lf55/Hoopland-Premium-Class-Generator)";
 
+export const unavailableClassSource = status =>
+  status === 0 || status === 403 || status === 429 || status >= 500;
+
+export async function fetchClassSource(url, headers, format) {
+  const start = Date.now();
+  let status = "error";
+  try {
+    const response = await fetch(url, {headers, signal:AbortSignal.timeout(8000)});
+    status = response.status;
+    const data = response.ok ? await response[format]() : null;
+    return {response,data};
+  } catch (error) {
+    status = error.name === "TimeoutError" || error.name === "AbortError" ? "timeout" : "error";
+    throw error;
+  } finally {
+    const source=new URL(url);
+    const season=source.searchParams.get("season") || source.searchParams.get("Season") || source.searchParams.get("page") || "";
+    console.info("Class source timing", source.hostname+source.pathname, season, status, Date.now()-start, "ms");
+  }
+}
+
 const decode = text =>
   String(text || "")
     .replace(/&nbsp;|&#160;/g, " ")
@@ -115,13 +136,12 @@ function normalizeCountry(cell) {
 
 async function fetchText(url) {
   try {
-    const response = await fetch(url, {
-      headers: { "User-Agent": UA, Accept: "text/html,application/json" }
-    });
+    const {response,data} = await fetchClassSource(url,
+      { "User-Agent": UA, Accept: "text/html,application/json" }, "text");
     return {
       ok: response.ok,
       status: response.status,
-      text: response.ok ? await response.text() : ""
+      text: data || ""
     };
   } catch (error) {
     console.warn("Class source request failed", url, error);
@@ -227,20 +247,17 @@ async function loadNbaComDraft(gender, year) {
     `https://stats.nba.com/stats/drafthistory?LeagueID=${leagueId}&Season=${season}`;
 
   try {
-    const response = await fetch(url, {
-      headers: {
+    const {response,data} = await fetchClassSource(url, {
         "User-Agent": UA,
         Referer: "https://www.nba.com/",
         Origin: "https://www.nba.com",
         Accept: "application/json"
-      }
-    });
+      }, "json");
 
     if (!response.ok) {
       return { players: [], status: response.status };
     }
 
-    const data = await response.json();
     const set = (data.resultSets || [])[0];
 
     if (!set) {
@@ -547,10 +564,9 @@ export async function filterWomenDraftSeniors(players, year, verifySenior) {
 async function loadEspnDraftHistory(gender, year) {
   const league = gender === "women" ? "wnba" : "nba";
   try {
-    const response = await fetch(`https://site.api.espn.com/apis/site/v2/sports/basketball/${league}/draft?season=${year}`,
-      { headers: { "User-Agent": UA, Accept: "application/json" } });
+    const {response,data} = await fetchClassSource(`https://site.api.espn.com/apis/site/v2/sports/basketball/${league}/draft?season=${year}`,
+      { "User-Agent": UA, Accept: "application/json" }, "json");
     if (!response.ok) return { players: [], status: response.status, verified: false };
-    const data = await response.json();
     const season = Number(String(data?.displayName || "").match(/\b(?:19|20)\d{2}\b/)?.[0] || data?.season?.year);
     if (season !== year || !Array.isArray(data.picks) || !data.picks.length) {
       return { players: [], status: response.status, verified: false };
@@ -576,11 +592,10 @@ async function loadCurrentNbaPlayers() {
   const season = `${start}-${String((start + 1) % 100).padStart(2, "0")}`;
   const url = `https://stats.nba.com/stats/commonallplayers?LeagueID=00&Season=${season}&IsOnlyCurrentSeason=1`;
   try {
-    const response = await fetch(url, { headers: {
+    const {response,data} = await fetchClassSource(url, {
       "User-Agent": UA, Referer: "https://www.nba.com/", Origin: "https://www.nba.com/", Accept: "application/json"
-    } });
+    }, "json");
     if (!response.ok) return { players: [], status: response.status, season, verified: false };
-    const data = await response.json();
     const set = data.resultSets?.[0];
     const nameColumn = set?.headers?.indexOf("DISPLAY_FIRST_LAST");
     if (!Number.isInteger(nameColumn) || nameColumn < 0 || !Array.isArray(set.rowSet)) {
@@ -637,9 +652,8 @@ async function loadEspnDraftPlayers(gender, year) {
   const league = gender === "women" ? "wnba" : "nba";
   const url = `https://site.api.espn.com/apis/site/v2/sports/basketball/${league}/draft?season=${year}`;
   try {
-    const response = await fetch(url, { headers: { "User-Agent": UA, Accept: "application/json" } });
+    const {response,data} = await fetchClassSource(url, { "User-Agent": UA, Accept: "application/json" }, "json");
     if (!response.ok) return { players: [], status: response.status };
-    const data = await response.json();
     return { players: espnDraftPlayers(data, year), selections: espnDraftSelections(data, year), status: response.status };
   } catch (error) {
     console.warn("ESPN draft lookup failed", gender, year, error);
@@ -677,17 +691,6 @@ async function loadProjectedDraft(gender, year, options = {}) {
   const diagnostics = [];
 
   const recruitingYears = gender === "women" ? [1, 2, 3, 4, 5, 6] : [1, 2, 3, 4];
-  const classes = await Promise.all(recruitingYears.map(back => loadFreshmen(gender, year - back)));
-  for (const [index, back] of recruitingYears.entries()) {
-    const loaded = classes[index];
-
-    diagnostics.push({ classYear: year - back, parsed: loaded.players.length });
-
-    for (const player of loaded.players) {
-      pool.push({ ...player, projectedScore: player.rank * (weights[back] || weights[4]) });
-    }
-  }
-
   const ineligible = new Set();
   const nowYear = new Date().getFullYear();
   const draftYears = [];
@@ -696,7 +699,8 @@ async function loadProjectedDraft(gender, year, options = {}) {
     draftYears.push(y);
   }
 
-  const [pastDrafts, roster] = await Promise.all([
+  const [classes, pastDrafts, roster, rosterResult] = await Promise.all([
+    Promise.all(recruitingYears.map(back => loadFreshmen(gender, year - back))),
     Promise.all(draftYears.map(async y => {
       const [wiki, nba, espn] = await Promise.all([
         loadWikipediaDraft(gender, y), loadNbaComDraft(gender, y), loadEspnDraftHistory(gender, y)
@@ -704,8 +708,20 @@ async function loadProjectedDraft(gender, year, options = {}) {
       return { year:y, players:[...wiki.players, ...nba.players, ...espn.players],
         verified:Boolean(wiki.players.length || nba.players.length || espn.verified) };
     })),
-    gender === "men" ? loadCurrentNbaPlayers() : Promise.resolve(null)
+    gender === "men" ? loadCurrentNbaPlayers() : Promise.resolve(null),
+    gender === "women" && options.rosterCandidates
+      ? Promise.resolve().then(()=>options.rosterCandidates(year)).then(
+          value=>({value}),error=>({error}))
+      : Promise.resolve(null)
   ]);
+
+  for (const [index, back] of recruitingYears.entries()) {
+    const loaded = classes[index];
+    diagnostics.push({ classYear: year - back, parsed: loaded.players.length, attempts:loaded.diagnostics.attempts });
+    for (const player of loaded.players) {
+      pool.push({ ...player, projectedScore: player.rank * (weights[back] || weights[4]) });
+    }
+  }
 
   const missingYears = pastDrafts.filter(draft => !draft.verified).map(draft => draft.year);
   if (missingYears.length && gender !== "women") {
@@ -726,17 +742,17 @@ async function loadProjectedDraft(gender, year, options = {}) {
     pool.unshift(...priority);
   }
   let rosterWarning = "";
-  if (gender === "women" && options.rosterCandidates) {
-    try {
-      const candidates = await options.rosterCandidates(year);
+  if (rosterResult) {
+    if (rosterResult.error) {
+      console.warn("Women's college roster lookup failed", year, rosterResult.error);
+      rosterWarning = "School-roster candidates could not be loaded.";
+    } else {
+      const candidates = rosterResult.value;
       if (candidates === null) rosterWarning = `School-roster data for ${year} is unavailable.`;
       else {
         diagnostics.push({schoolRosterCandidates:candidates.length});
         candidates.forEach((player,index)=>pool.push({...player,projectedScore:10000+index}));
       }
-    } catch (error) {
-      console.warn("Women's college roster lookup failed", year, error);
-      rosterWarning = "School-roster candidates could not be loaded.";
     }
   }
   diagnostics.push({ priorDraftYears:draftYears, excludedNames:ineligible.size,
@@ -762,6 +778,9 @@ async function loadProjectedDraft(gender, year, options = {}) {
   return { players, diagnostics: { projected: true, classes: diagnostics },
     warning: [
       missingYears.length ? `Prior draft results for ${missingYears.join(", ")} could not be verified; previously drafted players may appear.` : "",
+      classes.some(item=>!item.players.length || item.diagnostics.attempts.some(
+        attempt=>unavailableClassSource(attempt.status)))
+        ? "Some recruiting sources were unavailable; projected prospects may be missing." : "",
       rosterWarning,
       roster && !roster.verified ? "Current NBA roster could not be verified; undrafted NBA players may appear in this class." : ""
     ].filter(Boolean).join(" ") };
@@ -798,6 +817,10 @@ export async function handleClassData(request, options = {}) {
       loaded.diagnostics.fallback = "ESPN draft selections";
     }
     loaded.players = attachEspnDraftPlayers(loaded.players, espn.players);
+    loaded.diagnostics.espnDraft.complete = Boolean(espn.selections?.length &&
+      loaded.players.length === espn.selections.length &&
+      loaded.players.every(player=>espn.selections.some(selection=>
+        selection.draftPick === player.draftPick && nameKey(selection) === nameKey(player))));
 
     if (!loaded.players.length && year >= new Date().getFullYear()) {
       loaded = await loadProjectedDraft(gender, year, options);
@@ -806,6 +829,12 @@ export async function handleClassData(request, options = {}) {
   else {
     loaded = await loadFreshmen(gender, year);
   }
+
+  const sourceUnavailable = type === "draft" && !loaded.diagnostics.projected && !loaded.diagnostics.espnDraft?.complete
+    ? [loaded.diagnostics.status,loaded.diagnostics.nbaCom?.status,loaded.diagnostics.espnDraft?.status].some(unavailableClassSource)
+    : type === "freshman" && loaded.diagnostics.attempts.some(attempt=>unavailableClassSource(attempt.status));
+  if (sourceUnavailable && loaded.players.length) loaded.warning = [loaded.warning,
+    "Some class sources were unavailable; the player list may be incomplete."].filter(Boolean).join(" ");
 
   if (gender === "women" && type === "draft" && loaded.players.length) {
     const filtered = await filterWomenDraftSeniors(loaded.players, year, options.verifySenior);

@@ -1,6 +1,8 @@
 # Hoopland-Premium-Class-Generator
 Create realistic accurate classes for hoopland that you can upload and use right away! Control every aspect of player generation for easy class creation!
 
+The main screen includes a link to the Hoop Land Discord channel.
+
 Real-player looks use supplied roster references, imported appearances and
 community-approved edits. Features without a reference use neutral placeholders,
 not predictions. Review appearances before downloading; preview edits are
@@ -142,6 +144,13 @@ matched college jersey number when available; otherwise a generated number is
 used and retained in the export. The appearance preview shows that jersey number.
 Opening a player shows the appearance editor
 first; the bottom button switches between appearances and attributes.
+In a real class, use each player's ♻ button to select a batch, then choose
+**Recycle Players** to replace them with the next unused candidates from that
+year's eligibility-filtered class list. Unselected players and edits stay unchanged;
+recycled names cannot reappear in that class. If there are too few eligible
+candidates, no players are replaced. Recycling uses the same eligibility
+rules and data preparation as the original generation, not a new verification
+of whether a selected player appeared in a previous custom class.
 
 The appearance preview is migrating to aligned sprite layers. The supplied
 bald full-body base, all 171 hairstyles (including bald), all 31 facial-hair
@@ -293,6 +302,15 @@ women's generation warns that previously drafted players may remain.
 Men's projections also check the current NBA season's player list; if it is
 unavailable, generation warns that undrafted NBA players might remain. These
 name-based checks can mistake different players with the same name.
+
+Class-source requests time out after eight seconds and log endpoint timings
+in the worker logs. Independent projected-class lookups run concurrently;
+missing sources may produce warnings or prevent generation where eligibility
+cannot be verified. Complete, verified class lists are cached at the Cloudflare
+edge for seven days for past years and one hour for current or future years.
+Incomplete or warning-bearing results are not cached. Cache availability varies
+by edge location, so the first request can still take longer. Uploaded and
+community player details are loaded separately after the class list.
 
 For real women's drafts, US prospects must be verified as seniors on their
 college roster for the draft season; prospects identified by the source as
