@@ -15,6 +15,49 @@ spec.loader.exec_module(module)
 
 
 class ExtractionTests(unittest.TestCase):
+    def test_atlas_contains_exact_reviewed_layers(self):
+        assets = path.parents[1] / "assets"
+        positions = json.loads((assets / "sprite_atlas.json").read_text())
+        expected = set()
+        for manifest, directory in (("hair", "hair"), ("facial_hair", "facial_hair"),
+                                    ("accessory", "accessories")):
+            entries = json.loads((assets / f"{manifest}_manifest.json").read_text())
+            expected.update(f"assets/{directory}/{entry['file']}" for entry in entries.values())
+        self.assertEqual(set(positions), expected)
+        with Image.open(assets / "sprite_atlas.png") as atlas:
+            for name, rect in positions.items():
+                with self.subTest(name=name), Image.open(path.parents[1] / name) as source:
+                    x, y, width, height, left, top = rect
+                    source = source.convert("RGBA")
+                    if not width or not height:
+                        self.assertIsNone(source.getchannel("A").getbbox())
+                        continue
+                    self.assertLessEqual(x + width, atlas.width)
+                    self.assertLessEqual(y + height, atlas.height)
+                    cropped = source.crop((left, top, left + width, top + height))
+                    self.assertEqual(cropped.tobytes(),
+                                     atlas.crop((x, y, x + width, y + height)).tobytes())
+                    self.assertEqual(source.getchannel("A").getbbox(),
+                                     (left, top, left + width, top + height))
+
+    def test_screenshot_artifacts_do_not_cover_face_or_beard(self):
+        assets = path.parents[1] / "assets"
+        for ident in (2, 3, 12, 19, 20, 21, 22, 23):
+            with self.subTest(accessory=ident), Image.open(
+                    assets / "accessories" / f"accessory_{ident:03}.png") as image:
+                alpha = image.convert("RGBA").getchannel("A")
+                self.assertIsNone(alpha.crop((84, 184, 158, 189)).getbbox())
+                self.assertIsNone(alpha.crop((106, 144, 107, 164)).getbbox())
+        with Image.open(assets / "accessories" / "accessory_023.png") as image:
+            self.assertIsNone(image.getchannel("A").crop((172, 144, 173, 164)).getbbox())
+            self.assertGreater(image.getchannel("A").getpixel((100, 115)), 0)
+        for ident in (25, 26, 40, 57, 104, 123, 128, 138, 143, 167):
+            with self.subTest(hair=ident), Image.open(
+                    assets / "hair" / f"hair_{ident:03}.png") as image:
+                alpha = image.convert("RGBA").getchannel("A")
+                self.assertIsNone(alpha.crop((91, 147, 106, 157)).getbbox())
+                self.assertIsNone(alpha.crop((121, 147, 143, 157)).getbbox())
+
     def test_earring_layer_has_no_stray_face_pixels(self):
         image_path = path.parents[1] / "assets" / "accessories" / "accessory_016.png"
         with Image.open(image_path) as image:

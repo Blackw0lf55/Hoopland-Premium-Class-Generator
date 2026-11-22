@@ -12506,13 +12506,13 @@ classSizePlus.addEventListener(
 (function(){
   const $=id=>document.getElementById(id);
   let idx=0,photoIndex=0,artVersion=0;
-  const spriteRenderer = Promise.all(["hair","facial_hair","accessory"].map(name=>
-    fetch(`assets/${name}_manifest.json`).then(response=>{
+  const spriteRenderer = Promise.all(["hair_manifest","facial_hair_manifest","accessory_manifest","sprite_atlas"].map(name=>
+    fetch(`assets/${name}.json`).then(response=>{
       if(!response.ok)throw new Error(`HTTP ${response.status} loading ${name} manifest`);
       return response.json();
     })
-  )).then(([manifest,facialManifest,accessoryManifest])=>createSpriteRenderer({
-    manifest,facialManifest,accessoryManifest,
+  )).then(([manifest,facialManifest,accessoryManifest,atlas])=>createSpriteRenderer({
+    manifest,facialManifest,accessoryManifest,atlas,
     loadImage:path=>new Promise((resolve,reject)=>{
       const image=new Image();
       image.onload=()=>resolve(image);
@@ -12525,15 +12525,17 @@ classSizePlus.addEventListener(
     return {error};
   });
 
-  function showArt(player){
+  function showArt(player,clear=false){
     const version=++artVersion;
     const appearance=player.appearance;
     const set=(appearance.accessories || [])[0] || {};
     const accId=set.headAcc && set.headAcc!=="none" ? Number(set.headAcc) : 0;
     const facialId=Number(appearance.fHair) || 0;
-    $("hlPvArt").replaceChildren();
-    $("hlPvHairGridError").textContent="Loading appearance preview...";
-    $("hlPvHairGridError").hidden=false;
+    if(clear)$("hlPvArt").replaceChildren();
+    if(!$("hlPvArt").hasChildNodes()){
+      $("hlPvHairGridError").textContent="Loading appearance preview...";
+      $("hlPvHairGridError").hidden=false;
+    }
     spriteRenderer.then(renderer=>{
       if(renderer.error)throw renderer.error;
       return renderer.renderPlayer({
@@ -12559,6 +12561,7 @@ classSizePlus.addEventListener(
     }).catch(error=>{
       console.error("Could not render sprite preview:",error);
       if(version===artVersion){
+        $("hlPvArt").replaceChildren();
         $("hlPvHairGridError").textContent=`Appearance preview unavailable: ${error.message}`;
         $("hlPvHairGridError").hidden=false;
       }
@@ -12775,7 +12778,7 @@ classSizePlus.addEventListener(
     const notice=playerEditNotice(p.appearanceWarnings||[]);
     $("hlPvWarnings").textContent=notice;
     $("hlPvWarnings").hidden=!notice;
-    showArt(p);
+    showArt(p,true);
     $("hlPvDesc").value="";
     buildChoices(p);
     showRatings(p);
