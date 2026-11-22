@@ -93,11 +93,21 @@ class ExtractionTests(unittest.TestCase):
     def test_facial_hair_position_on_base_canvas(self):
         assets = path.parents[1] / "assets" / "facial_hair"
         for filename, bounds in [
-            ("facial_001.png", (94, 176, 135, 194)),
+            ("facial_001.png", (99, 176, 135, 190)),
             ("facial_012.png", (80, 163, 162, 208)),
         ]:
             with self.subTest(filename=filename), Image.open(assets / filename) as image:
                 self.assertEqual(image.getchannel("A").getbbox(), bounds)
+
+    def test_detached_dark_facial_artifacts_are_removed(self):
+        assets = path.parents[1] / "assets" / "facial_hair"
+        for ident, point in [(1, (94, 190)), (9, (94, 190)), (13, (107, 190)),
+                             (24, (107, 190)), (26, (135, 197)),
+                             (28, (143, 190)), (31, (107, 190))]:
+            with self.subTest(facial=ident), Image.open(assets / f"facial_{ident:03}.png") as image:
+                self.assertEqual(image.getchannel("A").getpixel(point), 0)
+        with Image.open(assets / "facial_003.png") as image:
+            self.assertEqual(image.convert("RGBA").getpixel((87, 190)), (0, 0, 0, 255))
 
     def test_available_layers_have_the_canonical_canvas_and_manifest_ids(self):
         assets = path.parents[1] / "assets"
