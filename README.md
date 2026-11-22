@@ -140,11 +140,39 @@ white shows potential and gold overlays current ability. Real players use a
 matched college jersey number when available; otherwise a generated number is
 used and retained in the export. Opening a player shows the appearance editor
 first; the bottom button switches between appearances and attributes. The
-editable portrait uses approximate, catalog-based hairstyle, facial-hair and
+fallback portrait uses approximate, catalog-based hairstyle, facial-hair and
 head-accessory drawings on a 256×256 square-pixel canvas. Hair is kept clear
 of the eyebrows, faded styles have shaded temples, and eyewear lenses are
 translucent. The unnumbered V-neck jersey is preview-only; the export retains
 the player's jersey number. The portrait is not an exact in-game rendering.
+
+The appearance preview is migrating to aligned sprite layers. The supplied
+bald full-body base, 145 hairstyles (including bald), all 31 facial-hair
+styles, and 15 head accessories are available in `assets/`. Their 256×336
+canvases share the base's origin and include uniform transparent top padding.
+The source screenshots show different players, colors, and animation poses;
+these layers are approximations, not pixel-exact game sprites.
+
+`sprite-preview.js` composes the base, hair, facial hair, then accessories. It
+recolors each layer while retaining shading and alpha and caches a bounded
+number of compositions by appearance. The three asset manifests list available
+styles. `index.html` uses the existing procedural portrait whenever any selected
+layer is unavailable, including hairstyles with ambiguous shoulder overlap and
+eyewear whose transparency could not be separated reliably. Changing a style
+may therefore switch preview formats. This does not change exported values.
+`portrait-preview.js` and `hair-preview.js` remain in use for fallback.
+
+To prepare additional candidates, install Pillow and run
+`python3 scripts/extract-hair.py --reference bald.png --sources registered/ --masks masks/ --output candidates/`.
+Provide same-size, pre-registered PNGs named `style_001.png` through
+`style_170.png` and manually reviewed grayscale masks named `mask_001.png`
+etc. The utility compares each image to the bald reference, intersects changes
+with its mask, and writes full-canvas PNGs and a candidate manifest. It does
+not register screenshots or resolve their differing skin tones, poses, or
+JPEG artifacts. Review and correct candidates before moving them into
+`assets/`; do not deploy the generated manifest as-is. Complete the migration
+by correcting the remaining 26 hairstyles and 10 accessories before removing
+the fallback. Future layers must use the same dimensions and origin as the base.
 
 Three 24×24 hairstyle grids are provided in
 `data/hairstyle-grids.json`. Values 0–3 mean transparent, base, 15% darker,
