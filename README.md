@@ -21,6 +21,17 @@ are included in the export.
 Awa Fam's source name variations are normalized before matching. Getty Images
 is not used as a photo source.
 
+Fictional players, including fictional fill-ins in real classes, use hairstyle
+pools weighted for the selected class year through the 1990s; modern classes
+retain the existing pool. For historical men, light skin uses a white-style
+pool, bronze and dark skin use a Black-style pool, and medium skin uses shared
+styles only. Skin tone is an imperfect visual proxy, not a determination of
+race; these are broad approximations, not restrictions on individuals.
+Real-player looks from saved references or edits take precedence;
+otherwise a neutral, period-aware placeholder is used. Hairstyle history is
+informed by [this overview of NBA hairstyles](https://andscape.com/features/haaaaaair-ball-nba-hair/)
+and [this general historical overview](https://hairstyleatlas.com/historical-hairstyles).
+
 Attribute actual and potential caps adjust in 0.5 increments. The left and right
 halves of each bar segment show the corresponding half-point limits.
 

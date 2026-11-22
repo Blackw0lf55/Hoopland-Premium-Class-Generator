@@ -5,6 +5,53 @@ const path=require("node:path");
 const vm=require("node:vm");
 const html=fs.readFileSync(path.join(__dirname,"..","index.html"),"utf8");
 
+test("generated hairstyles follow the class year without changing the modern pool", () => {
+  const pools=html.slice(html.indexOf("const MEN_HAIRS="),html.indexOf("  /*\n  HOOP LAND HAIRSTYLE"));
+  const selector=html.slice(html.indexOf("const HISTORICAL_HAIR_POOLS ="),html.indexOf("function shoeColorsEnabled("));
+  const context=vm.createContext({picked:[],pick:items=>{context.picked=Array.from(items);return items[0];},
+    weightedPick:items=>{context.picked=items.map(([id])=>id);return items[0][0];}});
+  const choose=vm.runInContext(`${pools}\n${selector}\nchooseHairStyle`,context);
+  const styles=(gender,year,group="light")=>{
+    choose(gender,{group},"black",year);
+    return context.picked;
+  };
+  assert.ok(!styles("0",1964,"dark").includes(121));
+  assert.ok(styles("0",1964,"dark").includes(36));
+  assert.ok(styles("0",1969,"dark").includes(121));
+  assert.ok(styles("0",1975,"dark").includes(130));
+  assert.ok(!styles("0",1975,"light").includes(130));
+  assert.ok(!styles("0",1975,"medium").includes(130));
+  assert.ok(styles("0",1975,"light").includes(5));
+  assert.ok(!styles("0",1975,"dark").includes(5));
+  assert.ok(styles("0",1975,"medium").includes(1));
+  assert.ok(styles("1",1975).includes(130));
+  assert.ok(!styles("0",1997,"dark").includes(71));
+  assert.ok(styles("0",1998,"dark").includes(71));
+  assert.ok(!styles("0",1998,"light").includes(71));
+  assert.ok(!styles("1",1950,"dark").includes(19));
+  assert.ok(styles("0",2026).includes(170));
+  assert.ok(styles("1",2026).includes(167));
+  assert.ok(styles("0",2026).every(id=>Number.isInteger(id)&&id>=0&&id<=170));
+});
+
+test("appearance generation receives the class year and keeps real-player placeholders neutral", () => {
+  const code=html.slice(html.indexOf("function generateAppearance(gender,"),html.indexOf("function generateAutomaticTendencies("));
+  const context=vm.createContext({
+    APPEARANCE_PALETTES:[{group:"light",skins:["aaaaaa"],eyes:["111111"],tattoos:["222222"]},
+      {group:"medium",skins:["bbbbbb","bbbbbb","bbbbbb"],eyes:["111111"],tattoos:["222222"]}],
+    pick:items=>items[0],chooseHairColor:()=>({group:"black",color:"202020"}),
+    chooseHairStyle:(gender,palette,hairGroup,year)=>year<1970?1:121,
+    harmonizeFaceColors:a=>a,padStyle:id=>String(id).padStart(4,"0"),
+    shoeColorsEnabled:()=>false,buildAccessories:()=>[],rng:()=>1,MEN_FACIAL_HAIR:[0]
+  });
+  const generate=vm.runInContext(code+"\ngenerateAppearance",context);
+  assert.equal(generate("0",false,1964).hair,"0001");
+  assert.equal(generate("0",false,1975).hair,"0121");
+  assert.equal(generate("1",true,1950).hair,"0103");
+  assert.equal(generate("1",true,2026).hair,"0018");
+  assert.equal(generate("0",true,1975).hair,"0001");
+});
+
 test("draft starter skills reflect ability, exclude women's dunk skill and retain game export structure", async () => {
   const code=html.slice(html.indexOf("function starterSkills("),html.indexOf("function makePlayer("));
   const context=vm.createContext({rng:()=>0,weightedPick:items=>items[items.length-1][0]});
