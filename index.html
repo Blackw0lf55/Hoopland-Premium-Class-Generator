@@ -12471,11 +12471,13 @@ classSizePlus.addEventListener(
 (function(){
   const $=id=>document.getElementById(id);
   let idx=0,photoIndex=0,hairstyleGrids=null,artVersion=0;
-  const spriteRenderer = fetch("assets/hair_manifest.json").then(response=>{
-    if(!response.ok)throw new Error(`HTTP ${response.status}`);
-    return response.json();
-  }).then(manifest=>createSpriteRenderer({
-    manifest,
+  const spriteRenderer = Promise.all(["hair","facial_hair","accessory"].map(name=>
+    fetch(`assets/${name}_manifest.json`).then(response=>{
+      if(!response.ok)throw new Error(`HTTP ${response.status} loading ${name} manifest`);
+      return response.json();
+    })
+  )).then(([manifest,facialManifest,accessoryManifest])=>createSpriteRenderer({
+    manifest,facialManifest,accessoryManifest,
     loadImage:path=>new Promise((resolve,reject)=>{
       const image=new Image();
       image.onload=()=>resolve(image);
@@ -12511,15 +12513,20 @@ classSizePlus.addEventListener(
     const parts=hairPixelParts(hair,hairstyleGrids);
     const set=(appearance.accessories || [])[0] || {};
     const accId=set.headAcc && set.headAcc!=="none" ? Number(set.headAcc) : 0;
+    const facialId=Number(appearance.fHair) || 0;
     $("hlPvArt").replaceChildren(portraitCanvas(player,parts,getFacialHairReference(Number(appearance.fHair)),getPrimaryAccessoryReference(accId),hair));
-    // Keep the existing portrait for unreviewed hair or unsupported overlays.
-    if(Number(appearance.fHair) || accId) return;
+    // Keep a complete procedural portrait whenever any selected layer is unavailable.
     spriteRenderer.then(renderer=>{
-      if(!renderer || !renderer.supportsStyle(Number(appearance.hair)))return null;
+      if(!renderer || !renderer.supportsStyle(Number(appearance.hair)) ||
+         (facialId && !renderer.supportsFacialHair(facialId)) ||
+         (accId && !renderer.supportsAccessory(accId)))return null;
       return renderer.renderPlayer({
         skinColor:appearance.skinC,
         hairStyle:Number(appearance.hair),
-        hairColor:appearance.hairC
+        hairColor:appearance.hairC,
+        facialHair:facialId,
+        facialHairColor:appearance.fHairC || appearance.hairC,
+        accessories:accId ? [{style:accId,color:/^[0-9a-f]{6}$/i.test(set.headAccC || "")?set.headAccC:"ffffff"}] : []
       });
     }).then(sprite=>{
       if(!sprite || version!==artVersion)return;

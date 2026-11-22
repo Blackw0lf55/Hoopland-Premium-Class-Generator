@@ -1,4 +1,582 @@
 {
-  "0": { "file": "hair_000.png", "name": "Bald" },
-  "1": { "file": "hair_001.png", "name": "Style 1" }
+  "0": {
+    "file": "hair_000.png",
+    "name": "Bald"
+  },
+  "1": {
+    "file": "hair_001.png",
+    "name": "Style 1"
+  },
+  "2": {
+    "file": "hair_002.png",
+    "name": "Style 2"
+  },
+  "3": {
+    "file": "hair_003.png",
+    "name": "Style 3"
+  },
+  "4": {
+    "file": "hair_004.png",
+    "name": "Style 4"
+  },
+  "5": {
+    "file": "hair_005.png",
+    "name": "Style 5"
+  },
+  "6": {
+    "file": "hair_006.png",
+    "name": "Style 6"
+  },
+  "7": {
+    "file": "hair_007.png",
+    "name": "Style 7"
+  },
+  "8": {
+    "file": "hair_008.png",
+    "name": "Style 8"
+  },
+  "9": {
+    "file": "hair_009.png",
+    "name": "Style 9"
+  },
+  "10": {
+    "file": "hair_010.png",
+    "name": "Style 10"
+  },
+  "11": {
+    "file": "hair_011.png",
+    "name": "Style 11"
+  },
+  "12": {
+    "file": "hair_012.png",
+    "name": "Style 12"
+  },
+  "13": {
+    "file": "hair_013.png",
+    "name": "Style 13"
+  },
+  "14": {
+    "file": "hair_014.png",
+    "name": "Style 14"
+  },
+  "15": {
+    "file": "hair_015.png",
+    "name": "Style 15"
+  },
+  "16": {
+    "file": "hair_016.png",
+    "name": "Style 16"
+  },
+  "17": {
+    "file": "hair_017.png",
+    "name": "Style 17"
+  },
+  "18": {
+    "file": "hair_018.png",
+    "name": "Style 18"
+  },
+  "19": {
+    "file": "hair_019.png",
+    "name": "Style 19"
+  },
+  "20": {
+    "file": "hair_020.png",
+    "name": "Style 20"
+  },
+  "21": {
+    "file": "hair_021.png",
+    "name": "Style 21"
+  },
+  "23": {
+    "file": "hair_023.png",
+    "name": "Style 23"
+  },
+  "28": {
+    "file": "hair_028.png",
+    "name": "Style 28"
+  },
+  "29": {
+    "file": "hair_029.png",
+    "name": "Style 29"
+  },
+  "30": {
+    "file": "hair_030.png",
+    "name": "Style 30"
+  },
+  "31": {
+    "file": "hair_031.png",
+    "name": "Style 31"
+  },
+  "32": {
+    "file": "hair_032.png",
+    "name": "Style 32"
+  },
+  "33": {
+    "file": "hair_033.png",
+    "name": "Style 33"
+  },
+  "34": {
+    "file": "hair_034.png",
+    "name": "Style 34"
+  },
+  "35": {
+    "file": "hair_035.png",
+    "name": "Style 35"
+  },
+  "36": {
+    "file": "hair_036.png",
+    "name": "Style 36"
+  },
+  "37": {
+    "file": "hair_037.png",
+    "name": "Style 37"
+  },
+  "38": {
+    "file": "hair_038.png",
+    "name": "Style 38"
+  },
+  "39": {
+    "file": "hair_039.png",
+    "name": "Style 39"
+  },
+  "41": {
+    "file": "hair_041.png",
+    "name": "Style 41"
+  },
+  "43": {
+    "file": "hair_043.png",
+    "name": "Style 43"
+  },
+  "44": {
+    "file": "hair_044.png",
+    "name": "Style 44"
+  },
+  "45": {
+    "file": "hair_045.png",
+    "name": "Style 45"
+  },
+  "46": {
+    "file": "hair_046.png",
+    "name": "Style 46"
+  },
+  "47": {
+    "file": "hair_047.png",
+    "name": "Style 47"
+  },
+  "48": {
+    "file": "hair_048.png",
+    "name": "Style 48"
+  },
+  "49": {
+    "file": "hair_049.png",
+    "name": "Style 49"
+  },
+  "50": {
+    "file": "hair_050.png",
+    "name": "Style 50"
+  },
+  "51": {
+    "file": "hair_051.png",
+    "name": "Style 51"
+  },
+  "52": {
+    "file": "hair_052.png",
+    "name": "Style 52"
+  },
+  "53": {
+    "file": "hair_053.png",
+    "name": "Style 53"
+  },
+  "54": {
+    "file": "hair_054.png",
+    "name": "Style 54"
+  },
+  "55": {
+    "file": "hair_055.png",
+    "name": "Style 55"
+  },
+  "56": {
+    "file": "hair_056.png",
+    "name": "Style 56"
+  },
+  "58": {
+    "file": "hair_058.png",
+    "name": "Style 58"
+  },
+  "59": {
+    "file": "hair_059.png",
+    "name": "Style 59"
+  },
+  "60": {
+    "file": "hair_060.png",
+    "name": "Style 60"
+  },
+  "61": {
+    "file": "hair_061.png",
+    "name": "Style 61"
+  },
+  "62": {
+    "file": "hair_062.png",
+    "name": "Style 62"
+  },
+  "63": {
+    "file": "hair_063.png",
+    "name": "Style 63"
+  },
+  "65": {
+    "file": "hair_065.png",
+    "name": "Style 65"
+  },
+  "66": {
+    "file": "hair_066.png",
+    "name": "Style 66"
+  },
+  "67": {
+    "file": "hair_067.png",
+    "name": "Style 67"
+  },
+  "68": {
+    "file": "hair_068.png",
+    "name": "Style 68"
+  },
+  "69": {
+    "file": "hair_069.png",
+    "name": "Style 69"
+  },
+  "70": {
+    "file": "hair_070.png",
+    "name": "Style 70"
+  },
+  "71": {
+    "file": "hair_071.png",
+    "name": "Style 71"
+  },
+  "72": {
+    "file": "hair_072.png",
+    "name": "Style 72"
+  },
+  "73": {
+    "file": "hair_073.png",
+    "name": "Style 73"
+  },
+  "74": {
+    "file": "hair_074.png",
+    "name": "Style 74"
+  },
+  "75": {
+    "file": "hair_075.png",
+    "name": "Style 75"
+  },
+  "76": {
+    "file": "hair_076.png",
+    "name": "Style 76"
+  },
+  "77": {
+    "file": "hair_077.png",
+    "name": "Style 77"
+  },
+  "78": {
+    "file": "hair_078.png",
+    "name": "Style 78"
+  },
+  "79": {
+    "file": "hair_079.png",
+    "name": "Style 79"
+  },
+  "83": {
+    "file": "hair_083.png",
+    "name": "Style 83"
+  },
+  "84": {
+    "file": "hair_084.png",
+    "name": "Style 84"
+  },
+  "85": {
+    "file": "hair_085.png",
+    "name": "Style 85"
+  },
+  "86": {
+    "file": "hair_086.png",
+    "name": "Style 86"
+  },
+  "87": {
+    "file": "hair_087.png",
+    "name": "Style 87"
+  },
+  "88": {
+    "file": "hair_088.png",
+    "name": "Style 88"
+  },
+  "89": {
+    "file": "hair_089.png",
+    "name": "Style 89"
+  },
+  "90": {
+    "file": "hair_090.png",
+    "name": "Style 90"
+  },
+  "91": {
+    "file": "hair_091.png",
+    "name": "Style 91"
+  },
+  "92": {
+    "file": "hair_092.png",
+    "name": "Style 92"
+  },
+  "93": {
+    "file": "hair_093.png",
+    "name": "Style 93"
+  },
+  "94": {
+    "file": "hair_094.png",
+    "name": "Style 94"
+  },
+  "95": {
+    "file": "hair_095.png",
+    "name": "Style 95"
+  },
+  "96": {
+    "file": "hair_096.png",
+    "name": "Style 96"
+  },
+  "97": {
+    "file": "hair_097.png",
+    "name": "Style 97"
+  },
+  "98": {
+    "file": "hair_098.png",
+    "name": "Style 98"
+  },
+  "99": {
+    "file": "hair_099.png",
+    "name": "Style 99"
+  },
+  "100": {
+    "file": "hair_100.png",
+    "name": "Style 100"
+  },
+  "101": {
+    "file": "hair_101.png",
+    "name": "Style 101"
+  },
+  "102": {
+    "file": "hair_102.png",
+    "name": "Style 102"
+  },
+  "103": {
+    "file": "hair_103.png",
+    "name": "Style 103"
+  },
+  "105": {
+    "file": "hair_105.png",
+    "name": "Style 105"
+  },
+  "106": {
+    "file": "hair_106.png",
+    "name": "Style 106"
+  },
+  "107": {
+    "file": "hair_107.png",
+    "name": "Style 107"
+  },
+  "108": {
+    "file": "hair_108.png",
+    "name": "Style 108"
+  },
+  "109": {
+    "file": "hair_109.png",
+    "name": "Style 109"
+  },
+  "110": {
+    "file": "hair_110.png",
+    "name": "Style 110"
+  },
+  "111": {
+    "file": "hair_111.png",
+    "name": "Style 111"
+  },
+  "112": {
+    "file": "hair_112.png",
+    "name": "Style 112"
+  },
+  "113": {
+    "file": "hair_113.png",
+    "name": "Style 113"
+  },
+  "114": {
+    "file": "hair_114.png",
+    "name": "Style 114"
+  },
+  "115": {
+    "file": "hair_115.png",
+    "name": "Style 115"
+  },
+  "116": {
+    "file": "hair_116.png",
+    "name": "Style 116"
+  },
+  "117": {
+    "file": "hair_117.png",
+    "name": "Style 117"
+  },
+  "118": {
+    "file": "hair_118.png",
+    "name": "Style 118"
+  },
+  "119": {
+    "file": "hair_119.png",
+    "name": "Style 119"
+  },
+  "120": {
+    "file": "hair_120.png",
+    "name": "Style 120"
+  },
+  "121": {
+    "file": "hair_121.png",
+    "name": "Style 121"
+  },
+  "122": {
+    "file": "hair_122.png",
+    "name": "Style 122"
+  },
+  "124": {
+    "file": "hair_124.png",
+    "name": "Style 124"
+  },
+  "125": {
+    "file": "hair_125.png",
+    "name": "Style 125"
+  },
+  "126": {
+    "file": "hair_126.png",
+    "name": "Style 126"
+  },
+  "131": {
+    "file": "hair_131.png",
+    "name": "Style 131"
+  },
+  "132": {
+    "file": "hair_132.png",
+    "name": "Style 132"
+  },
+  "133": {
+    "file": "hair_133.png",
+    "name": "Style 133"
+  },
+  "134": {
+    "file": "hair_134.png",
+    "name": "Style 134"
+  },
+  "135": {
+    "file": "hair_135.png",
+    "name": "Style 135"
+  },
+  "136": {
+    "file": "hair_136.png",
+    "name": "Style 136"
+  },
+  "137": {
+    "file": "hair_137.png",
+    "name": "Style 137"
+  },
+  "139": {
+    "file": "hair_139.png",
+    "name": "Style 139"
+  },
+  "140": {
+    "file": "hair_140.png",
+    "name": "Style 140"
+  },
+  "141": {
+    "file": "hair_141.png",
+    "name": "Style 141"
+  },
+  "145": {
+    "file": "hair_145.png",
+    "name": "Style 145"
+  },
+  "146": {
+    "file": "hair_146.png",
+    "name": "Style 146"
+  },
+  "147": {
+    "file": "hair_147.png",
+    "name": "Style 147"
+  },
+  "148": {
+    "file": "hair_148.png",
+    "name": "Style 148"
+  },
+  "149": {
+    "file": "hair_149.png",
+    "name": "Style 149"
+  },
+  "150": {
+    "file": "hair_150.png",
+    "name": "Style 150"
+  },
+  "158": {
+    "file": "hair_158.png",
+    "name": "Style 158"
+  },
+  "160": {
+    "file": "hair_160.png",
+    "name": "Style 160"
+  },
+  "162": {
+    "file": "hair_162.png",
+    "name": "Style 162"
+  },
+  "163": {
+    "file": "hair_163.png",
+    "name": "Style 163"
+  },
+  "164": {
+    "file": "hair_164.png",
+    "name": "Style 164"
+  },
+  "166": {
+    "file": "hair_166.png",
+    "name": "Style 166"
+  },
+  "168": {
+    "file": "hair_168.png",
+    "name": "Style 168"
+  },
+  "169": {
+    "file": "hair_169.png",
+    "name": "Style 169"
+  },
+  "170": {
+    "file": "hair_170.png",
+    "name": "Style 170"
+  },
+  "24": {
+    "file": "hair_024.png",
+    "name": "Style 24"
+  },
+  "80": {
+    "file": "hair_080.png",
+    "name": "Style 80"
+  },
+  "151": {
+    "file": "hair_151.png",
+    "name": "Style 151"
+  },
+  "153": {
+    "file": "hair_153.png",
+    "name": "Style 153"
+  },
+  "154": {
+    "file": "hair_154.png",
+    "name": "Style 154"
+  },
+  "157": {
+    "file": "hair_157.png",
+    "name": "Style 157"
+  },
+  "165": {
+    "file": "hair_165.png",
+    "name": "Style 165"
+  }
 }

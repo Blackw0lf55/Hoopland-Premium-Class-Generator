@@ -15,6 +15,28 @@ spec.loader.exec_module(module)
 
 
 class ExtractionTests(unittest.TestCase):
+    def test_available_layers_have_the_canonical_canvas_and_manifest_ids(self):
+        assets = path.parents[1] / "assets"
+        with Image.open(assets / "player_base.png") as base:
+            size = base.size
+        categories = [
+            ("hair", "hair", "hair"),
+            ("facial_hair", "facial_hair", "facial"),
+            ("accessory", "accessories", "accessory"),
+        ]
+        for manifest_name, directory, prefix in categories:
+            manifest = json.loads((assets / f"{manifest_name}_manifest.json").read_text())
+            for ident, entry in manifest.items():
+                with self.subTest(category=manifest_name, ident=ident):
+                    self.assertEqual(entry["file"], f"{prefix}_{int(ident):03}.png")
+                    with Image.open(assets / directory / entry["file"]) as image:
+                        self.assertEqual(image.size, size)
+                        alpha = image.convert("RGBA").getchannel("A")
+                        if prefix == "hair" and ident == "0":
+                            self.assertIsNone(alpha.getbbox())
+                        else:
+                            self.assertIsNotNone(alpha.getbbox())
+
     def test_pilot_assets_share_canvas_and_include_temple_shading(self):
         assets = path.parents[1] / "assets"
         base = Image.open(assets / "player_base.png").convert("RGBA")
